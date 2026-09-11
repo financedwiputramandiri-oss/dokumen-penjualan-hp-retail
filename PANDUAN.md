@@ -97,6 +97,18 @@ lengkap dengan DPP dan PPN-nya.
 
 ---
 
+### Langkah 6 — Database customer (sesekali saja)
+
+```
+python3 jalankan.py telusuri
+```
+
+Membaca semua order sheet lama di folder `data/arsip/`, lalu membuat
+`keluaran/DATABASE_CUSTOMER.xlsx`: tingkat diskon dan kondisi pembayaran
+(TOP/COD/CBD) tiap customer, dari yang paling lama sampai yang terbaru.
+
+---
+
 ## Kalau ada data yang perlu diisi
 
 Semua yang perlu diisi manusia ada di folder `config/`. Bisa dibuka pakai
@@ -107,6 +119,8 @@ Excel atau Notepad.
 | `config/customer.csv` | Nama customer di dokumen, alamat, **NPWP**, format invoice, termin |
 | `config/perusahaan.yaml` | Kop surat CV Dwi Putra Mandiri, nomor rekening, nama berkas logo |
 | `config/pengaturan.yaml` | Tarif PPN, penulisan label ukuran, nomor dokumen |
+| `config/perusahaan.yaml` | Dua perusahaan pemroses (CV DPM & CV Mutiara Timur Nusantara) |
+| `config/bot.yaml` | Pengaturan bot penyapu otomatis |
 
 Program akan **mengingatkan sendiri** kalau ada yang masih kosong —
 dokumen tetap dibuat, bagian yang kosong ditandai `(belum diisi)`.

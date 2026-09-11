@@ -1,15 +1,15 @@
-kunci_tab,nama_di_dokumen,alamat,npwp,format_invoice,termin_hari,cara_bayar_paksa,catatan
-Haritsa,PT. Haritsa Pipa Rezeki,"JL. T. Hasan Dek, RT 000 RW 000 Beurawe, Kuta Alam",,per_ukuran,30,,
-Baby Wise,BABY WISE INDONESIA,"Ruko Tol Boulevard Blok AH-2/3C-3D, BSD City, Rawabuntu, Serpong, Tangerang Selatan, Banten 15318",,per_artikel,30,,
-Baby Wise Surabaya,BABY WISE INDONESIA (SURABAYA),,,per_artikel,30,,ALAMAT BELUM ADA
-Natasha,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
-Mae Bebe,JONNI SETIADI,"Jl. Bintaro Utama V Blok EA. 1/5, RT.001 RW.010, Kel. Jurangmangu Timur, Kec. Pondok Aren, Tangerang Selatan",,per_artikel,30,,
-Panda & Bear,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
-Pratama,CV. YAKIN ESOK SUKSES,"Jl. P. Diponegoro 88, Tamanan Tulungagung, Jawa Timur 66217",,per_artikel,30,,
-Katamama Tapos,PT. MAMA PAPA JUARA,"Ruko Nirwana Estate, Jl. Raya Cikaret, Pabuaran, Cibinong, Kab. Bogor, Jawa Barat",,per_ukuran,30,,
-Katamama Cikarang,PT. MAMA PAPA JUARA,,,per_ukuran,30,,ALAMAT BELUM ADA
-Yulis Baby Shop,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
-Miniku,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
-Baby Fame,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
-Dunia Bayi,PT. DUNIA BAYI SENTOSA,"Pertokoan Udayana Blok Jl. Letda Made Putra 37A, Dauh Puri, Denpasar Barat, Kota Denpasar, Bali 80113",,per_artikel,30,,
-Canina Baby,,,,per_artikel,30,,NAMA & ALAMAT BELUM ADA
+kunci_tab,nama_di_dokumen,alamat,npwp,format_invoice,termin_hari,cara_bayar_paksa,perusahaan_pemroses,catatan
+Haritsa,PT. Haritsa Pipa Rezeki,"JL. T. Hasan Dek, RT 000 RW 000 Beurawe, Kuta Alam",,per_ukuran,30,,,
+Baby Wise,BABY WISE INDONESIA,"Ruko Tol Boulevard Blok AH-2/3C-3D, BSD City, Rawabuntu, Serpong, Tangerang Selatan, Banten 15318",,per_artikel,30,,,
+Baby Wise Surabaya,BABY WISE INDONESIA (SURABAYA),,,per_artikel,30,,,ALAMAT BELUM ADA
+Natasha,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA
+Mae Bebe,JONNI SETIADI,"Jl. Bintaro Utama V Blok EA. 1/5, RT.001 RW.010, Kel. Jurangmangu Timur, Kec. Pondok Aren, Tangerang Selatan",,per_artikel,30,,,
+Panda & Bear,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA
+Pratama,CV. YAKIN ESOK SUKSES,"Jl. P. Diponegoro 88, Tamanan Tulungagung, Jawa Timur 66217",,per_artikel,30,,,
+Katamama Tapos,PT. MAMA PAPA JUARA,"Ruko Nirwana Estate, Jl. Raya Cikaret, Pabuaran, Cibinong, Kab. Bogor, Jawa Barat",,per_ukuran,30,,,
+Katamama Cikarang,PT. MAMA PAPA JUARA,,,per_ukuran,30,,,ALAMAT BELUM ADA
+Yulis Baby Shop,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA
+Miniku,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA
+Baby Fame,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA
+Dunia Bayi,PT. DUNIA BAYI SENTOSA,"Pertokoan Udayana Blok Jl. Letda Made Putra 37A, Dauh Puri, Denpasar Barat, Kota Denpasar, Bali 80113",,per_artikel,30,,,
+Canina Baby,,,,per_artikel,30,,,NAMA & ALAMAT BELUM ADA

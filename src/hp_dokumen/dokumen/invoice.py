@@ -164,7 +164,10 @@ def buat_invoice(
     r += 1
 
     # ---- penutup di kolom G-H ------------------------------------------
-    tarif = pengaturan.tarif_ppn
+    # PPN hanya dikenakan kalau order diproses lewat perusahaan yang memungut
+    # PPN. Lihat config/perusahaan.yaml -> kenakan_ppn.
+    kena_ppn = getattr(perusahaan, "kenakan_ppn", True)
+    tarif = pengaturan.tarif_ppn if kena_ppn else 0.0
     total_setelah_muka = nett_total - uang_muka
     dpp = total_setelah_muka / (1 + tarif) if tarif else total_setelah_muka
     ppn = total_setelah_muka - dpp
@@ -174,10 +177,12 @@ def buat_invoice(
         ("Diskon", -(kotor_total - nett_total)),
         ("Total", nett_total),
         ("Uang Muka", -uang_muka),
-        ("DPP", dpp),
-        (f"PPN {tarif:.0%}", ppn),
-        ("Total", total_setelah_muka),
     ]
+    if kena_ppn:
+        penutup += [("DPP", dpp), (f"PPN {tarif:.0%}", ppn)]
+    else:
+        penutup += [("DPP", dpp), ("PPN", 0.0)]
+    penutup.append(("Total", total_setelah_muka))
     awal_penutup = r
     for label, nilai in penutup:
         sel = ws.cell(r, 7, label)
@@ -218,6 +223,8 @@ def buat_invoice(
         "total_setelah_muka": total_setelah_muka,
         "termin_hari": termin,
         "jatuh_tempo": jatuh_tempo,
+        "kena_ppn": kena_ppn,
+        "perusahaan": getattr(perusahaan, "nama", ""),
         "dipecah_per_ukuran": pecah,
         "awal_tabel": awal_tabel,
         "akhir_tabel": akhir_tabel,

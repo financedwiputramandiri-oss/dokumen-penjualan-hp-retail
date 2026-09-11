@@ -23,6 +23,7 @@ class Customer:
     format_invoice: str      # "per_artikel" | "per_ukuran"
     termin_hari: int
     cara_bayar_paksa: str    # "" | "TOP" | "CBD" | "COD"
+    perusahaan_pemroses: str  # kode perusahaan, contoh "DPM" / "MTN"; "" = bawaan
     catatan: str
 
     @property
@@ -141,6 +142,7 @@ class DaftarCustomer:
                         format_invoice=(row.get("format_invoice") or "per_artikel").strip(),
                         termin_hari=termin,
                         cara_bayar_paksa=(row.get("cara_bayar_paksa") or "").strip().upper(),
+                        perusahaan_pemroses=(row.get("perusahaan_pemroses") or "").strip().upper(),
                         catatan=(row.get("catatan") or "").strip(),
                     )
                 )
@@ -176,29 +178,68 @@ class DaftarCustomer:
 # ------------------------------------------------------------- perusahaan
 @dataclass
 class Perusahaan:
+    kode: str
     nama: str
+    nama_resmi: str
+    kenakan_ppn: bool
+    npwp: str
     alamat_baris: list[str]
     logo: str
     rekening: list[str]
-    kota_penerbitan: str
-
-    @classmethod
-    def muat(cls, berkas: Path | None = None) -> "Perusahaan":
-        berkas = berkas or (FOLDER_CONFIG / "perusahaan.yaml")
-        d = yaml.safe_load(berkas.read_text(encoding="utf-8")) or {}
-        return cls(
-            nama=d.get("nama", ""),
-            alamat_baris=list(d.get("alamat_baris") or []),
-            logo=(d.get("logo") or "").strip(),
-            rekening=list(d.get("rekening") or []),
-            kota_penerbitan=d.get("kota_penerbitan", "Jakarta"),
-        )
+    kota_penerbitan: str = "Jakarta"
 
     def berkas_logo(self) -> Optional[Path]:
         if not self.logo:
             return None
         p = FOLDER_CONFIG / self.logo
         return p if p.exists() else None
+
+
+class DaftarPerusahaan:
+    """Perusahaan yang bisa memproses order.
+
+    Yang menentukan kop surat di dokumen sekaligus apakah PPN dikenakan:
+    order lewat CV. Dwi Putra Mandiri kena PPN, lewat CV. Mutiara Timur
+    Nusantara tidak.
+    """
+
+    def __init__(self, semua: list[Perusahaan], bawaan: str, kota: str):
+        self.semua = semua
+        self._index = {p.kode.upper(): p for p in semua}
+        self.kode_bawaan = (bawaan or (semua[0].kode if semua else "")).upper()
+        self.kota_penerbitan = kota
+
+    @classmethod
+    def muat(cls, berkas: Path | None = None) -> "DaftarPerusahaan":
+        berkas = berkas or (FOLDER_CONFIG / "perusahaan.yaml")
+        d = yaml.safe_load(berkas.read_text(encoding="utf-8")) or {}
+        kota = d.get("kota_penerbitan", "Jakarta")
+        semua: list[Perusahaan] = []
+        for x in d.get("perusahaan") or []:
+            semua.append(
+                Perusahaan(
+                    kode=str(x.get("kode", "")).strip().upper(),
+                    nama=x.get("nama", ""),
+                    nama_resmi=x.get("nama_resmi", x.get("nama", "")),
+                    kenakan_ppn=bool(x.get("kenakan_ppn", True)),
+                    npwp=(x.get("npwp") or "").strip(),
+                    alamat_baris=list(x.get("alamat_baris") or []),
+                    logo=(x.get("logo") or "").strip(),
+                    rekening=list(x.get("rekening") or []),
+                    kota_penerbitan=kota,
+                )
+            )
+        return cls(semua, d.get("perusahaan_bawaan", ""), kota)
+
+    def bawaan(self) -> Perusahaan:
+        return self._index.get(self.kode_bawaan) or self.semua[0]
+
+    def untuk(self, customer: Optional[Customer]) -> Perusahaan:
+        kode = (customer.perusahaan_pemroses if customer else "") or ""
+        return self._index.get(kode.upper()) or self.bawaan()
+
+    def dikenal(self, kode: str) -> bool:
+        return kode.upper() in self._index
 
 
 # ------------------------------------------------------------- pengaturan
@@ -229,7 +270,7 @@ class Pengaturan:
 
 @dataclass
 class Konfigurasi:
-    perusahaan: Perusahaan
+    perusahaan: DaftarPerusahaan
     customer: DaftarCustomer
     pengaturan: Pengaturan
     peringatan: list[str] = field(default_factory=list)
@@ -238,7 +279,7 @@ class Konfigurasi:
     def muat(cls, folder: Path | None = None) -> "Konfigurasi":
         f = folder or FOLDER_CONFIG
         cfg = cls(
-            perusahaan=Perusahaan.muat(f / "perusahaan.yaml"),
+            perusahaan=DaftarPerusahaan.muat(f / "perusahaan.yaml"),
             customer=DaftarCustomer.muat(f / "customer.csv"),
             pengaturan=Pengaturan.muat(f / "pengaturan.yaml"),
         )
@@ -255,9 +296,37 @@ class Konfigurasi:
                 f"Penulisan label ukuran angka polos ({gaya}) BELUM dikonfirmasi Yosua. "
                 "Ubah di config/pengaturan.yaml -> label_ukuran."
             )
-        if not cfg.perusahaan.berkas_logo():
+        for pp in cfg.perusahaan.semua:
+            if not pp.berkas_logo():
+                cfg.peringatan.append(
+                    f"Logo {pp.nama} belum ada. Dokumen tetap dibuat, kop memakai "
+                    "teks saja. Taruh logo di folder config/ lalu tulis namanya "
+                    "di perusahaan.yaml."
+                )
+            if not pp.npwp:
+                cfg.peringatan.append(
+                    f"NPWP {pp.nama} belum diisi di config/perusahaan.yaml. "
+                    "Dibutuhkan untuk faktur pajak."
+                )
+
+        belum = [
+            c.kunci for c in cfg.customer.semua if not c.perusahaan_pemroses
+        ]
+        if belum:
             cfg.peringatan.append(
-                "Berkas logo belum ada. Dokumen tetap dibuat, kop memakai teks saja. "
-                "Taruh logo di folder config/ lalu tulis namanya di perusahaan.yaml."
+                f"{len(belum)} customer belum ditentukan diproses lewat perusahaan mana, "
+                f"jadi memakai {cfg.perusahaan.bawaan().nama} "
+                f"({'kena' if cfg.perusahaan.bawaan().kenakan_ppn else 'tanpa'} PPN). "
+                "Isi kolom perusahaan_pemroses di config/customer.csv. "
+                "Customer: " + ", ".join(belum[:8]) + ("..." if len(belum) > 8 else "")
+            )
+        salah = [
+            c.kunci for c in cfg.customer.semua
+            if c.perusahaan_pemroses and not cfg.perusahaan.dikenal(c.perusahaan_pemroses)
+        ]
+        if salah:
+            cfg.peringatan.append(
+                "Kode perusahaan tidak dikenal untuk customer: " + ", ".join(salah)
+                + ". Pakai kode yang ada di config/perusahaan.yaml."
             )
         return cfg

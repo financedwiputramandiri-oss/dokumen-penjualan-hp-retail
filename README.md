@@ -22,6 +22,8 @@ python3 jalankan.py periksa       # cocokkan angka dengan order sheet
 python3 jalankan.py buat "Panda"  # buat 4 dokumen untuk satu PO
 python3 jalankan.py buat-semua    # buat untuk semua PO
 python3 jalankan.py rekap         # rekap sebulan untuk laporan & pajak
+python3 jalankan.py telusuri      # database customer dari SEMUA order sheet lama
+python3 jalankan.py sapu          # tarik dari Google Drive + pantau perubahan
 ```
 
 Tambahkan `--pdf` untuk sekalian membuat PDF.
@@ -77,6 +79,56 @@ ditulis `<nama barang> - <ukuran>`, contoh
 
 ---
 
+## Membaca order sheet tahun berapa pun
+
+Susunan kolom order sheet **berubah sepanjang waktu**. Karena itu kolom tidak
+dipatok pada huruf tertentu — program membaca baris judul lalu menentukan
+sendiri letak tiap kolom (`tata_letak.py`).
+
+| Periode | Kolom ukuran | Kolom nilai bersih |
+|---|---|---|
+| Januari 2025 | 3 | P `TOTAL VALUE`, Q `CBD + 2%`, R `COD + 1,5%` |
+| Agustus 2025 | 7 | AA `TOTAL VALUE`, AB `PPN + 11%`, AC `COD + 1,5%` |
+| Okt 2025 - kini | 9 | AC `TOTAL VALUE`, AD, AE |
+
+Nama tab juga bermacam-macam (`PO 22 Jan ...`, `PO 30 - ...`, `(Delivery 1) ...`)
+dan semuanya terbaca.
+
+## Database customer
+
+```bash
+python3 jalankan.py telusuri
+```
+
+Menelusuri semua order sheet di `data/arsip/`, menghasilkan
+`keluaran/DATABASE_CUSTOMER.xlsx` berisi tingkat diskon, kondisi pembayaran
+(TOP/COD/CBD), periode aktif, dan nilai belanja tiap customer.
+
+Nama customer di order sheet berantakan. Penggabungan nama hanya dilakukan
+kalau nama tab memang terpotong 31 huruf oleh ekspor Excel. Nama mirip yang
+sama-sama utuh **tidak** digabung sendiri — dikumpulkan di lembar
+`PERIKSA_NAMA` untuk dipastikan manusia, karena `Baby Wise` dan
+`Baby Wise Surabaya` itu dua toko berbeda.
+
+## Dua perusahaan pemroses
+
+Order bisa diproses lewat dua perusahaan, dan itu menentukan apakah PPN
+dikenakan:
+
+| Kode | Perusahaan | PPN 11% |
+|---|---|---|
+| `DPM` | CV. Dwi Putra Mandiri | berlaku |
+| `MTN` | CV. Mutiara Timur Nusantara | tidak berlaku |
+
+Diatur di `config/perusahaan.yaml`, dipasangkan ke customer lewat kolom
+`perusahaan_pemroses` di `config/customer.csv`.
+
+## Bot penyapu
+
+Menarik order sheet dari Google Drive tiap 12 jam, membuat draf dokumen, dan
+memberi tahu kalau ada PO lama yang qty atau rumusnya berubah.
+Cara memasangnya ada di **[PANDUAN_BOT.md](PANDUAN_BOT.md)**.
+
 ## Isi folder
 
 ```
@@ -89,6 +141,10 @@ src/hp_dokumen/  program
   ukuran.py        Aturan 3 & 4 — label ukuran
   rekonsiliasi.py  pencocokan wajib
   dokumen/         pembuat keempat dokumen
+  tata_letak.py    mengenali susunan kolom order sheet apa pun
+  riwayat.py       menelusuri order sheet lama
+  db_customer.py   menyusun database customer
+  sapu/            bot penyapu: Drive, pemantauan, laporan
   laporan.py       laporan pencocokan & rekap
 tests/           tes otomatis, memakai data contoh (bukan data asli)
 CLAUDE.md        ingatan proyek: konteks, temuan, keputusan

@@ -150,15 +150,16 @@ def _buat_dokumen(cfg, h: HasilRekonsiliasi, urut: int, args) -> list[Path]:
     o, k = h.order, h.keputusan
     cust = cfg.customer.cari(o.nama_tab)
     nomor = _nomor(cfg, urut, args.nomor)
+    pt = cfg.perusahaan.untuk(cust)
     folder = FOLDER_KELUARAN / _aman(o.nama_tab)
     folder.mkdir(parents=True, exist_ok=True)
     dibuat: list[Path] = []
 
     tugas = [
-        ("SURAT_JALAN", lambda ws: buat_surat_jalan(ws, o, cust, cfg.perusahaan, nomor)),
-        ("PACKING_LIST", lambda ws: buat_packing_list(ws, o, cust, cfg.perusahaan, nomor)),
-        ("INVOICE", lambda ws: buat_invoice(ws, o, k, cust, cfg.perusahaan, cfg.pengaturan, nomor)),
-        ("FAKTUR_PAJAK", lambda ws: buat_faktur_pajak(ws, o, k, cust, cfg.perusahaan, cfg.pengaturan, nomor)),
+        ("SURAT_JALAN", lambda ws: buat_surat_jalan(ws, o, cust, pt, nomor)),
+        ("PACKING_LIST", lambda ws: buat_packing_list(ws, o, cust, pt, nomor)),
+        ("INVOICE", lambda ws: buat_invoice(ws, o, k, cust, pt, cfg.pengaturan, nomor)),
+        ("FAKTUR_PAJAK", lambda ws: buat_faktur_pajak(ws, o, k, cust, pt, cfg.pengaturan, nomor)),
     ]
     for nama, fungsi in tugas:
         wb = Workbook()
@@ -275,6 +276,20 @@ def perintah_telusuri(args) -> int:
     return 0
 
 
+def perintah_sapu(args) -> int:
+    """Satu kali sapuan: tarik order sheet dari Drive, pantau, buat draf."""
+    from .sapu.bot import Pengaturan as PengaturanBot, sapu
+
+    cfg = Konfigurasi.muat()
+    p = PengaturanBot.muat()
+    if args.tanpa_draf:
+        p.buat_draf = False
+    if args.tanpa_rumus:
+        p.pantau_rumus = False
+    hasil = sapu(p, cfg)
+    return 1 if hasil.genting else 0
+
+
 def buat_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="jalankan.py",
@@ -317,6 +332,14 @@ def buat_parser() -> argparse.ArgumentParser:
     g.add_argument("--tampilkan", type=int, default=25,
                    help="Berapa customer teratas ditampilkan di layar (bawaan 25)")
     g.set_defaults(fungsi=perintah_telusuri)
+
+    h = sub.add_parser("sapu",
+                       help="Tarik order sheet dari Google Drive, pantau perubahan (butuh bot)")
+    h.add_argument("--tanpa-draf", dest="tanpa_draf", action="store_true",
+                   help="Hanya memantau, tidak membuat draf dokumen")
+    h.add_argument("--tanpa-rumus", dest="tanpa_rumus", action="store_true",
+                   help="Jangan bandingkan rumus (lebih cepat)")
+    h.set_defaults(fungsi=perintah_sapu)
     return p
 
 

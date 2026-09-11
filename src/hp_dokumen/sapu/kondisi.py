@@ -1,0 +1,104 @@
+"""Sidik jari tiap tab PO, untuk membandingkan keadaan sekarang dengan sebelumnya.
+
+Yang dipantau khusus adalah PO LAMA YANG ATO-NYA SUDAH TERISI. PO seperti itu
+seharusnya sudah beku: barangnya sudah dikirim dan dokumennya sudah terbit.
+Kalau qty atau rumusnya berubah, itu harus dilaporkan.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+
+def _sidik(teks: str) -> str:
+    return hashlib.sha256(teks.encode("utf-8")).hexdigest()[:16]
+
+
+@dataclass
+class SidikPO:
+    """Ringkasan satu tab PO pada satu waktu."""
+
+    id_sheet: str
+    nama_sheet: str
+    tab: str
+    ato_terisi: bool
+    baris: int
+    qty: int
+    kotor: float
+    nett: float
+    cara_bayar: str
+    sidik_qty: str = ""       # sidik jari seluruh angka qty
+    sidik_rumus: str = ""     # sidik jari seluruh rumus di tab
+    diperiksa: str = ""
+
+    @property
+    def kunci(self) -> str:
+        return f"{self.id_sheet}::{self.tab}"
+
+
+@dataclass
+class Kondisi:
+    """Seluruh sidik jari yang tersimpan dari sapuan sebelumnya."""
+
+    versi: int = 1
+    disapu_terakhir: str = ""
+    po: dict = field(default_factory=dict)   # kunci -> dict SidikPO
+
+    @classmethod
+    def muat(cls, berkas: Path) -> "Kondisi":
+        if not berkas.exists():
+            return cls()
+        try:
+            d = json.loads(berkas.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return cls()
+        return cls(versi=d.get("versi", 1),
+                   disapu_terakhir=d.get("disapu_terakhir", ""),
+                   po=d.get("po", {}))
+
+    def simpan(self, berkas: Path) -> None:
+        berkas.parent.mkdir(parents=True, exist_ok=True)
+        self.disapu_terakhir = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        berkas.write_text(
+            json.dumps(asdict(self), indent=1, ensure_ascii=False), encoding="utf-8"
+        )
+
+    def ambil(self, kunci: str) -> Optional[SidikPO]:
+        d = self.po.get(kunci)
+        return SidikPO(**d) if d else None
+
+    def pasang(self, s: SidikPO) -> None:
+        s.diperiksa = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.po[s.kunci] = asdict(s)
+
+
+def sidik_dari_order(id_sheet: str, nama_sheet: str, tab: str, order, keputusan,
+                     baris_rumus: list[list] | None = None) -> SidikPO:
+    """Bentuk sidik jari satu tab PO dari hasil pemindaian."""
+    angka_qty = ";".join(
+        f"{b.baris_sheet}:{b.kode}:{','.join(str(q) for q in b.qty_per_ukuran)}"
+        for blk in order.blok for b in blk.baris
+    )
+    rumus = ""
+    if baris_rumus:
+        rumus = "\n".join(
+            "\t".join("" if v is None else str(v) for v in baris)
+            for baris in baris_rumus
+        )
+    return SidikPO(
+        id_sheet=id_sheet,
+        nama_sheet=nama_sheet,
+        tab=tab,
+        ato_terisi=order.qty > 0,
+        baris=order.jumlah_baris,
+        qty=order.qty,
+        kotor=round(order.nilai_kotor, 2),
+        nett=round(keputusan.nett_total, 2),
+        cara_bayar=keputusan.cara_bayar,
+        sidik_qty=_sidik(angka_qty),
+        sidik_rumus=_sidik(rumus) if rumus else "",
+    )

@@ -23,8 +23,8 @@ def contoh(tmp_path_factory):
 @pytest.fixture(scope="module")
 def daftar():
     return DaftarCustomer([
-        Customer("Contoh TOP", "PT Contoh Satu", "Jl. Contoh 1", "", "per_artikel", 30, "", ""),
-        Customer("Contoh CBD", "PT Contoh Dua", "Jl. Contoh 2", "", "per_ukuran", 30, "", ""),
+        Customer("Contoh TOP", "PT Contoh Satu", "Jl. Contoh 1", "", "per_artikel", 30, "", "", ""),
+        Customer("Contoh CBD", "PT Contoh Dua", "Jl. Contoh 2", "", "per_ukuran", 30, "", "", ""),
     ])
 
 
@@ -89,7 +89,7 @@ def test_cbd_terisi_sebagian_diabaikan_seluruhnya(orders, daftar):
 
 def test_override_manual_dilaporkan(orders):
     top = ambil(orders, "TOP")
-    paksa = Customer("Contoh TOP", "PT X", "", "", "per_artikel", 30, "CBD", "")
+    paksa = Customer("Contoh TOP", "PT X", "", "", "per_artikel", 30, "CBD", "", "")
     k = tentukan_nett(top, paksa)
     assert k.dioverride is True
     assert k.kolom == "CBD"

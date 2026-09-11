@@ -18,11 +18,14 @@ from hp_dokumen.pemindai import baca_order_sheet
 def bahan(tmp_path_factory):
     berkas = buat_contoh(tmp_path_factory.mktemp("d") / "contoh.xlsx")
     daftar = DaftarCustomer([
-        Customer("Contoh TOP", "PT Contoh Satu", "Jl. Contoh 1", "", "per_artikel", 30, "", ""),
-        Customer("Contoh CBD", "PT Contoh Dua", "Jl. Contoh 2", "", "per_ukuran", 30, "", ""),
+        Customer("Contoh TOP", "PT Contoh Satu", "Jl. Contoh 1", "", "per_artikel", 30, "", "", ""),
+        Customer("Contoh CBD", "PT Contoh Dua", "Jl. Contoh 2", "", "per_ukuran", 30, "", "", ""),
     ])
     orders = baca_order_sheet(berkas, daftar, tahun_bawaan=2026)
-    perusahaan = Perusahaan("CV CONTOH", ["Jl. A", "Kota"], "", ["REKENING:", "BANK X"], "Jakarta")
+    perusahaan = Perusahaan(kode="DPM", nama="CV CONTOH", nama_resmi="CV. CONTOH",
+                           kenakan_ppn=True, npwp="01.234.567.8-901.000",
+                           alamat_baris=["Jl. A", "Kota"], logo="",
+                           rekening=["REKENING:", "BANK X"], kota_penerbitan="Jakarta")
     return orders, daftar, perusahaan, Pengaturan()
 
 
@@ -135,3 +138,70 @@ def test_dokumen_tetap_jadi_walau_data_customer_kosong(bahan, tmp_path):
     buat_invoice(wb.create_sheet("inv"), o, k, None, perusahaan, pengaturan, "001")
     buat_faktur_pajak(wb.create_sheet("fp"), o, k, None, perusahaan, pengaturan, "001")
     wb.save(tmp_path / "kosong.xlsx")
+
+
+# ------------------------------------------------- PPN ikut perusahaan
+def _perusahaan(kode, kena_ppn):
+    from hp_dokumen.konfigurasi import Perusahaan
+    return Perusahaan(
+        kode=kode, nama=f"CV {kode}", nama_resmi=f"CV. {kode}",
+        kenakan_ppn=kena_ppn, npwp="01.2-3", alamat_baris=["Jl. A"],
+        logo="", rekening=["REK:"], kota_penerbitan="Jakarta",
+    )
+
+
+def test_ppn_dikenakan_kalau_lewat_perusahaan_pemungut(bahan, tmp_path):
+    orders, daftar, _, pengaturan = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    c = daftar.cari(o.nama_tab)
+    k = tentukan_nett(o, c)
+    wb = Workbook()
+    hasil = buat_invoice(wb.active, o, k, c, _perusahaan("DPM", True),
+                         pengaturan, "001")
+    assert hasil["kena_ppn"] is True
+    assert hasil["ppn"] > 0
+    assert abs(hasil["dpp"] * (1 + pengaturan.tarif_ppn) - hasil["total_setelah_muka"]) < 0.01
+
+
+def test_ppn_nol_kalau_lewat_perusahaan_tanpa_ppn(bahan, tmp_path):
+    """Order lewat CV. Mutiara Timur Nusantara tidak kena PPN 11%."""
+    orders, daftar, _, pengaturan = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    c = daftar.cari(o.nama_tab)
+    k = tentukan_nett(o, c)
+    wb = Workbook()
+    hasil = buat_invoice(wb.active, o, k, c, _perusahaan("MTN", False), pengaturan, "001")
+    assert hasil["kena_ppn"] is False
+    assert hasil["ppn"] == 0
+    assert abs(hasil["dpp"] - hasil["total_setelah_muka"]) < 0.01
+
+
+def test_faktur_pajak_ikut_aturan_perusahaan(bahan):
+    orders, daftar, _, pengaturan = bahan
+    o = next(x for x in orders if "CBD" in x.nama_tab)
+    c = daftar.cari(o.nama_tab)
+    k = tentukan_nett(o, c)
+
+    wb = Workbook()
+    kena = buat_faktur_pajak(wb.active, o, k, c, _perusahaan("DPM", True), pengaturan, "R1")
+    assert kena["ppn"] > 0
+    assert abs(kena["dpp"] + kena["ppn"] - k.nett_total) < 0.01
+
+    wb2 = Workbook()
+    bebas = buat_faktur_pajak(wb2.active, o, k, c, _perusahaan("MTN", False), pengaturan, "R1")
+    assert bebas["ppn"] == 0
+    assert abs(bebas["dpp"] - k.nett_total) < 0.01
+
+
+def test_perusahaan_dipilih_dari_master_customer(tmp_path):
+    """Kolom perusahaan_pemroses di customer.csv yang menentukan."""
+    from hp_dokumen.konfigurasi import Customer, DaftarPerusahaan
+    daftar = DaftarPerusahaan([_perusahaan("DPM", True), _perusahaan("MTN", False)],
+                              bawaan="DPM", kota="Jakarta")
+    lewat_mtn = Customer("X", "PT X", "a", "", "per_artikel", 30, "", "MTN", "")
+    lewat_dpm = Customer("Y", "PT Y", "a", "", "per_artikel", 30, "", "DPM", "")
+    belum = Customer("Z", "PT Z", "a", "", "per_artikel", 30, "", "", "")
+    assert daftar.untuk(lewat_mtn).kenakan_ppn is False
+    assert daftar.untuk(lewat_dpm).kenakan_ppn is True
+    assert daftar.untuk(belum).kode == "DPM", "kalau kosong, pakai perusahaan bawaan"
+    assert daftar.untuk(None).kode == "DPM"

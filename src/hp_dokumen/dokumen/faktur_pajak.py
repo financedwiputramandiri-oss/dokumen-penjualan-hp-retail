@@ -50,7 +50,8 @@ def buat_faktur_pajak(
     tanggal_dokumen: Optional[date] = None,
 ) -> dict:
     tanggal_dokumen = tanggal_dokumen or order.tanggal_po
-    tarif = pengaturan.tarif_ppn
+    kena_ppn = getattr(perusahaan, "kenakan_ppn", True)
+    tarif = pengaturan.tarif_ppn if kena_ppn else 0.0
     total = keputusan.nett_total
     dpp = total / (1 + tarif) if tarif else total
     ppn = total - dpp
@@ -66,8 +67,10 @@ def buat_faktur_pajak(
     r += 2
 
     r = _label(ws, r, "PENJUAL", "")
-    r = _label(ws, r, "Nama", perusahaan.nama)
+    r = _label(ws, r, "Nama", getattr(perusahaan, "nama_resmi", perusahaan.nama))
     r = _label(ws, r, "Alamat", ", ".join(perusahaan.alamat_baris[:2]))
+    r = _label(ws, r, "NPWP", getattr(perusahaan, "npwp", "") or "(BELUM DIISI)",
+               catatan="" if getattr(perusahaan, "npwp", "") else "isi di config/perusahaan.yaml")
     r += 1
 
     r = _label(ws, r, "PEMBELI", "")
@@ -93,6 +96,8 @@ def buat_faktur_pajak(
     r = _label(ws, r, "Tanggal", gaya.tanggal_indonesia(tanggal_dokumen))
     r = _label(ws, r, "PO / tab sumber", order.nama_tab)
     r = _label(ws, r, "Cara bayar", keputusan.cara_bayar, catatan=f"nett dari {keputusan.kolom_sumber}")
+    r = _label(ws, r, "Diproses lewat", perusahaan.nama,
+               catatan="kena PPN" if kena_ppn else "TIDAK kena PPN")
     r = _label(ws, r, "Jumlah barang (pcs)", order.qty, format_angka=gaya.ANGKA)
     r += 1
 
@@ -102,13 +107,20 @@ def buat_faktur_pajak(
     r = _label(ws, r, f"PPN {tarif:.0%}", ppn, bold=True, format_angka=gaya.RUPIAH_DESIMAL)
     r += 1
 
-    p = ws.cell(
-        r, 1,
-        f"PERHATIAN: tarif PPN {tarif:.0%} "
-        + ("sudah dikonfirmasi." if pengaturan.ppn_dikonfirmasi
-           else "MASIH SEMENTARA dan BELUM dikonfirmasi. Cek aturan yang berlaku sebelum lapor."),
-    )
-    p.font = Font(name=gaya.FONT, size=9, bold=not pengaturan.ppn_dikonfirmasi)
+    if not kena_ppn:
+        pesan = (
+            f"Order ini diproses lewat {perusahaan.nama}, yang TIDAK memungut PPN, "
+            "jadi DPP sama dengan total dan PPN nol. "
+            "Lihat config/perusahaan.yaml kalau ini keliru."
+        )
+    else:
+        pesan = (
+            f"Diproses lewat {perusahaan.nama}. Tarif PPN {tarif:.0%} "
+            + ("sudah dikonfirmasi." if pengaturan.ppn_dikonfirmasi
+               else "MASIH SEMENTARA dan BELUM dikonfirmasi. Cek aturan yang berlaku sebelum lapor.")
+        )
+    p = ws.cell(r, 1, pesan)
+    p.font = Font(name=gaya.FONT, size=9, bold=not pengaturan.ppn_dikonfirmasi or not kena_ppn)
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=KOLOM_TERAKHIR)
     r += 3
 
@@ -152,4 +164,5 @@ def buat_faktur_pajak(
     gaya.atur_lebar(ws, {1: 5, 2: 20, 3: 48, 4: 10, 5: 15, 6: 17})
     gaya.siapkan_cetak(ws, KOLOM_TERAKHIR, landscape=False)
 
-    return {"dpp": dpp, "ppn": ppn, "total": total, "tarif": tarif}
+    return {"dpp": dpp, "ppn": ppn, "total": total, "tarif": tarif,
+            "kena_ppn": kena_ppn, "perusahaan": perusahaan.nama}

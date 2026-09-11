@@ -4,7 +4,7 @@ from hp_dokumen.konfigurasi import Customer, DaftarCustomer, pecah_nama_tab
 
 def buat(*kunci):
     return DaftarCustomer([
-        Customer(k, f"PT {k}", "alamat", "", "per_artikel", 30, "", "") for k in kunci
+        Customer(k, f"PT {k}", "alamat", "", "per_artikel", 30, "", "", "") for k in kunci
     ])
 
 
@@ -43,5 +43,5 @@ def test_tab_tak_dikenal_mengembalikan_none():
 
 
 def test_kekurangan_data_terdeteksi():
-    c = Customer("X", "", "", "", "per_artikel", 30, "", "")
+    c = Customer("X", "", "", "", "per_artikel", 30, "", "", "")
     assert set(c.kekurangan()) == {"nama di dokumen", "alamat", "NPWP"}
