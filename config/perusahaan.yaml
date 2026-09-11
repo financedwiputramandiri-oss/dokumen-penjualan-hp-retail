@@ -1,0 +1,23 @@
+# ============================================================
+# DATA PERUSAHAAN — muncul di kop semua dokumen
+# Ubah di sini saja kalau alamat/telepon berubah.
+# ============================================================
+nama: CV DWI PUTRA MANDIRI
+alamat_baris:
+  - Jl. Jelambar Baru Raya No. 46, Grogol Petamburan
+  - Jakarta Barat - 11460, Indonesia
+  - Phone. +62 (021) 22561723
+  - "Wa:(+62) 0877 7950 0992"
+  - "Email : DPMTEX@yahoo.com"
+
+# Berkas logo (PNG/JPG). Kosongkan kalau belum ada.
+# Taruh berkasnya di folder config/ lalu tulis namanya di sini, contoh: logo.png
+logo: ""
+
+rekening:
+  - "PEMBAYARAN DITRANSFER KE REKENING :"
+  - "CV. DWI PUTRA MANDIRI"
+  - "BANK BCA"
+  - "A/C NO. : 277 950 8000"
+
+kota_penerbitan: Jakarta

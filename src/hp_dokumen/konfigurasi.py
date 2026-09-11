@@ -1,0 +1,224 @@
+"""Membaca berkas pengaturan di folder config/."""
+from __future__ import annotations
+
+import csv
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+import yaml
+
+AKAR = Path(__file__).resolve().parents[2]
+FOLDER_CONFIG = AKAR / "config"
+
+
+# ---------------------------------------------------------------- customer
+@dataclass
+class Customer:
+    kunci: str
+    nama_di_dokumen: str
+    alamat: str
+    npwp: str
+    format_invoice: str      # "per_artikel" | "per_ukuran"
+    termin_hari: int
+    cara_bayar_paksa: str    # "" | "TOP" | "CBD" | "COD"
+    catatan: str
+
+    @property
+    def pecah_per_ukuran(self) -> bool:
+        return self.format_invoice.strip().lower() == "per_ukuran"
+
+    def kekurangan(self) -> list[str]:
+        kurang = []
+        if not self.nama_di_dokumen.strip():
+            kurang.append("nama di dokumen")
+        if not self.alamat.strip():
+            kurang.append("alamat")
+        if not self.npwp.strip():
+            kurang.append("NPWP")
+        return kurang
+
+
+def _normal(teks: str) -> str:
+    """Seragamkan teks untuk pencocokan: huruf kecil, tanpa kurung, spasi rapat."""
+    teks = teks.replace("(", " ").replace(")", " ").replace("&", " & ")
+    teks = re.sub(r"\s+", " ", teks)
+    return teks.strip().lower()
+
+
+BULAN = {
+    "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
+    "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11,
+    "desember": 12,
+}
+
+
+def pecah_nama_tab(nama_tab: str) -> tuple[Optional[tuple[int, int, Optional[int]]], str]:
+    """Pisahkan 'PO 13 Agustus 2026 - Dunia Bayi' jadi (tanggal, 'Dunia Bayi').
+
+    Mengembalikan ((hari, bulan, tahun|None), sisa_nama).
+    Kalau polanya tidak dikenali, tanggal = None dan sisa = nama tab apa adanya.
+    """
+    m = re.match(
+        r"^\s*PO\s+(\d{1,2})\s+([A-Za-z]+)\s*(\d{4})?\s*[-–]\s*(.+)$",
+        nama_tab,
+        re.IGNORECASE,
+    )
+    if not m:
+        return None, nama_tab.strip()
+    hari = int(m.group(1))
+    bulan = BULAN.get(m.group(2).lower())
+    tahun = int(m.group(3)) if m.group(3) else None
+    sisa = m.group(4).strip()
+    if bulan is None:
+        return None, sisa
+    return (hari, bulan, tahun), sisa
+
+
+class DaftarCustomer:
+    def __init__(self, baris: list[Customer]):
+        self.semua = baris
+        self._index = {_normal(c.kunci): c for c in baris}
+
+    @classmethod
+    def muat(cls, berkas: Path | None = None) -> "DaftarCustomer":
+        berkas = berkas or (FOLDER_CONFIG / "customer.csv")
+        hasil: list[Customer] = []
+        with open(berkas, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if not (row.get("kunci_tab") or "").strip():
+                    continue
+                try:
+                    termin = int((row.get("termin_hari") or "").strip() or 30)
+                except ValueError:
+                    termin = 30
+                hasil.append(
+                    Customer(
+                        kunci=row["kunci_tab"].strip(),
+                        nama_di_dokumen=(row.get("nama_di_dokumen") or "").strip(),
+                        alamat=(row.get("alamat") or "").strip(),
+                        npwp=(row.get("npwp") or "").strip(),
+                        format_invoice=(row.get("format_invoice") or "per_artikel").strip(),
+                        termin_hari=termin,
+                        cara_bayar_paksa=(row.get("cara_bayar_paksa") or "").strip().upper(),
+                        catatan=(row.get("catatan") or "").strip(),
+                    )
+                )
+        return cls(hasil)
+
+    def cari(self, nama_tab: str) -> Optional[Customer]:
+        """Cocokkan nama tab ke master customer.
+
+        Tahan terhadap dua hal:
+          - tanda kurung pada nama tab, contoh 'Katamama (Tapos)'
+          - nama tab yang terpotong 31 huruf oleh ekspor Excel,
+            contoh 'PO 31 Agustus - Baby Wise (Sura'
+        """
+        _, sisa = pecah_nama_tab(nama_tab)
+        kunci = _normal(sisa)
+        if not kunci:
+            return None
+        # 1. sama persis
+        if kunci in self._index:
+            return self._index[kunci]
+        # 2. salah satu awalan dari yang lain (menangani pemotongan 31 huruf);
+        #    ambil kecocokan terpanjang supaya 'Baby Wise Sura' tidak jatuh ke 'Baby Wise'
+        kandidat = [
+            (len(k), c)
+            for k, c in self._index.items()
+            if k.startswith(kunci) or kunci.startswith(k)
+        ]
+        if kandidat:
+            return max(kandidat, key=lambda x: x[0])[1]
+        return None
+
+
+# ------------------------------------------------------------- perusahaan
+@dataclass
+class Perusahaan:
+    nama: str
+    alamat_baris: list[str]
+    logo: str
+    rekening: list[str]
+    kota_penerbitan: str
+
+    @classmethod
+    def muat(cls, berkas: Path | None = None) -> "Perusahaan":
+        berkas = berkas or (FOLDER_CONFIG / "perusahaan.yaml")
+        d = yaml.safe_load(berkas.read_text(encoding="utf-8")) or {}
+        return cls(
+            nama=d.get("nama", ""),
+            alamat_baris=list(d.get("alamat_baris") or []),
+            logo=(d.get("logo") or "").strip(),
+            rekening=list(d.get("rekening") or []),
+            kota_penerbitan=d.get("kota_penerbitan", "Jakarta"),
+        )
+
+    def berkas_logo(self) -> Optional[Path]:
+        if not self.logo:
+            return None
+        p = FOLDER_CONFIG / self.logo
+        return p if p.exists() else None
+
+
+# ------------------------------------------------------------- pengaturan
+@dataclass
+class Pengaturan:
+    tarif_ppn: float = 0.11
+    ppn_dikonfirmasi: bool = False
+    akhiran_y_untuk_angka: bool = True
+    ukuran_dikonfirmasi: bool = False
+    termin_hari_default: int = 30
+    toleransi_cocok: float = 1.0
+
+    @classmethod
+    def muat(cls, berkas: Path | None = None) -> "Pengaturan":
+        berkas = berkas or (FOLDER_CONFIG / "pengaturan.yaml")
+        d = yaml.safe_load(berkas.read_text(encoding="utf-8")) or {}
+        ppn = d.get("ppn") or {}
+        lu = d.get("label_ukuran") or {}
+        return cls(
+            tarif_ppn=float(ppn.get("tarif", 0.11)),
+            ppn_dikonfirmasi=bool(ppn.get("sudah_dikonfirmasi", False)),
+            akhiran_y_untuk_angka=bool(lu.get("akhiran_y_untuk_angka", True)),
+            ukuran_dikonfirmasi=bool(lu.get("sudah_dikonfirmasi", False)),
+            termin_hari_default=int(d.get("termin_hari_default", 30)),
+            toleransi_cocok=float(d.get("toleransi_cocok", 1.0)),
+        )
+
+
+@dataclass
+class Konfigurasi:
+    perusahaan: Perusahaan
+    customer: DaftarCustomer
+    pengaturan: Pengaturan
+    peringatan: list[str] = field(default_factory=list)
+
+    @classmethod
+    def muat(cls, folder: Path | None = None) -> "Konfigurasi":
+        f = folder or FOLDER_CONFIG
+        cfg = cls(
+            perusahaan=Perusahaan.muat(f / "perusahaan.yaml"),
+            customer=DaftarCustomer.muat(f / "customer.csv"),
+            pengaturan=Pengaturan.muat(f / "pengaturan.yaml"),
+        )
+        p = cfg.pengaturan
+        if not p.ppn_dikonfirmasi:
+            cfg.peringatan.append(
+                f"Tarif PPN masih memakai angka sementara {p.tarif_ppn:.0%} dan BELUM "
+                "dikonfirmasi. Cek ke konsultan pajak sebelum lapor Coretax, lalu ubah "
+                "config/pengaturan.yaml -> ppn.sudah_dikonfirmasi: true"
+            )
+        if not p.ukuran_dikonfirmasi:
+            gaya = "2 -> 2Y" if p.akhiran_y_untuk_angka else "2 -> 2"
+            cfg.peringatan.append(
+                f"Penulisan label ukuran angka polos ({gaya}) BELUM dikonfirmasi Yosua. "
+                "Ubah di config/pengaturan.yaml -> label_ukuran."
+            )
+        if not cfg.perusahaan.berkas_logo():
+            cfg.peringatan.append(
+                "Berkas logo belum ada. Dokumen tetap dibuat, kop memakai teks saja. "
+                "Taruh logo di folder config/ lalu tulis namanya di perusahaan.yaml."
+            )
+        return cfg

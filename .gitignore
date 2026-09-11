@@ -1,0 +1,20 @@
+# Order sheet asli & data perusahaan — jangan pernah masuk git
+data/*.xlsx
+data/*.xls
+data/*.csv
+!data/CONTOH_*.xlsx
+
+# Hasil dokumen
+keluaran/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Kredensial
+kredensial*.json
+*credentials*.json
+token*.json
