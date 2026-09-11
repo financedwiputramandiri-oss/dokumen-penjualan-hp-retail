@@ -28,6 +28,7 @@ from .google import Sambungan
 from .kondisi import Kondisi, sidik_dari_order
 from .laporan_sapu import tulis as tulis_laporan
 from .pantau import GENTING, Perubahan, bandingkan
+from .tulis_sheet import PenulisSheet
 
 
 @dataclass
@@ -102,6 +103,7 @@ def sapu(
     diperiksa: list[tuple[str, str, int]] = []
     draf: list[str] = []
     masalah: list[str] = []
+    rekaman: list[dict] = []   # untuk tab BOT_DAFTAR_PO di sheet OTOMATISASI
 
     for f in p.folder:
         id_folder, nama_folder = f.get("id", ""), f.get("nama", f.get("id", ""))
@@ -166,16 +168,30 @@ def sapu(
                     perubahan.extend(bandingkan(lama, baru))
                 kondisi.pasang(baru)
 
-                if p.buat_draf and order.qty > 0:
+                pt = cfg.perusahaan.untuk(cust)
+                siap, keterangan = False, "ATO belum terisi"
+                if order.qty > 0:
                     hr = periksa_order(order, keputusan, cfg.pengaturan, master, cust)
                     if hr.lolos:
-                        draf.append(f"{berkas.nama} / {tab_penuh}")
+                        siap, keterangan = True, "angka cocok dengan order sheet"
+                        if p.buat_draf:
+                            draf.append(f"{berkas.nama} / {tab_penuh}")
                     else:
-                        gagal = ", ".join(x.nama for x in hr.yang_gagal)
-                        masalah.append(
-                            f"'{tab_penuh}' tidak dibuatkan draf karena angkanya "
-                            f"belum cocok dengan order sheet ({gagal})."
+                        keterangan = "angka belum cocok: " + ", ".join(
+                            x.nama for x in hr.yang_gagal
                         )
+                        masalah.append(f"'{tab_penuh}' {keterangan}.")
+
+                rekaman.append({
+                    "sumber": berkas.nama, "tab": tab_penuh,
+                    "customer": cust.kunci if cust else "(belum terdaftar)",
+                    "tanggal": order.tanggal_po.isoformat() if order.tanggal_po else "",
+                    "blok": len(order.blok), "baris": order.jumlah_baris,
+                    "qty": order.qty, "kotor": order.nilai_kotor,
+                    "cara_bayar": keputusan.cara_bayar, "nett": keputusan.nett_total,
+                    "perusahaan": pt.nama, "kena_ppn": pt.kenakan_ppn,
+                    "siap": siap, "keterangan": keterangan,
+                })
 
     kondisi.simpan(p.berkas_kondisi)
 
@@ -192,6 +208,25 @@ def sapu(
         id_drive = sambung.unggah_laporan(berkas_laporan, folder_id)
         if id_drive is None:
             masalah.append("Laporan gagal diunggah ke Google Drive.")
+
+    # ---- tulis ke sheet OTOMATISASI, hanya tab berawalan BOT_ -----------
+    if p.sheet_otomatisasi_id:
+        try:
+            penulis = PenulisSheet(sambung, p.sheet_otomatisasi_id)
+            penulis.muat_daftar_tab()
+            penulis.tulis_daftar_po(rekaman)
+            penulis.tulis_perubahan(perubahan)
+            tautan = (
+                f"https://drive.google.com/file/d/{id_drive}/view" if id_drive else ""
+            )
+            penulis.tulis_status(
+                waktu, len(diperiksa), sum(n for _, _, n in diperiksa),
+                len(genting), len(draf), tautan,
+            )
+            cetak("Sheet OTOMATISASI diperbarui (tab BOT_DAFTAR_PO, BOT_PERUBAHAN, BOT_STATUS).")
+        except Exception as e:
+            masalah.append(f"Sheet OTOMATISASI tidak bisa diperbarui: {e}")
+            cetak(f"Sheet OTOMATISASI gagal diperbarui: {e}")
 
     hasil = HasilSapuan(perubahan, diperiksa, draf, masalah, berkas_laporan, id_drive)
 

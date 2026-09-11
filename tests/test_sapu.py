@@ -178,3 +178,103 @@ def test_qty_tetap_dibandingkan_walau_nilai_tidak_terbaca(berkas, daftar, tmp_pa
 
     jenis = {x.jenis for x in bandingkan(a, b)}
     assert "Susunan qty berubah" in jenis
+
+
+# ------------------------------------------- pengaman menulis ke sheet Yosua
+class _SambunganPalsu:
+    """Sambungan tiruan, untuk menguji tanpa menyentuh Google beneran."""
+
+    def __init__(self, judul):
+        self._judul = list(judul)
+        self.ditulis = {}
+        self.dikosongkan = []
+        self.tab_dibuat = []
+        sambungan = self
+
+        class _Values:
+            def clear(self, spreadsheetId, range, body):
+                sambungan.dikosongkan.append(range)
+                return self
+
+            def update(self, spreadsheetId, range, valueInputOption, body):
+                sambungan.ditulis[range] = body["values"]
+                return self
+
+            def execute(self):
+                return {}
+
+        class _Spreadsheets:
+            def values(self_inner):
+                return _Values()
+
+            def batchUpdate(self_inner, spreadsheetId, body):
+                for r in body["requests"]:
+                    judul = r["addSheet"]["properties"]["title"]
+                    sambungan.tab_dibuat.append(judul)
+                    sambungan._judul.append(judul)
+                return _Values()
+
+        class _Sheets:
+            def spreadsheets(self_inner):
+                return _Spreadsheets()
+
+        self.sheets = _Sheets()
+
+    def nama_tab(self, id_sheet):
+        return list(self._judul)
+
+
+def test_bot_menolak_menulis_ke_tab_buatan_manusia():
+    """Tab PENGATURAN, MASTER_CUSTOMER, dan lainnya tidak boleh disentuh bot."""
+    from hp_dokumen.sapu.tulis_sheet import PenulisSheet
+
+    s = _SambunganPalsu(["PENGATURAN", "MASTER_CUSTOMER", "INVOICE"])
+    p = PenulisSheet(s, "id")
+    p.muat_daftar_tab()
+    for terlarang in ("PENGATURAN", "MASTER_CUSTOMER", "INVOICE", "SURAT_JALAN"):
+        with pytest.raises(ValueError, match="hanya boleh menulis"):
+            p.tulis_tab(terlarang, [["x"]])
+    assert s.ditulis == {}
+    assert s.dikosongkan == []
+    assert s.tab_dibuat == []
+
+
+def test_bot_membuat_dan_mengisi_tab_sendiri():
+    from hp_dokumen.sapu.tulis_sheet import PenulisSheet, TAB_STATUS
+
+    s = _SambunganPalsu(["PENGATURAN", "MASTER_CUSTOMER"])
+    p = PenulisSheet(s, "id")
+    p.muat_daftar_tab()
+    p.tulis_tab("BOT_UJI", [["a", "b"], [1, 2]])
+
+    assert s.tab_dibuat == ["BOT_UJI"]
+    assert s.ditulis["'BOT_UJI'!A1"] == [["a", "b"], [1, 2]]
+    # tab milik Yosua tidak tersentuh sama sekali
+    assert all("PENGATURAN" not in k and "MASTER_CUSTOMER" not in k for k in s.ditulis)
+
+
+def test_tab_bot_yang_sudah_ada_diisi_ulang_bukan_digandakan():
+    from hp_dokumen.sapu.tulis_sheet import PenulisSheet
+
+    s = _SambunganPalsu(["BOT_DAFTAR_PO"])
+    p = PenulisSheet(s, "id")
+    p.muat_daftar_tab()
+    p.tulis_tab("BOT_DAFTAR_PO", [["baru"]])
+    assert s.tab_dibuat == []
+    assert s.dikosongkan == ["'BOT_DAFTAR_PO'"]
+
+
+def test_daftar_po_memuat_kolom_yang_dibutuhkan():
+    from hp_dokumen.sapu.tulis_sheet import PenulisSheet, TAB_DAFTAR
+
+    s = _SambunganPalsu([])
+    p = PenulisSheet(s, "id")
+    p.muat_daftar_tab()
+    p.tulis_daftar_po([{"sumber": "Agustus 2026", "tab": "PO 25 Agustus - Panda & Bear",
+                        "customer": "Panda & Bear", "qty": 120, "nett": 5126640.0,
+                        "cara_bayar": "TOP", "perusahaan": "CV DWI PUTRA MANDIRI",
+                        "kena_ppn": True, "siap": True}])
+    isi = s.ditulis[f"'{TAB_DAFTAR}'!A1"]
+    assert "CARA BAYAR" in isi[0] and "PPN" in isi[0] and "DRAF SIAP?" in isi[0]
+    assert isi[1][6] == 120 and isi[1][9] == 5126640
+    assert isi[1][12] == "SIAP"

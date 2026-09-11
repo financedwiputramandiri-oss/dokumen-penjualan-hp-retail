@@ -503,3 +503,145 @@ terkunci di akun Yosua" di bagian 8.
 
 Perintah: `daftar`, `periksa`, `buat`, `buat-semua`, `rekap`.
 Program **berhenti dan tidak membuat dokumen** kalau pencocokan gagal.
+
+
+---
+
+## 14. Perluasan 11 September 2026 — seluruh order sheet & bot penyapu
+
+Arahan baru Yosua: sistem harus bisa mengeluarkan dokumen penjualan **kapan pun
+untuk order sheet mana pun, lama maupun baru**, dikerjakan manual sehari-hari
+oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
+
+### Berkas yang jadi acuan
+
+| Berkas | ID |
+|---|---|
+| OTOMATISASI_HAPPY_PUMPKIN_SINKRON (milik Yosua) | `1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw` |
+| Folder order sheet 2026 | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` |
+| Folder order sheet 2025 | `1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57` |
+
+Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
+Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
+
+### Keadaan sheet SINKRON saat diperiksa
+
+17 tab, strukturnya sudah benar tapi isinya tidak jalan: `MASTER_HARGA` kosong,
+`SUMBER` hanya membaca 1 baris per tab, `DAFTAR_PO` nol, ada `#REF!`, dan
+`TARIK` (IMPORTRANGE) tidak tersambung. Yang sudah berisi dan berguna hanya
+`MASTER_CUSTOMER` (14 customer).
+
+**Keputusan: struktur tab Yosua dipertahankan, tidak diganti.** Bot hanya
+menambah tab berawalan `BOT_`. Modul `sapu/tulis_sheet.py` menolak menulis ke
+tab lain, dan penolakan itu diuji.
+
+### Susunan kolom order sheet berubah sepanjang waktu — temuan penting
+
+Pemindai berbasis huruf kolom hanya jalan untuk sheet terbaru. Ada tiga pola:
+
+| Periode | Kolom ukuran | Kolom nilai bersih |
+|---|---|---|
+| Januari 2025 | 3 | P `TOTAL VALUE`, Q `CBD + 2%`, R `COD + 1,5%` |
+| Feb - Mei 2025 | 6 | W, X, Y |
+| Juli - Sep 2025 | 8 | AA, AB, AC — **AB Agustus 2025 berjudul `PPN + 11%`** |
+| Okt 2025 - kini | 9 | AC, AD, AE |
+
+Agustus 2025 juga punya **baris judul tambahan**, jadi datanya mulai satu baris
+lebih bawah. Jarak baris judul ke baris data sekarang dicari sendiri.
+
+Penyelesaiannya: `tata_letak.py` membaca baris judul dan menentukan letak tiap
+kolom dari teksnya. Jangan pernah kembali memakai huruf kolom tetap.
+
+### Satu tab bisa punya dua kolom berjenis sama
+
+Agustus 2026 Baby Wise (Surabaya): kolom AD **dan** AE dua-duanya berjudul COD.
+April sampai Juli 2026 juga begitu. Kalau dikunci dengan nama jenis saja, yang
+satu menimpa yang lain dan nilai bersihnya salah. Kunci kolom nett sekarang
+dibuat unik (`COD@AD`, `COD@AE`).
+
+### Database customer dari 21 order sheet
+
+`python3 jalankan.py telusuri` menghasilkan `DATABASE_CUSTOMER.xlsx`.
+
+| | |
+|---|---|
+| Order sheet terbaca | 21 dari 22 |
+| PO terbaca | 379 |
+| Customer setelah digabung | 164 |
+
+Tingkat diskon: 25% (60 customer), 20% (33), 18% (25), 22% (18), 30% (6),
+sisanya campuran.
+Cara bayar terakhir: TOP 115, CBD 38, COD 10, PPN 1.
+Tujuh customer pernah memakai kolom `DISCOUNT PPN + 11%`.
+
+**Order Sheet Juni 2025 (11,4 MB) tidak bisa diekspor Google** — ditolak dengan
+"file too large". Satu-satunya berkas yang belum terbaca.
+
+### Nama customer: jangan digabung dengan menebak
+
+Ekspor Excel memotong nama tab di 31 huruf, jadi satu toko muncul sebagai
+`Baby Fame (Lam`, `Baby Fame (Lampun`, dan `Baby Fame (Lampung)`.
+
+Tapi menggabungkan berdasarkan awalan saja BERBAHAYA: `Baby Wise` dan
+`Baby Wise Surabaya` adalah dua toko berbeda, bukan potongan satu sama lain.
+
+**Aturan yang dipakai:** sebuah nama hanya digabung ke nama yang lebih panjang
+kalau nama itu selalu berasal dari tab yang panjangnya 30 huruf atau lebih —
+artinya memang terpotong. Nama yang pernah muncul dari tab pendek dianggap utuh.
+Sisanya dikumpulkan di lembar `PERIKSA_NAMA` untuk dipastikan Yosua, bukan
+ditebak. Ada 18 grup yang perlu diperiksa.
+
+Masalah ini **hilang sendiri** begitu bot berjalan, karena Sheets API memberi
+nama tab lengkap tanpa dipotong.
+
+### Dua perusahaan pemroses — jawaban Yosua nomor 2
+
+| Kode | Perusahaan | PPN 11% |
+|---|---|---|
+| `DPM` | CV. Dwi Putra Mandiri | berlaku |
+| `MTN` | CV. Mutiara Timur Nusantara | **tidak** berlaku |
+
+Diatur di `config/perusahaan.yaml`, dipasangkan per customer lewat kolom
+`perusahaan_pemroses` di `config/customer.csv`. Kop surat, rekening, dan NPWP
+penjual ikut perusahaannya. Kalau kosong, memakai DPM dan program mengingatkan.
+
+Jejaknya ada di order sheet Agustus 2025: kolom AB di sana berjudul
+`DISCOUNT PPN + 11%`, dipakai 7 customer. Perlu dipastikan apakah itu memang
+penanda perusahaan pemroses.
+
+### Bot penyapu
+
+Berjalan tiap 12 jam lewat cron atau systemd. Memakai akun layanan Google
+dengan akses **Viewer** ke folder order sheet — bot tidak akan pernah bisa
+mengubah order sheet.
+
+Yang dianggap GENTING hanya perubahan pada PO yang **ATO-nya sudah terisi**:
+qty, susunan qty, jumlah baris, nilai bersih, nilai kotor, cara bayar, dan
+perubahan rumus walau angkanya belum berubah.
+
+**Pengaman alarm palsu:** kalau nilai rupiah terbaca nol padahal jumlah baris
+dan qty persis sama, itu diperlakukan sebagai gagal baca rumus, bukan angka
+yang diubah orang. Diuji pada Agustus 2026: tanpa pengaman muncul 40 alarm,
+dengan pengaman tinggal 2 perubahan yang memang disisipkan. Alarm palsu membuat
+orang berhenti percaya pada laporannya.
+
+### Keputusan Yosua 11 September 2026
+
+| Hal | Keputusan |
+|---|---|
+| Akhiran Y pada ukuran | **Tetap dipakai** (2 -> 2Y). Sudah final |
+| PPN 11% | Hanya untuk order lewat CV. Dwi Putra Mandiri |
+| Nomor dokumen | Formatnya masih akan dikonfirmasi Yosua |
+| Termin 30 hari | Tidak berlaku untuk semua customer, diambil dari riwayat |
+
+### Yang masih menggantung setelah perluasan ini
+
+| Hal | Keterangan |
+|---|---|
+| Akun layanan Google | Harus dibuat Yosua sendiri lewat Google Cloud Console, lihat PANDUAN_BOT.md |
+| Alamat & NPWP CV Mutiara Timur Nusantara | Belum ada sama sekali |
+| NPWP CV Dwi Putra Mandiri | Belum ada |
+| Customer mana pakai perusahaan mana | 14 customer belum ditentukan |
+| 18 grup nama di PERIKSA_NAMA | Perlu dipastikan sama atau beda |
+| Order Sheet Juni 2025 | Terlalu besar untuk diekspor, belum terbaca |
+| Format nomor dokumen | Menunggu Yosua |
