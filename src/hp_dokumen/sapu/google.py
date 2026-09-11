@@ -151,29 +151,79 @@ class Sambungan:
             return None
 
     # ------------------------------------------------------------ Sheets
-    def nama_tab(self, id_sheet: str) -> list[str]:
-        """Nama SEMUA tab, lengkap tanpa dipotong.
+    def daftar_tab(self, id_sheet: str) -> list[dict]:
+        """Judul dan ukuran SEMUA tab, tanpa menarik isinya.
 
-        Ini keunggulan penting dibanding mengunduh .xlsx: ekspor Excel memotong
-        nama tab di 31 huruf, sedangkan Sheets API memberi nama aslinya.
+        Nama tab yang dikembalikan LENGKAP — tidak dipotong 31 huruf seperti
+        pada ekspor Excel. Panggilan ini murah: hanya beberapa ratus byte.
         """
         jawab = (
             self.sheets.spreadsheets()
-            .get(spreadsheetId=id_sheet, fields="sheets.properties.title")
-            .execute()
-        )
-        return [s["properties"]["title"] for s in jawab.get("sheets", [])]
-
-    def nilai_tab(self, id_sheet: str, judul_tab: str, rumus: bool = False) -> list[list]:
-        """Isi satu tab. `rumus=True` mengambil RUMUSnya, bukan hasil hitungnya."""
-        jawab = (
-            self.sheets.spreadsheets()
-            .values()
             .get(
                 spreadsheetId=id_sheet,
-                range=f"'{judul_tab}'",
-                valueRenderOption="FORMULA" if rumus else "UNFORMATTED_VALUE",
+                fields=(
+                    "sheets.properties.title,"
+                    "sheets.properties.sheetId,"
+                    "sheets.properties.gridProperties.rowCount,"
+                    "sheets.properties.gridProperties.columnCount"
+                ),
             )
             .execute()
         )
-        return jawab.get("values", [])
+        hasil = []
+        for s in jawab.get("sheets", []):
+            pr = s.get("properties", {})
+            grid = pr.get("gridProperties", {})
+            hasil.append({
+                "judul": pr.get("title", ""),
+                "id": pr.get("sheetId"),
+                "baris": grid.get("rowCount", 0),
+                "kolom": grid.get("columnCount", 0),
+            })
+        return hasil
+
+    def nama_tab(self, id_sheet: str) -> list[str]:
+        """Nama semua tab, lengkap tanpa dipotong."""
+        return [t["judul"] for t in self.daftar_tab(id_sheet)]
+
+    def ambil_tab(
+        self,
+        id_sheet: str,
+        judul_tab: list[str],
+        rumus: bool = False,
+        per_permintaan: int = 60,
+    ) -> dict[str, list[list]]:
+        """Tarik isi beberapa tab sekaligus.
+
+        Memakai batchGet, jadi puluhan tab cukup satu-dua panggilan — bukan
+        satu panggilan per tab, dan bukan mengunduh seluruh spreadsheet.
+
+        `rumus=True` mengambil RUMUS tiap sel, bukan hasil hitungnya. Dipakai
+        pemantau untuk mendeteksi rumus yang diubah walau angkanya belum
+        berubah.
+        """
+        hasil: dict[str, list[list]] = {}
+        if not judul_tab:
+            return hasil
+        for i in range(0, len(judul_tab), per_permintaan):
+            potongan = judul_tab[i:i + per_permintaan]
+            jawab = (
+                self.sheets.spreadsheets()
+                .values()
+                .batchGet(
+                    spreadsheetId=id_sheet,
+                    ranges=[f"'{j}'" for j in potongan],
+                    valueRenderOption="FORMULA" if rumus else "UNFORMATTED_VALUE",
+                    dateTimeRenderOption="FORMATTED_STRING",
+                )
+                .execute()
+            )
+            for judul, bagian in zip(potongan, jawab.get("valueRanges", [])):
+                hasil[judul] = bagian.get("values", []) or []
+        return hasil
+
+    def buku_dari_tab(self, id_sheet: str, judul_tab: list[str], rumus: bool = False):
+        """Ambil beberapa tab dan bungkus supaya bisa dibaca pemindai."""
+        from .lembar_api import BukuNilai
+
+        return BukuNilai(self.ambil_tab(id_sheet, judul_tab, rumus=rumus))

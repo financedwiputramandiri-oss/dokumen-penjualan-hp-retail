@@ -616,6 +616,30 @@ Berjalan tiap 12 jam lewat cron atau systemd. Memakai akun layanan Google
 dengan akses **Viewer** ke folder order sheet — bot tidak akan pernah bisa
 mengubah order sheet.
 
+**Bot membaca tab langsung lewat Sheets API, TIDAK mengunduh spreadsheet.**
+Arahan Yosua 11 September 2026: akun layanan harus membaca dan mengurai tab
+order sheet yang ada, bukan mengunduh berkas tiap hari.
+
+`sapu/lembar_api.py` membungkus hasil Sheets API menjadi objek yang menyediakan
+`title`, `max_row`, `max_column`, dan `cell(r,c).value` — empat hal yang
+dibutuhkan pemindai. Karena itu tata_letak.py, pemindai.py, dan nilai_bersih.py
+dipakai APA ADANYA untuk kedua sumber. Sudah dibuktikan memberi hasil identik
+pada ke-16 tab Agustus 2026.
+
+Penghematannya:
+
+| Keadaan | Kalau mengunduh berkas | Cara sekarang |
+|---|---|---:|
+| Sapuan pertama, 21 order sheet | ~25 MB, 21 berkas | 42 panggilan |
+| Tidak ada yang berubah | tetap 21 unduhan | **0 panggilan** |
+| 1 order sheet berubah | tetap 21 unduhan | 2 panggilan |
+
+Spreadsheet yang tidak berubah dilewati berdasarkan `modifiedTime` dari Drive,
+yang dicatat di `data/kondisi_sapu.json`. Order Sheet Juni 2025 (11,4 MB) yang
+dulu ditolak Google saat diekspor kini terbaca, karena tidak pernah diekspor.
+
+Nama tab dari Sheets API LENGKAP — masalah pemotongan 31 huruf hilang.
+
 Yang dianggap GENTING hanya perubahan pada PO yang **ATO-nya sudah terisi**:
 qty, susunan qty, jumlah baris, nilai bersih, nilai kotor, cara bayar, dan
 perubahan rumus walau angkanya belum berubah.

@@ -12,7 +12,7 @@ Dijalankan tiap 12 jam lewat penjadwal (cron / Task Scheduler).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
@@ -22,7 +22,7 @@ import yaml
 from ..konfigurasi import AKAR, Konfigurasi
 from ..model import Order
 from ..nilai_bersih import tentukan_nett
-from ..pemindai import baca_master_harga, baca_order_sheet
+from ..pemindai import baca_buku, master_harga_dari_buku
 from ..rekonsiliasi import periksa_order
 from .google import Sambungan
 from .kondisi import Kondisi, sidik_dari_order
@@ -43,7 +43,7 @@ class Pengaturan:
     hanya_hari: int
     berkas_kredensial: Path
     berkas_kondisi: Path
-    folder_unduhan: Path
+    lewati_yang_tidak_berubah: bool = True
 
     @classmethod
     def muat(cls, berkas: Path | None = None) -> "Pengaturan":
@@ -60,7 +60,7 @@ class Pengaturan:
             hanya_hari=int(d.get("hanya_yang_berubah_hari", 0)),
             berkas_kredensial=AKAR / d.get("berkas_kredensial", "config/kredensial_bot.json"),
             berkas_kondisi=AKAR / d.get("berkas_kondisi", "data/kondisi_sapu.json"),
-            folder_unduhan=AKAR / d.get("folder_unduhan", "data/arsip"),
+            lewati_yang_tidak_berubah=bool(d.get("lewati_yang_tidak_berubah", True)),
         )
 
 
@@ -72,6 +72,8 @@ class HasilSapuan:
     masalah: list[str]
     berkas_laporan: Optional[Path] = None
     id_laporan_drive: Optional[str] = None
+    dilewati: list[str] = field(default_factory=list)
+    tab_ditarik: int = 0
 
     @property
     def genting(self) -> list[Perubahan]:
@@ -104,6 +106,8 @@ def sapu(
     draf: list[str] = []
     masalah: list[str] = []
     rekaman: list[dict] = []   # untuk tab BOT_DAFTAR_PO di sheet OTOMATISASI
+    dilewati: list[str] = []   # spreadsheet yang tidak berubah sejak sapuan lalu
+    dibaca_tab = 0             # berapa tab yang benar-benar ditarik isinya
 
     for f in p.folder:
         id_folder, nama_folder = f.get("id", ""), f.get("nama", f.get("id", ""))
@@ -121,52 +125,81 @@ def sapu(
         for berkas in sorted(lembar, key=lambda x: x.nama):
             if not _perlu_ditarik(berkas.diubah, p.hanya_hari):
                 continue
-            aman = "".join(c if c.isalnum() or c in " -_." else "_" for c in berkas.nama)
-            tujuan = p.folder_unduhan / f"{aman}.xlsx"
-            cetak(f"  menarik: {berkas.nama[:58]}")
-            if sambung.unduh_sebagai_xlsx(berkas.id, tujuan) is None:
-                masalah.append(
-                    f"'{berkas.nama}' tidak bisa diunduh sebagai Excel "
-                    "(biasanya karena berkasnya terlalu besar). Tab PO-nya dilewati."
-                )
-                cetak("    GAGAL diunduh (berkas terlalu besar?)")
+
+            # Lewati kalau spreadsheet ini tidak berubah sejak sapuan lalu.
+            # Waktu ubah datang dari Drive dan tidak memerlukan pembacaan isi,
+            # jadi order sheet lama yang sudah selesai tidak ditarik berulang.
+            if p.lewati_yang_tidak_berubah and not kondisi.berubah_sejak_sapuan_lalu(
+                berkas.id, berkas.diubah
+            ):
+                dilewati.append(berkas.nama)
+                cetak(f"  lewati (tidak berubah): {berkas.nama[:52]}")
                 continue
 
-            # Nama tab yang LENGKAP diambil lewat Sheets API, bukan dari .xlsx,
-            # karena ekspor Excel memotong nama tab di 31 huruf.
-            nama_tab_asli: dict[str, str] = {}
+            cetak(f"  membaca: {berkas.nama[:56]}")
             try:
-                for judul in sambung.nama_tab(berkas.id):
-                    nama_tab_asli[judul[:31]] = judul
-            except Exception:
-                pass
+                semua_tab = sambung.daftar_tab(berkas.id)
+            except Exception as e:
+                masalah.append(f"'{berkas.nama}' daftar tabnya tidak bisa dibaca: {e}")
+                cetak(f"    GAGAL: {e}")
+                continue
+
+            judul_semua = [x["judul"] for x in semua_tab]
+            judul_po = [
+                j for j in judul_semua
+                if j.upper().strip().startswith(("PO ", "(DELIVERY", "PACKING LIST"))
+            ]
+            judul_diambil = judul_po + [j for j in judul_semua if j.strip() == "Harga Retail"]
+            if not judul_po:
+                cetak("    tidak ada tab PO, dilewati")
+                kondisi.catat_sheet(berkas.id, berkas.nama, berkas.diubah, 0)
+                continue
+
+            # Satu-dua panggilan batchGet untuk semua tab sekaligus.
+            try:
+                buku = sambung.buku_dari_tab(berkas.id, judul_diambil)
+            except Exception as e:
+                masalah.append(f"'{berkas.nama}' isinya tidak bisa ditarik: {e}")
+                cetak(f"    GAGAL menarik isi: {e}")
+                continue
 
             try:
-                orders = baca_order_sheet(tujuan, cfg.customer)
-                master = baca_master_harga(tujuan)
+                orders = baca_buku(buku, cfg.customer)
+                master = master_harga_dari_buku(buku)
             except Exception as e:
-                masalah.append(f"'{berkas.nama}' gagal dibaca: {e}")
+                masalah.append(f"'{berkas.nama}' gagal diolah: {e}")
                 continue
             diperiksa.append((berkas.nama, berkas.id, len(orders)))
+            dibaca_tab += len(judul_diambil)
+
+            # Rumus hanya ditarik kalau pemantauan rumus dinyalakan, dan
+            # hanya untuk tab PO — bukan seluruh spreadsheet.
+            rumus_per_tab: dict[str, list] = {}
+            if p.pantau_perubahan and p.pantau_rumus:
+                try:
+                    rumus_per_tab = sambung.ambil_tab(
+                        berkas.id, [o.nama_tab for o in orders], rumus=True
+                    )
+                    dibaca_tab += len(rumus_per_tab)
+                except Exception as e:
+                    masalah.append(
+                        f"'{berkas.nama}' rumusnya tidak bisa dibaca, "
+                        f"pemantauan rumus dilewati: {e}"
+                    )
 
             for order in orders:
-                tab_penuh = nama_tab_asli.get(order.nama_tab, order.nama_tab)
+                tab_penuh = order.nama_tab      # sudah lengkap dari Sheets API
                 cust = cfg.customer.cari(tab_penuh)
                 keputusan = tentukan_nett(order, cust)
 
-                rumus = None
-                if p.pantau_perubahan and p.pantau_rumus:
-                    try:
-                        rumus = sambung.nilai_tab(berkas.id, tab_penuh, rumus=True)
-                    except Exception:
-                        rumus = None
-
-                baru = sidik_dari_order(berkas.id, berkas.nama, tab_penuh,
-                                        order, keputusan, rumus)
+                baru_sidik = sidik_dari_order(
+                    berkas.id, berkas.nama, tab_penuh, order, keputusan,
+                    rumus_per_tab.get(tab_penuh),
+                )
                 if p.pantau_perubahan:
-                    lama = kondisi.ambil(baru.kunci)
-                    perubahan.extend(bandingkan(lama, baru))
-                kondisi.pasang(baru)
+                    lama_sidik = kondisi.ambil(baru_sidik.kunci)
+                    perubahan.extend(bandingkan(lama_sidik, baru_sidik))
+                kondisi.pasang(baru_sidik)
 
                 pt = cfg.perusahaan.untuk(cust)
                 siap, keterangan = False, "ATO belum terisi"
@@ -193,12 +226,15 @@ def sapu(
                     "siap": siap, "keterangan": keterangan,
                 })
 
+            kondisi.catat_sheet(berkas.id, berkas.nama, berkas.diubah, len(judul_po))
+
     kondisi.simpan(p.berkas_kondisi)
 
     waktu = datetime.now()
     nama_laporan = f"LAPORAN_SAPUAN_{waktu:%Y%m%d_%H%M}.xlsx"
     berkas_laporan = AKAR / "keluaran" / "sapuan" / nama_laporan
-    tulis_laporan(berkas_laporan, perubahan, diperiksa, draf, masalah, waktu)
+    tulis_laporan(berkas_laporan, perubahan, diperiksa, draf, masalah, waktu,
+                  dilewati, dibaca_tab)
 
     id_drive = None
     genting = [x for x in perubahan if x.tingkat == GENTING]
@@ -228,10 +264,12 @@ def sapu(
             masalah.append(f"Sheet OTOMATISASI tidak bisa diperbarui: {e}")
             cetak(f"Sheet OTOMATISASI gagal diperbarui: {e}")
 
-    hasil = HasilSapuan(perubahan, diperiksa, draf, masalah, berkas_laporan, id_drive)
+    hasil = HasilSapuan(perubahan, diperiksa, draf, masalah, berkas_laporan, id_drive,
+                        dilewati, dibaca_tab)
 
-    cetak(f"\nSelesai. {len(diperiksa)} order sheet, "
-          f"{sum(n for _, _, n in diperiksa)} tab PO diperiksa.")
+    cetak(f"\nSelesai. {len(diperiksa)} order sheet dibaca "
+          f"({sum(n for _, _, n in diperiksa)} tab PO, {dibaca_tab} tab ditarik), "
+          f"{len(dilewati)} order sheet dilewati karena tidak berubah.")
     if genting:
         cetak(f"ADA {len(genting)} PERUBAHAN PENTING:")
         for x in genting[:15]:

@@ -234,6 +234,16 @@ def baca_order_sheet(
 ) -> list[Order]:
     """Baca berkas order sheet (.xlsx) jadi daftar Order, satu per tab PO."""
     wb = openpyxl.load_workbook(berkas, data_only=True, read_only=False)
+    return baca_buku(wb, daftar_customer, tahun_bawaan)
+
+
+def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> list[Order]:
+    """Baca satu buku kerja jadi daftar Order.
+
+    `wb` boleh Workbook openpyxl (dari berkas .xlsx) atau BukuNilai (dari
+    Google Sheets API). Keduanya menyediakan antarmuka yang sama, jadi
+    hasilnya identik — sudah diuji pada seluruh tab order sheet Agustus 2026.
+    """
     hasil: list[Order] = []
     for ws in wb.worksheets:
         nama = ws.title
@@ -271,8 +281,13 @@ def baca_order_sheet(
 
 
 def baca_master_harga(berkas: Path) -> dict[str, tuple[str, float]]:
-    """Baca tab 'Harga Retail' jadi {kode: (nama_barang, harga)}."""
+    """Baca tab 'Harga Retail' dari berkas .xlsx jadi {kode: (nama, harga)}."""
     wb = openpyxl.load_workbook(berkas, data_only=True)
+    return master_harga_dari_buku(wb)
+
+
+def master_harga_dari_buku(wb) -> dict[str, tuple[str, float]]:
+    """Baca tab 'Harga Retail' dari buku kerja apa pun."""
     if "Harga Retail" not in wb.sheetnames:
         return {}
     ws = wb["Harga Retail"]

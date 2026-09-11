@@ -2,12 +2,33 @@
 
 Bot ini bekerja tiap 12 jam:
 
-1. Membuka semua order sheet di folder Drive 2025 dan 2026
-2. Membaca tiap tab PO
+1. Menanyakan ke Google Drive: order sheet mana yang berubah sejak sapuan lalu
+2. Untuk yang berubah saja, **membaca isi tab PO langsung** lewat Sheets API
 3. **Membuat draf dokumen** untuk PO yang ATO-nya sudah terisi
 4. **Membandingkan dengan sapuan sebelumnya** — kalau ada PO lama yang qty
    atau rumusnya berubah, bot melapor
 5. Menaruh laporannya ke Google Drive
+
+## Bot TIDAK mengunduh order sheet
+
+Bot membaca tab satu per satu lewat Sheets API, bukan mengunduh seluruh
+spreadsheet. Bedanya besar:
+
+| | Kalau mengunduh berkas | Cara yang dipakai sekarang |
+|---|---|---|
+| Data ditarik tiap sapuan | ~25 MB, 21 berkas penuh | hanya sel tab PO yang berubah |
+| Kalau tidak ada yang berubah | tetap 21 unduhan | **0 panggilan** |
+| Kalau 1 order sheet berubah | tetap 21 unduhan | 2 panggilan |
+| Order Sheet Juni 2025 (11,4 MB) | GAGAL, ditolak Google | terbaca normal |
+| Nama tab | terpotong 31 huruf | lengkap |
+| Salinan data di komputer | ada | tidak ada |
+
+Order sheet yang tidak berubah **dilewati sama sekali** — bot tahu dari waktu
+ubah yang dicatat Google Drive, tanpa perlu membaca isinya. Jadi order sheet
+lama yang sudah selesai tidak ditarik berulang tiap hari.
+
+Kalau suatu saat perlu memaksa bot membaca semuanya lagi, ubah
+`config/bot.yaml` -> `lewati_yang_tidak_berubah: false`.
 
 ---
 
@@ -182,10 +203,15 @@ Bot hanya bisa menulis ke folder laporan.
 Ya. Bot jalan di komputer tempat ia dipasang. Kalau ingin jalan terus tanpa
 tergantung laptop, perlu dipasang di komputer yang selalu menyala.
 
-**Kenapa ada order sheet yang tidak bisa ditarik?**
-Google menolak mengekspor spreadsheet yang terlalu besar. Order Sheet Juni 2025
-(11 MB) termasuk. Bot tetap jalan, dan berkas itu dicatat di lembar
-YANG DIPERIKSA.
+**Apakah order sheet yang besar bisa dibaca?**
+Bisa. Dulu Order Sheet Juni 2025 (11,4 MB) ditolak Google saat diekspor jadi
+Excel. Sekarang bot tidak pernah mengekspor berkas — ia membaca tab langsung,
+jadi ukuran berkas tidak lagi jadi masalah.
+
+**Kenapa laporannya bilang banyak order sheet "dilewati"?**
+Itu justru yang diharapkan. Artinya order sheet itu tidak berubah sejak sapuan
+sebelumnya, jadi tidak perlu dibaca ulang. Yang dibaca hanya yang benar-benar
+berubah.
 
 **Bot menemukan perubahan, apa yang harus dilakukan?**
 Buka order sheet yang disebut, lihat tab yang disebut. Bandingkan dengan kolom

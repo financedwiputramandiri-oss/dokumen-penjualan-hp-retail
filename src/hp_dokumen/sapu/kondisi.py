@@ -44,9 +44,10 @@ class SidikPO:
 class Kondisi:
     """Seluruh sidik jari yang tersimpan dari sapuan sebelumnya."""
 
-    versi: int = 1
+    versi: int = 2
     disapu_terakhir: str = ""
-    po: dict = field(default_factory=dict)   # kunci -> dict SidikPO
+    po: dict = field(default_factory=dict)     # kunci -> dict SidikPO
+    sheet: dict = field(default_factory=dict)  # id_sheet -> {"diubah", "nama", "tab"}
 
     @classmethod
     def muat(cls, berkas: Path) -> "Kondisi":
@@ -58,7 +59,8 @@ class Kondisi:
             return cls()
         return cls(versi=d.get("versi", 1),
                    disapu_terakhir=d.get("disapu_terakhir", ""),
-                   po=d.get("po", {}))
+                   po=d.get("po", {}),
+                   sheet=d.get("sheet", {}))
 
     def simpan(self, berkas: Path) -> None:
         berkas.parent.mkdir(parents=True, exist_ok=True)
@@ -74,6 +76,25 @@ class Kondisi:
     def pasang(self, s: SidikPO) -> None:
         s.diperiksa = datetime.now(timezone.utc).isoformat(timespec="seconds")
         self.po[s.kunci] = asdict(s)
+
+    # ---- catatan per spreadsheet, supaya yang tidak berubah bisa dilewati --
+    def berubah_sejak_sapuan_lalu(self, id_sheet: str, diubah: str) -> bool:
+        """True kalau spreadsheet ini berubah sejak terakhir diperiksa.
+
+        Waktu `diubah` diambil dari Google Drive dan berubah setiap kali ada
+        yang mengedit. Kalau sama dengan sapuan sebelumnya, isinya pasti sama
+        juga, jadi tidak perlu ditarik sama sekali.
+        """
+        lama = (self.sheet.get(id_sheet) or {}).get("diubah")
+        return not lama or not diubah or lama != diubah
+
+    def catat_sheet(self, id_sheet: str, nama: str, diubah: str, jumlah_tab: int) -> None:
+        self.sheet[id_sheet] = {
+            "nama": nama,
+            "diubah": diubah,
+            "tab": jumlah_tab,
+            "diperiksa": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
 
 
 def sidik_dari_order(id_sheet: str, nama_sheet: str, tab: str, order, keputusan,

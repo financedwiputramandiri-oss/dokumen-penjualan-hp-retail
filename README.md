@@ -125,9 +125,22 @@ Diatur di `config/perusahaan.yaml`, dipasangkan ke customer lewat kolom
 
 ## Bot penyapu
 
-Menarik order sheet dari Google Drive tiap 12 jam, membuat draf dokumen, dan
-memberi tahu kalau ada PO lama yang qty atau rumusnya berubah.
+Tiap 12 jam: membaca tab order sheet **langsung lewat Sheets API**, membuat draf
+dokumen, dan memberi tahu kalau ada PO lama yang qty atau rumusnya berubah.
 Cara memasangnya ada di **[PANDUAN_BOT.md](PANDUAN_BOT.md)**.
+
+Bot tidak mengunduh spreadsheet. Order sheet yang tidak berubah sejak sapuan
+lalu dilewati sama sekali — diketahui dari waktu ubah di Google Drive.
+
+| Keadaan | Panggilan API |
+|---|---:|
+| Sapuan pertama, 21 order sheet | 42 |
+| Tidak ada yang berubah | **0** |
+| 1 order sheet berubah | 2 |
+
+`sapu/lembar_api.py` membungkus hasil Sheets API supaya bisa dibaca pemindai
+apa adanya, jadi mesin yang sama melayani berkas Excel maupun Sheets API.
+Hasil keduanya sudah dibuktikan identik pada seluruh tab Agustus 2026.
 
 ## Isi folder
 

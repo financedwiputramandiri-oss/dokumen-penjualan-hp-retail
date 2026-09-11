@@ -31,11 +31,20 @@ buat_draf_dokumen: true      # buat Surat Jalan/Invoice/Packing List/Faktur Paja
 pantau_perubahan: true       # deteksi perubahan pada PO lama
 pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
 
-# Hanya order sheet yang diubah dalam sekian hari terakhir yang ditarik ulang.
-# Isi 0 untuk selalu menarik semuanya.
+# ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
+# Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.
+#
+# true  -> spreadsheet yang tidak berubah sejak sapuan terakhir dilewati
+#          sama sekali. Waktu ubahnya dibaca dari Google Drive, jadi order
+#          sheet lama yang sudah selesai tidak ditarik berulang tiap hari.
+# false -> semua spreadsheet dibaca ulang tiap sapuan (lebih lambat,
+#          hanya perlu kalau catatan kondisi rusak atau mau memaksa).
+lewati_yang_tidak_berubah: true
+
+# Hanya order sheet yang diubah dalam sekian hari terakhir yang diperiksa.
+# Isi 0 untuk memeriksa semuanya.
 hanya_yang_berubah_hari: 0
 
 # ---- BERKAS ------------------------------------------------
 berkas_kredensial: "config/kredensial_bot.json"
 berkas_kondisi: "data/kondisi_sapu.json"
-folder_unduhan: "data/arsip"

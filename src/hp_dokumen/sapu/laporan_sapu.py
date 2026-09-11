@@ -28,7 +28,10 @@ def tulis(
     draf_dibuat: list[str],
     masalah: list[str],
     waktu: datetime | None = None,
+    dilewati: list[str] | None = None,
+    tab_ditarik: int = 0,
 ) -> Path:
+    dilewati = dilewati or []
     waktu = waktu or datetime.now()
     wb = Workbook()
 
@@ -62,8 +65,10 @@ def tulis(
         r += 2
 
     ringkas = [
-        ("Order sheet diperiksa", len(diperiksa)),
+        ("Order sheet dibaca", len(diperiksa)),
+        ("Order sheet dilewati (tidak berubah)", len(dilewati)),
         ("Tab PO diperiksa", sum(n for _, _, n in diperiksa)),
+        ("Tab yang benar-benar ditarik isinya", tab_ditarik),
         ("Perubahan penting (GENTING)", len(genting)),
         ("Perubahan wajar (PERHATIAN)", len(perhatian)),
         ("Draf dokumen dibuat", len(draf_dibuat)),
@@ -128,6 +133,12 @@ def tulis(
     _isi(ws3, r, 1, "DRAF DOKUMEN YANG DIBUAT", bold=True)
     r += 1
     for d in draf_dibuat or ["(tidak ada)"]:
+        _isi(ws3, r, 1, d)
+        r += 1
+    r += 1
+    _isi(ws3, r, 1, "ORDER SHEET YANG DILEWATI (tidak berubah sejak sapuan lalu)", bold=True)
+    r += 1
+    for d in dilewati or ["(tidak ada)"]:
         _isi(ws3, r, 1, d)
         r += 1
     r += 1
