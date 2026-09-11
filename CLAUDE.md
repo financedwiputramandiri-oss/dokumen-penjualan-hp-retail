@@ -520,6 +520,7 @@ oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
 | OTOMATISASI_HAPPY_PUMPKIN_SINKRON (milik Yosua) | `1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw` |
 | Folder order sheet 2026 | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` |
 | Folder order sheet 2025 | `1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57` |
+| DATABASE CUSTOMER (diunggah 11 Sep 2026, milik Yosua) | `1ffT_GlCQSvKIHoAH25A8-OyqHzoFG1TATS0r1EETFN0` |
 
 Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
 Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
@@ -642,6 +643,6 @@ orang berhenti percaya pada laporannya.
 | Alamat & NPWP CV Mutiara Timur Nusantara | Belum ada sama sekali |
 | NPWP CV Dwi Putra Mandiri | Belum ada |
 | Customer mana pakai perusahaan mana | 14 customer belum ditentukan |
-| 18 grup nama di PERIKSA_NAMA | Perlu dipastikan sama atau beda |
+| 18 grup nama di PERIKSA_NAMA | Perlu dipastikan sama atau beda. Sudah ada di Google Sheet "DATABASE CUSTOMER HAPPY PUMPKIN 2025-2026" di My Drive Yosua, lembar PERIKSA_NAMA |
 | Order Sheet Juni 2025 | Terlalu besar untuk diekspor, belum terbaca |
 | Format nomor dokumen | Menunggu Yosua |
