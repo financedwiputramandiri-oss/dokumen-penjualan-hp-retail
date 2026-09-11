@@ -16,6 +16,7 @@ import openpyxl
 
 from .konfigurasi import DaftarCustomer, pecah_nama_tab
 from .model import JUMLAH_KOLOM_UKURAN, Baris, Blok, Order, TotalSheet
+from .tata_letak import kenali
 from .ukuran import rapikan_label
 
 # Nomor kolom (1 = A)
@@ -93,44 +94,83 @@ def _baris_judul(ws) -> list[int]:
     return hasil
 
 
-def pindai_tab(ws, kolom_qty_mulai: int = KOL_ATO_MULAI) -> tuple[list[Blok], TotalSheet, list[str]]:
-    """Pindai satu tab jadi daftar blok + baris total milik sheet itu sendiri."""
+def pindai_tab(ws, pakai_kolom_ori: bool = False) -> tuple[list[Blok], TotalSheet, list[str]]:
+    """Pindai satu tab jadi daftar blok + baris total milik sheet itu sendiri.
+
+    Letak kolom ditentukan sendiri dari baris judul (lihat tata_letak.py), jadi
+    order sheet tahun berapa pun bisa dibaca walau susunan kolomnya berbeda.
+
+    `pakai_kolom_ori` hanya untuk tab Packing List, yang tidak punya blok
+    ORIGINAL PO sehingga qty-nya justru berada di kolom ORIGINAL PO.
+    """
     peringatan: list[str] = []
     judul = _baris_judul(ws)
     blok_list: list[Blok] = []
     baris_akhir_data = 0
+    tata_terakhir = None
 
     for nomor, h in enumerate(judul, start=1):
-        label = [
-            rapikan_label(ws.cell(h + 1, KOL_ORI_MULAI + i).value)
-            for i in range(JUMLAH_KOLOM_UKURAN)
-        ]
-        blok = Blok(nomor=nomor, baris_judul=h, label_ukuran=label)
+        tata = kenali(ws, h)
+        tata_terakhir = tata
+        for c in tata.catatan:
+            peringatan.append(f"Blok baris {h}: {c}")
+        if not tata.lengkap():
+            peringatan.append(
+                f"Blok baris {h} dilewati: susunan kolomnya tidak dikenali."
+            )
+            continue
 
-        r = h + 2
+        # Tab Packing List tidak punya blok ORIGINAL PO, qty-nya di kolom ORI.
+        q_mulai = tata.ori_mulai if pakai_kolom_ori else tata.ato_mulai
+        q_selesai = tata.ori_selesai if pakai_kolom_ori else tata.ato_selesai
+        lebar = q_selesai - q_mulai + 1
+
+        # Jarak antara baris judul dan baris data TIDAK selalu dua baris.
+        # Order sheet Agustus 2025 misalnya punya satu baris judul tambahan.
+        # Jadi baris data dicari: baris pertama di bawah judul yang kolom
+        # kodenya terisi. Baris tepat di atasnya adalah baris label ukuran.
+        data_mulai = h + 1
+        while (
+            data_mulai <= ws.max_row
+            and data_mulai <= h + 5
+            and not str(ws.cell(data_mulai, tata.kol_kode).value or "").strip()
+        ):
+            data_mulai += 1
+        baris_label = max(h + 1, data_mulai - 1)
+
+        label = [
+            rapikan_label(ws.cell(baris_label, tata.ori_mulai + i).value)
+            for i in range(lebar)
+        ]
+        blok = Blok(nomor=nomor, baris_judul=h, label_ukuran=label, tata=tata)
+
+        r = data_mulai
         while r <= ws.max_row:
-            kode = ws.cell(r, KOL_ARTICLE).value
+            kode = ws.cell(r, tata.kol_kode).value
             if kode is None or str(kode).strip() == "":
                 break
             qty = [
-                int(round(angka(ws.cell(r, kolom_qty_mulai + i).value)))
-                for i in range(JUMLAH_KOLOM_UKURAN)
+                int(round(angka(ws.cell(r, q_mulai + i).value))) for i in range(lebar)
             ]
             if sum(qty) > 0:
+                nett = {
+                    k.kunci: _angka_atau_none(ws.cell(r, k.kolom).value)
+                    for k in tata.nett
+                    if k.jenis != "LAIN"
+                }
+                nett["TOP"] = angka(ws.cell(r, tata.kolom_top().kolom).value)
                 blok.baris.append(
                     Baris(
                         baris_sheet=r,
                         kode=_teks(kode),
-                        nama=_teks(ws.cell(r, KOL_NAMA).value),
-                        warna=_teks(ws.cell(r, KOL_WARNA).value),
+                        nama=_teks(ws.cell(r, tata.kol_nama).value),
+                        warna=_teks(ws.cell(r, tata.kol_warna).value),
                         qty_per_ukuran=qty,
-                        harga=angka(ws.cell(r, KOL_HARGA).value),
-                        nilai_kotor=angka(ws.cell(r, KOL_ATO_VALUE).value),
-                        total_value=angka(ws.cell(r, KOL_TOTAL_VALUE).value),
-                        disc_cbd=_angka_atau_none(ws.cell(r, KOL_CBD).value),
-                        disc_cod=_angka_atau_none(ws.cell(r, KOL_COD).value),
-                        disc_persen=angka(ws.cell(r, KOL_DISC).value),
-                        catatan=_teks(ws.cell(r, KOL_NOTE).value) if ws.max_column >= KOL_NOTE else "",
+                        harga=angka(ws.cell(r, tata.kol_harga).value),
+                        nilai_kotor=angka(ws.cell(r, tata.kol_ato_value).value),
+                        nett=nett,
+                        disc_persen=angka(ws.cell(r, tata.kol_disc).value) if tata.kol_disc else 0.0,
+                        catatan=_teks(ws.cell(r, tata.kol_note).value) if tata.kol_note else "",
                     )
                 )
             r += 1
@@ -138,11 +178,9 @@ def pindai_tab(ws, kolom_qty_mulai: int = KOL_ATO_MULAI) -> tuple[list[Blok], To
         baris_akhir_data = max(baris_akhir_data, r)
         if blok.baris:
             blok_list.append(blok)
-        # blok tanpa baris berisi tetap dicatat sebagai peringatan, bukan didiamkan
         elif h <= ws.max_row:
             peringatan.append(f"Blok di baris {h} tidak punya baris dengan qty > 0, dilewati.")
 
-        # periksa label ganda dalam satu blok (bisa membuat invoice per ukuran salah gabung)
         terpakai = [x for x in label if x]
         ganda = {x for x in terpakai if terpakai.count(x) > 1}
         if ganda:
@@ -155,17 +193,21 @@ def pindai_tab(ws, kolom_qty_mulai: int = KOL_ATO_MULAI) -> tuple[list[Blok], To
     # Terletak tepat di bawah blok terakhir. Order sheet hanya menaruh satu
     # baris total untuk seluruh tab, bukan per blok.
     total = TotalSheet(None, None, None, None)
-    for r in range(baris_akhir_data, min(baris_akhir_data + 4, ws.max_row) + 1):
-        q = angka(ws.cell(r, KOL_ATO_TOTAL).value)
-        g = angka(ws.cell(r, KOL_ATO_VALUE).value)
-        if q > 0 or g > 0:
-            total = TotalSheet(
-                baris_sheet=r,
-                qty=int(round(q)),
-                nilai_kotor=g,
-                total_value=angka(ws.cell(r, KOL_TOTAL_VALUE).value),
-            )
-            break
+    if tata_terakhir is not None and tata_terakhir.lengkap():
+        k_qty = tata_terakhir.kol_ato_total
+        k_val = tata_terakhir.kol_ato_value
+        k_top = tata_terakhir.kolom_top().kolom
+        for r in range(baris_akhir_data, min(baris_akhir_data + 4, ws.max_row) + 1):
+            q = angka(ws.cell(r, k_qty).value) if k_qty else 0
+            g = angka(ws.cell(r, k_val).value)
+            if q > 0 or g > 0:
+                total = TotalSheet(
+                    baris_sheet=r,
+                    qty=int(round(q)),
+                    nilai_kotor=g,
+                    total_value=angka(ws.cell(r, k_top).value),
+                )
+                break
     if total.baris_sheet is None:
         peringatan.append(
             "Baris TOTAL milik order sheet tidak ditemukan di tab ini, "
@@ -199,14 +241,15 @@ def baca_order_sheet(
             continue
         # Tab 'Packing List ...' tidak punya blok ORIGINAL PO, qty ada di D..L
         packing = nama.strip().lower().startswith("packing list")
-        kolom_qty = KOL_ORI_MULAI if packing else KOL_ATO_MULAI
 
-        blok, total, peringatan = pindai_tab(ws, kolom_qty_mulai=kolom_qty)
+        blok, total, peringatan = pindai_tab(ws, pakai_kolom_ori=packing)
         if not blok:
             continue
-        baris_judul_pertama = blok[0].baris_judul
-        judul_cbd = _teks(ws.cell(baris_judul_pertama, KOL_CBD).value).replace("\n", " ")
-        judul_cod = _teks(ws.cell(baris_judul_pertama, KOL_COD).value).replace("\n", " ")
+        tata = blok[0].tata
+        kc = tata.kolom_jenis("CBD") if tata else None
+        kd = tata.kolom_jenis("COD") if tata else None
+        judul_cbd = kc.judul if kc else ""
+        judul_cod = kd.judul if kd else ""
         cust = daftar_customer.cari(nama)
         if cust is None:
             peringatan.append(

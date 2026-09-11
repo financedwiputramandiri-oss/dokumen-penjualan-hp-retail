@@ -27,6 +27,9 @@ from .model import Order
 from .nilai_bersih import tentukan_nett
 from .pdf import ke_pdf, libreoffice_ada
 from .pemindai import baca_master_harga, baca_order_sheet
+from .riwayat import telusuri_berkas
+from .db_customer import bangun as bangun_customer, dugaan_nama_sama
+from .laporan_customer import tulis as tulis_db_customer
 from .rekonsiliasi import HasilRekonsiliasi, periksa_order
 
 BERKAS_BAWAAN = AKAR / "data" / "order_sheet.xlsx"
@@ -226,6 +229,52 @@ def perintah_rekap(args) -> int:
     return 0
 
 
+def perintah_telusuri(args) -> int:
+    """Telusuri semua order sheet lama -> database customer."""
+    folder = Path(args.folder) if args.folder else (AKAR / "data" / "arsip")
+    berkas = sorted(folder.glob("*.xlsx"))
+    if not berkas:
+        raise SystemExit(
+            f"Tidak ada order sheet di {folder}.\n"
+            "Unduh order sheet lama (File > Download > Microsoft Excel) "
+            f"lalu simpan semuanya di {folder}"
+        )
+    print(f"Menelusuri {len(berkas)} order sheet di {folder}\n")
+    semua = []
+    sumber = []
+    for f in berkas:
+        judul = f.stem.replace("_", " ")
+        c = telusuri_berkas(f, judul)
+        semua.extend(c)
+        sumber.append(f"{judul}  -> {len(c)} PO")
+        print(f"  {len(c):>3} PO   {judul[:64]}")
+    if not semua:
+        raise SystemExit("Tidak ada PO yang terbaca.")
+
+    daftar, jejak = bangun_customer(semua)
+    grup = dugaan_nama_sama(daftar)
+    print(f"\nRINGKASAN")
+    print(f"  PO terbaca            : {len(semua)}")
+    print(f"  Customer setelah digabung : {len(daftar)}")
+    print(f"  Digabung otomatis (nama tab terpotong) : {len(jejak)}")
+    print(f"  Grup nama yang perlu diperiksa manusia  : {len(grup)}")
+
+    print(f"\n{'CUSTOMER':<32}{'PO':>4}{'PERIODE AKTIF':>28}{'DISKON':>8}{'BAYAR':>7}{'NETT':>16}")
+    print("-" * 95)
+    for c in daftar[: args.tampilkan]:
+        print(f"{c.nama_tampil[:31]:<32}{c.jumlah_po:>4}{c.periode_aktif:>28}"
+              f"{c.diskon_terakhir:>8.1%}{c.cara_bayar_terakhir:>7}{c.total_nett:>16,.0f}")
+    if len(daftar) > args.tampilkan:
+        print(f"... dan {len(daftar) - args.tampilkan} customer lagi, lihat berkas Excelnya.")
+
+    out = tulis_db_customer(daftar, FOLDER_KELUARAN / "DATABASE_CUSTOMER.xlsx", jejak, sumber)
+    print(f"\nDatabase lengkap disimpan: {out.relative_to(AKAR)}")
+    print("  lembar MASTER_CUSTOMER : satu baris satu customer")
+    print("  lembar RIWAYAT_PO      : satu baris satu PO, untuk penelusuran")
+    print("  lembar PERIKSA_NAMA    : nama mirip yang perlu dipastikan")
+    return 0
+
+
 def buat_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="jalankan.py",
@@ -261,6 +310,13 @@ def buat_parser() -> argparse.ArgumentParser:
 
     e = sub.add_parser("rekap", help="Rekap penjualan sebulan (bahan laporan keuangan & pajak)")
     e.set_defaults(fungsi=perintah_rekap)
+
+    g = sub.add_parser("telusuri",
+                       help="Telusuri semua order sheet lama jadi database customer")
+    g.add_argument("--folder", help="Folder berisi order sheet lama (bawaan: data/arsip)")
+    g.add_argument("--tampilkan", type=int, default=25,
+                   help="Berapa customer teratas ditampilkan di layar (bawaan 25)")
+    g.set_defaults(fungsi=perintah_telusuri)
     return p
 
 

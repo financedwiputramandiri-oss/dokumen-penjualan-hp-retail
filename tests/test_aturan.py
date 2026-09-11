@@ -67,7 +67,7 @@ def test_cocok_dengan_baris_total_order_sheet(orders):
 def test_cbd_terisi_penuh_dipakai(orders, daftar):
     cbd = ambil(orders, "CBD")
     k = tentukan_nett(cbd, daftar.cari(cbd.nama_tab))
-    assert k.kolom == "AD"
+    assert k.kolom == "CBD"
     assert k.cara_bayar == "CBD"
     diharapkan = sum(b.disc_cbd for b in cbd.semua_baris)
     assert abs(k.nett_total - diharapkan) < 0.01
@@ -77,7 +77,7 @@ def test_cbd_terisi_sebagian_diabaikan_seluruhnya(orders, daftar):
     """Satu baris terisi dari tiga -> seluruh kolom diabaikan, order jadi TOP."""
     top = ambil(orders, "TOP")
     k = tentukan_nett(top, daftar.cari(top.nama_tab))
-    assert k.kolom == "AC"
+    assert k.kolom == "TOP"
     assert k.cara_bayar == "TOP"
     assert 0 < k.terisi_cbd < k.jumlah_baris
     diharapkan = sum(b.total_value for b in top.semua_baris)
@@ -92,7 +92,7 @@ def test_override_manual_dilaporkan(orders):
     paksa = Customer("Contoh TOP", "PT X", "", "", "per_artikel", 30, "CBD", "")
     k = tentukan_nett(top, paksa)
     assert k.dioverride is True
-    assert k.kolom == "AD"
+    assert k.kolom == "CBD"
 
 
 # ------------------------------- Aturan 3 & 4: label ukuran & deskripsi

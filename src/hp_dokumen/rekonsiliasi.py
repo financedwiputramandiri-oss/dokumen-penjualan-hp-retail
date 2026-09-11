@@ -41,9 +41,8 @@ class HasilRekonsiliasi:
 
 def _diskon_dasar(order, keputusan, efektif: float) -> float:
     """Diskon dasar sebelum tambahan CBD/COD, untuk dibandingkan dengan kolom AB."""
-    tambahan = tarif_tambahan_tertulis(
-        order.judul_cbd if keputusan.kolom == "AD" else order.judul_cod
-    )
+    dipakai = next((k for k in order.kolom_nett() if k.kunci == keputusan.kolom), None)
+    tambahan = dipakai.tarif if dipakai else None
     if tambahan is None:
         return efektif
     return 1 - (1 - efektif) / (1 - tambahan)
@@ -103,7 +102,7 @@ def periksa_order(
     )
 
     # 4. nilai bersih TOP juga harus sama dengan baris TOTAL kolom AC
-    if keputusan.kolom == "AC" and t and t.total_value:
+    if keputusan.kolom == "TOP" and t and t.total_value:
         hasil.periksa.append(
             Pemeriksaan(
                 "Nilai bersih vs baris TOTAL sheet",
@@ -190,7 +189,7 @@ def periksa_order(
     if len(persen_sheet) == 1:
         satu = persen_sheet.pop()
         # untuk CBD/COD ada tambahan 1,5% di atas diskon dasar, jadi wajar beda
-        dasar_diharapkan = efektif if keputusan.kolom == "AC" else _diskon_dasar(order, keputusan, efektif)
+        dasar_diharapkan = efektif if keputusan.kolom == "TOP" else _diskon_dasar(order, keputusan, efektif)
         if abs(satu - dasar_diharapkan) > 0.0005:
             hasil.peringatan.append(
                 f"Kolom DISC (AB) di order sheet tertulis {satu:.2%}, tapi nilai bersih "
@@ -220,13 +219,14 @@ def periksa_order(
         )
 
     # 11. tarif tambahan CBD/COD: bandingkan yang sebenarnya dengan judul kolom
-    if keputusan.kolom in ("AD", "AE"):
+    if keputusan.kolom != "TOP":
         dasar = sum(b.total_value for b in order.semua_baris)
         if dasar > 0:
             rasio = keputusan.nett_total / dasar
             tambahan = 1 - rasio
-            judul = order.judul_cbd if keputusan.kolom == "AD" else order.judul_cod
-            nilai_tertulis = tarif_tambahan_tertulis(judul)
+            dipakai = next((k for k in order.kolom_nett() if k.kunci == keputusan.kolom), None)
+            judul = dipakai.judul if dipakai else ""
+            nilai_tertulis = dipakai.tarif if dipakai else None
             if nilai_tertulis is not None:
                 if abs(tambahan - nilai_tertulis) > 0.0005:
                     hasil.peringatan.append(

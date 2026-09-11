@@ -18,73 +18,99 @@ from .konfigurasi import Customer
 from .model import Baris, KeputusanNett, Order
 
 
-def nett_baris(baris: Baris, kolom: str) -> float:
-    """Nilai bersih satu baris dari kolom sumber yang dipilih."""
-    if kolom == "AD":
-        return baris.disc_cbd if baris.disc_cbd is not None else 0.0
-    if kolom == "AE":
-        return baris.disc_cod if baris.disc_cod is not None else 0.0
-    return baris.total_value
+def nett_baris(baris: Baris, kunci: str) -> float:
+    """Nilai bersih satu baris dari kolom sumber yang dipilih.
 
-
-def _nama_cara_bayar(judul: str, bawaan: str) -> str:
-    """Ambil nama cara bayar dari judul kolom di order sheet.
-
-    Sebagian tab menamai kolom AD sebagai 'DISCOUNT COD + 2%', bukan CBD.
-    Nama yang dipakai di dokumen mengikuti order sheet, bukan tebakan.
+    `kunci` adalah nama kolom nett di tab itu, contoh "TOP", "CBD", atau
+    "COD@AD" kalau ada dua kolom berjenis sama.
     """
-    atas = (judul or "").upper()
-    if "CBD" in atas:
-        return "CBD"
-    if "COD" in atas:
-        return "COD"
-    return bawaan
+    nilai = baris.nett.get(kunci)
+    return float(nilai) if nilai is not None else 0.0
+
+
+def _terisi(order: Order, kunci: str) -> int:
+    return sum(
+        1
+        for b in order.semua_baris
+        if b.nett.get(kunci) is not None and b.nett.get(kunci) != 0
+    )
 
 
 def tentukan_nett(order: Order, customer: Customer | None = None) -> KeputusanNett:
+    """Aturan 2 — pilih kolom nilai bersih untuk SATU order.
+
+    Diperiksa SEMUA kolom nett yang ada di tab itu, bukan cuma dua kolom tetap,
+    karena susunan order sheet berubah-ubah antar tahun. Kolom yang terisi penuh
+    di semua baris dipakai; kolom yang terisi sebagian diabaikan seluruhnya.
+    """
     baris = order.semua_baris
     n = len(baris)
-    terisi_cbd = sum(1 for b in baris if b.disc_cbd is not None and b.disc_cbd != 0)
-    terisi_cod = sum(1 for b in baris if b.disc_cod is not None and b.disc_cod != 0)
+    kandidat = [k for k in order.kolom_nett() if k.jenis not in ("TOP", "LAIN")]
+
+    terisi = {k.kunci: _terisi(order, k.kunci) for k in kandidat}
+    terisi_cbd = max(
+        (v for k, v in terisi.items() if k.startswith("CBD")), default=0
+    )
+    terisi_cod = max(
+        (v for k, v in terisi.items() if k.startswith("COD")), default=0
+    )
 
     paksa = (customer.cara_bayar_paksa if customer else "") or ""
     dioverride = False
+    dipakai = None
+
     if paksa in ("TOP", "CBD", "COD"):
         dioverride = True
-        kolom = {"TOP": "AC", "CBD": "AD", "COD": "AE"}[paksa]
-        nama = paksa
+        if paksa == "TOP":
+            kunci, nama = "TOP", "TOP"
+        else:
+            cocok = [k for k in kandidat if k.jenis == paksa]
+            if cocok:
+                dipakai = cocok[0]
+                kunci, nama = dipakai.kunci, paksa
+            else:
+                kunci, nama = "TOP", "TOP"
         alasan = (
             f"Dipaksa lewat config/customer.csv (cara_bayar_paksa={paksa}), "
             "bukan dari kelengkapan kolom."
         )
-    elif n > 0 and terisi_cbd == n:
-        kolom = "AD"
-        nama = _nama_cara_bayar(order.judul_cbd, "CBD")
-        alasan = f"Kolom '{order.judul_cbd or 'AD'}' terisi penuh di semua baris."
-    elif n > 0 and terisi_cod == n:
-        kolom = "AE"
-        nama = _nama_cara_bayar(order.judul_cod, "COD")
-        alasan = f"Kolom '{order.judul_cod or 'AE'}' terisi penuh di semua baris."
-    elif terisi_cbd or terisi_cod:
-        kolom, nama = "AC", "TOP"
-        alasan = (
-            f"Kolom CBD/COD terisi {terisi_cbd}/{n} (AD) dan {terisi_cod}/{n} (AE) — "
-            "terisi sebagian, jadi diabaikan seluruhnya dan order diperlakukan TOP."
-        )
     else:
-        kolom, nama = "AC", "TOP"
-        alasan = "Kolom CBD dan COD kosong sama sekali."
+        penuh = [k for k in kandidat if n > 0 and terisi[k.kunci] == n]
+        if penuh:
+            dipakai = penuh[0]
+            kunci, nama = dipakai.kunci, dipakai.jenis
+            alasan = f"Kolom '{dipakai.judul}' terisi penuh di semua baris."
+            if len(penuh) > 1:
+                lain = ", ".join(f"'{k.judul}'" for k in penuh[1:])
+                alasan += f" (kolom lain yang juga penuh: {lain} — yang kiri dipakai)"
+        else:
+            kunci, nama = "TOP", "TOP"
+            sebagian = [
+                f"'{k.judul}' {terisi[k.kunci]}/{n}"
+                for k in kandidat
+                if terisi[k.kunci]
+            ]
+            if sebagian:
+                alasan = (
+                    "Terisi sebagian: " + "; ".join(sebagian)
+                    + " — jadi diabaikan seluruhnya dan order diperlakukan TOP."
+                )
+            else:
+                alasan = "Semua kolom potongan CBD/COD kosong."
 
-    keterangan = {
-        "AC": "TOTAL VALUE (kolom AC)",
-        "AD": f"{order.judul_cbd or 'DISCOUNT CBD'} (kolom AD)",
-        "AE": f"{order.judul_cod or 'DISCOUNT COD'} (kolom AE)",
-    }[kolom]
+    keterangan = "TOTAL VALUE"
+    if dipakai is not None:
+        keterangan = f"{dipakai.judul} (kolom {dipakai.huruf})"
+    else:
+        top = order.kolom_nett()
+        t0 = next((k for k in top if k.jenis == "TOP"), None)
+        if t0 is not None:
+            keterangan = f"{t0.judul} (kolom {t0.huruf})"
 
-    nett = sum(nett_baris(b, kolom) for b in baris)
+    nett = sum(nett_baris(b, kunci) for b in baris)
     return KeputusanNett(
         cara_bayar=nama,
-        kolom=kolom,
+        kolom=kunci,
         kolom_sumber=keterangan,
         nett_total=nett,
         jumlah_baris=n,

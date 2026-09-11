@@ -25,13 +25,31 @@ class Baris:
     nama: str
     warna: str
     qty_per_ukuran: list[int]  # panjang 9, ikut posisi kolom N..V
-    harga: float               # PRICE W/ VAT (kolom X), sudah termasuk PPN
-    nilai_kotor: float         # TOTAL ATO VALUE (kolom Z)
-    total_value: float         # kolom AC — nett untuk TOP/Tempo
-    disc_cbd: Optional[float]  # kolom AD — None kalau sel kosong
-    disc_cod: Optional[float]  # kolom AE — None kalau sel kosong
-    disc_persen: float         # kolom AB, hanya untuk pemeriksaan
+    harga: float               # PRICE W/ VAT, sudah termasuk PPN
+    nilai_kotor: float         # TOTAL ATO VALUE
+    nett: dict = field(default_factory=dict)  # jenis -> nilai; None = sel kosong
+    disc_persen: float = 0.0   # kolom DISC, hanya untuk pemeriksaan
     catatan: str = ""
+
+    # Nama lama dipertahankan supaya kode lain tidak perlu berubah.
+    @property
+    def total_value(self) -> float:
+        return self.nett.get("TOP") or 0.0
+
+    def _nett_berjenis(self, jenis: str) -> Optional[float]:
+        """Nilai kolom nett pertama berjenis ini (kunci bisa 'COD' atau 'COD@AD')."""
+        for kunci, nilai in self.nett.items():
+            if kunci == jenis or kunci.startswith(jenis + "@"):
+                return nilai
+        return None
+
+    @property
+    def disc_cbd(self) -> Optional[float]:
+        return self._nett_berjenis("CBD")
+
+    @property
+    def disc_cod(self) -> Optional[float]:
+        return self._nett_berjenis("COD")
 
     @property
     def qty(self) -> int:
@@ -44,8 +62,9 @@ class Blok:
 
     nomor: int
     baris_judul: int                 # nomor baris ARTICLE CODE di sheet
-    label_ukuran: list[Optional[str]]  # panjang 9, ikut posisi; None = kolom kosong
+    label_ukuran: list[Optional[str]]  # ikut posisi kolom; None = kolom kosong
     baris: list[Baris] = field(default_factory=list)
+    tata: object = None   # TataLetak blok ini, untuk penelusuran
 
     @property
     def qty(self) -> int:
@@ -56,9 +75,9 @@ class Blok:
         return sum(b.nilai_kotor for b in self.baris)
 
     def kolom_terpakai(self) -> list[int]:
-        """Posisi kolom ukuran (0..8) yang benar-benar ada isinya di blok ini."""
+        """Posisi kolom ukuran yang benar-benar ada isinya di blok ini."""
         dipakai = []
-        for i in range(JUMLAH_KOLOM_UKURAN):
+        for i in range(len(self.label_ukuran)):
             if any(b.qty_per_ukuran[i] for b in self.baris):
                 dipakai.append(i)
         return dipakai
@@ -103,6 +122,11 @@ class Order:
     @property
     def nilai_kotor(self) -> float:
         return sum(b.nilai_kotor for b in self.semua_baris)
+
+    def kolom_nett(self) -> list:
+        """Kolom nilai bersih yang tersedia di tab ini, menurut tata letaknya."""
+        tata = self.blok[0].tata if self.blok else None
+        return list(getattr(tata, "nett", []) or [])
 
 
 @dataclass

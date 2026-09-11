@@ -54,26 +54,65 @@ BULAN = {
 }
 
 
-def pecah_nama_tab(nama_tab: str) -> tuple[Optional[tuple[int, int, Optional[int]]], str]:
-    """Pisahkan 'PO 13 Agustus 2026 - Dunia Bayi' jadi (tanggal, 'Dunia Bayi').
+SINGKATAN_BULAN = {
+    "jan": 1, "feb": 2, "mar": 3, "apr": 4, "mei": 5, "may": 5, "jun": 6,
+    "jul": 7, "agu": 8, "aug": 8, "ags": 8, "sep": 9, "okt": 10, "oct": 10,
+    "nov": 11, "des": 12, "dec": 12,
+}
 
-    Mengembalikan ((hari, bulan, tahun|None), sisa_nama).
-    Kalau polanya tidak dikenali, tanggal = None dan sisa = nama tab apa adanya.
+
+def _bulan(teks: str) -> Optional[int]:
+    t = (teks or "").strip().lower()
+    if t in BULAN:
+        return BULAN[t]
+    return SINGKATAN_BULAN.get(t[:3])
+
+
+def pecah_nama_tab(nama_tab: str) -> tuple[Optional[tuple[int, int, Optional[int]]], str]:
+    """Pisahkan nama tab jadi (tanggal, nama customer).
+
+    Order sheet ditulis banyak orang, jadi bentuknya bermacam-macam:
+
+        PO 31 Agustus - Haritsa
+        PO 13 Agustus 2026 - Dunia Bayi
+        PO 22 Jan Pratama Babyshop          (bulan disingkat, tanpa tanda hubung)
+        PO 30 - Jojo Collection             (tanpa bulan)
+        2 Feb - Yens Baby                   (tanpa kata PO)
+        (Delivery 1) PO 12 Mei - Katamama   (ada awalan pengiriman)
+
+    Semua bentuk di atas harus terbaca. Kalau polanya benar-benar tidak
+    dikenali, tanggal = None dan seluruh nama tab dianggap nama customer.
     """
-    m = re.match(
-        r"^\s*PO\s+(\d{1,2})\s+([A-Za-z]+)\s*(\d{4})?\s*[-–]\s*(.+)$",
-        nama_tab,
-        re.IGNORECASE,
-    )
-    if not m:
-        return None, nama_tab.strip()
-    hari = int(m.group(1))
-    bulan = BULAN.get(m.group(2).lower())
-    tahun = int(m.group(3)) if m.group(3) else None
-    sisa = m.group(4).strip()
-    if bulan is None:
-        return None, sisa
-    return (hari, bulan, tahun), sisa
+    sisa = re.sub(r"^\s*\(delivery\s*\d*\)\s*", "", str(nama_tab or ""), flags=re.IGNORECASE)
+    sisa = sisa.strip()
+    asli = sisa
+
+    sisa = re.sub(r"^PO\b[\s.:-]*", "", sisa, flags=re.IGNORECASE).strip()
+
+    hari = bulan = tahun = None
+    m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s*(\d{4})?\b[\s.:-]*(.*)$", sisa)
+    if m and _bulan(m.group(2)) is not None:
+        hari = int(m.group(1))
+        bulan = _bulan(m.group(2))
+        tahun = int(m.group(3)) if m.group(3) else None
+        sisa = m.group(4).strip()
+    else:
+        # bentuk "30 - Jojo Collection": ada tanggal tapi tanpa bulan
+        m2 = re.match(r"^(\d{1,2})\s*[-–]\s*(.+)$", sisa)
+        if m2:
+            hari = int(m2.group(1))
+            sisa = m2.group(2).strip()
+        else:
+            m3 = re.match(r"^[-–]\s*(.+)$", sisa)
+            if m3:
+                sisa = m3.group(1).strip()
+
+    sisa = re.sub(r"^[\s.:-]+", "", sisa).strip()
+    if not sisa:
+        return (None, asli)
+    if hari is not None and bulan is not None:
+        return ((hari, bulan, tahun), sisa)
+    return (None, sisa)
 
 
 class DaftarCustomer:
