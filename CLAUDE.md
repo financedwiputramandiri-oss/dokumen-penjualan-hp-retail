@@ -920,14 +920,37 @@ Sudah diperbaiki:
 
 Dikunci dua tes. Tes 94 -> 96.
 
-**Dugaan penyebab yang paling mungkin, belum dipastikan:** akun layanan Google
-tidak punya kuota penyimpanan Drive sendiri. Menaruh berkas BARU ke folder My
-Drive milik orang lain bisa ditolak dengan `storageQuotaExceeded`, walaupun
-akun layanan itu sudah diberi peran Editor. Kalau memang itu sebabnya,
-jalan keluarnya bukan menambah izin, melainkan salah satu dari:
+**SEBABNYA SUDAH PASTI, 12 Sep 2026.** Diuji langsung di laptop Yosua:
 
-1. Bot tidak mengunggah, cukup menulis ke tab `BOT_` di sheet OTOMATISASI
-2. Folder dokumen dipindah ke Shared Drive (butuh Google Workspace)
-3. Yosua sendiri yang menyalin berkas dari folder `keluaran/draf` ke Drive
+| Uji | Hasil |
+|---|---|
+| Bot membuat FOLDER di DOKUMEN OTOMATIS | berhasil |
+| Bot mengunggah BERKAS ke folder yang sama | ditolak |
 
-**Jangan ambil kesimpulan sebelum pesan galat aslinya terbaca.**
+Pesan resmi Google:
+
+    HttpError 403 ... Service Accounts do not have storage quota.
+    Leverage shared drives ... or use OAuth delegation instead.
+    'reason': 'storageQuotaExceeded'
+
+Akun layanan **tidak punya jatah penyimpanan Drive**, jadi tidak bisa membuat
+berkas baru di My Drive siapa pun. Folder bisa karena tidak memakan ruang.
+**Menambah izin TIDAK akan menolong** — jangan pernah coba menyelesaikannya
+dengan Share ulang.
+
+Dua jalan keluar resmi Google (Shared Drive, OAuth delegation) sama-sama butuh
+**Google Workspace**, sedangkan akun Happy Pumpkin memakai `@gmail.com`.
+
+**Jalan keluar yang dipilih: Google Drive for Desktop.** Bot menulis ke folder
+lokal yang disinkronkan, lalu Drive for Desktop yang menyalinkannya. Berkas
+dimiliki Yosua, bukan akun layanan, jadi lepas dari batasan kuota. Tidak perlu
+perubahan kode — cukup `folder_draf` diarahkan ke folder sinkron dan
+`folder_dokumen_id` dikosongkan. Langkahnya ada di PANDUAN_BOT.md.
+
+Program sekarang **berhenti mencoba begitu ditolak karena kuota** (penolakan itu
+pasti berlaku untuk semua berkas), dan menampilkan satu pesan yang menjelaskan
+batasannya serta jalan keluarnya. Dikunci dua tes. Tes 96 -> 98.
+
+**Catatan yang belum diuji:** laporan sapuan juga berkas baru, jadi
+kemungkinan besar ikut tertolak. Kalau terbukti begitu, `folder_laporan_id`
+dikosongkan juga.

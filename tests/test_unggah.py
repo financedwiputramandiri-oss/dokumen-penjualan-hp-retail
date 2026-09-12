@@ -114,12 +114,12 @@ def test_sebab_kegagalan_ikut_tercatat(draf):
     """
     class Menolak(SambunganPalsu):
         def unggah_berkas(self, berkas, id_folder):
-            raise RuntimeError("storageQuotaExceeded: contoh sebab dari Google")
+            raise RuntimeError("rateLimitExceeded: contoh sebab dari Google")
 
     hasil = PengunggahDokumen(Menolak(), "INDUK").unggah(draf, "Order Sheet Contoh")
     assert hasil.jumlah == 0
-    assert hasil.gagal
-    assert all("storageQuotaExceeded" in x for x in hasil.gagal), hasil.gagal
+    assert len(hasil.gagal) == len(draf.berkas)
+    assert all("rateLimitExceeded" in x for x in hasil.gagal), hasil.gagal
 
 
 def test_folder_gagal_dibuat_sebabnya_ikut(draf):
@@ -129,3 +129,50 @@ def test_folder_gagal_dibuat_sebabnya_ikut(draf):
 
     hasil = PengunggahDokumen(FolderMenolak(), "INDUK").unggah(draf, "Order Sheet Contoh")
     assert hasil.gagal and "insufficientFilePermissions" in hasil.gagal[0]
+
+
+# ------------------------------- akun layanan tidak punya kuota penyimpanan
+class TanpaKuota(SambunganPalsu):
+    """Meniru penolakan Google yang sebenarnya pada 12 September 2026."""
+
+    def __init__(self):
+        super().__init__()
+        self.percobaan = 0
+
+    def unggah_berkas(self, berkas, id_folder):
+        self.percobaan += 1
+        raise RuntimeError(
+            "<HttpError 403 ... Service Accounts do not have storage quota. "
+            "Leverage shared drives ... 'reason': 'storageQuotaExceeded'>"
+        )
+
+
+def test_ditolak_kuota_berhenti_mencoba(draf):
+    """Penolakan kuota berlaku untuk SEMUA berkas.
+
+    Mencoba tiap berkas pada tiap PO hanya memperlambat sapuan dan membanjiri
+    laporan dengan pesan yang sama.
+    """
+    s = TanpaKuota()
+    peng = PengunggahDokumen(s, "INDUK")
+    peng.unggah(draf, "Order Sheet Contoh")
+    assert s.percobaan == 1, "harus berhenti setelah penolakan pertama"
+
+    # PO berikutnya tidak boleh mencoba lagi sama sekali
+    hasil2 = peng.unggah(draf, "Order Sheet Contoh")
+    assert s.percobaan == 1
+    assert hasil2.jumlah == 0
+    assert hasil2.gagal
+
+
+def test_pesan_kuota_menjelaskan_jalan_keluarnya(draf):
+    """Pesannya harus bisa ditindaklanjuti orang non-teknis."""
+    from hp_dokumen.sapu.unggah import PESAN_TANPA_KUOTA
+
+    hasil = PengunggahDokumen(TanpaKuota(), "INDUK").unggah(draf, "Order Sheet Contoh")
+    pesan = hasil.gagal[0]
+    assert pesan == PESAN_TANPA_KUOTA
+    assert "batasan Google" in pesan
+    assert "menambah izin TIDAK akan menolongnya" in pesan
+    assert "keluaran/draf" in pesan
+    assert "Drive for Desktop" in pesan

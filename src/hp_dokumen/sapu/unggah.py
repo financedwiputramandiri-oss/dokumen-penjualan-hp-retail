@@ -22,6 +22,20 @@ from typing import Optional
 
 from .draf import HasilDraf
 
+# Batasan Google, bukan salah pengaturan: akun layanan TIDAK punya jatah
+# penyimpanan Drive, jadi tidak bisa membuat berkas baru di My Drive siapa pun.
+# Folder bisa dibuat (folder tidak memakan ruang), berkas tidak.
+_TANPA_KUOTA = "storageQuotaExceeded"
+
+PESAN_TANPA_KUOTA = (
+    "Akun layanan Google tidak punya jatah penyimpanan Drive, jadi tidak bisa "
+    "menaruh berkas di My Drive. Ini batasan Google - menambah izin TIDAK akan "
+    "menolongnya. Dokumen tetap dibuat di folder keluaran/draf. Untuk "
+    "memunculkannya di Drive, pakai Google Drive for Desktop lalu arahkan "
+    "folder_draf di config/bot.yaml ke folder yang disinkronkan, atau "
+    "kosongkan folder_dokumen_id supaya bot berhenti mencoba mengunggah."
+)
+
 
 @dataclass
 class HasilUnggah:
@@ -46,6 +60,10 @@ class PengunggahDokumen:
         self.sambung = sambung
         self.id_induk = id_induk
         self._folder: dict[tuple[str, ...], Optional[str]] = {}
+        # Kalau Google menolak karena kuota, penolakan itu pasti berlaku untuk
+        # SEMUA berkas. Mencoba ratusan kali hanya memperlambat sapuan dan
+        # membanjiri laporan dengan pesan yang sama.
+        self.dimatikan: Optional[str] = None
 
     def folder(self, *jalur: str) -> Optional[str]:
         """Id folder di dalam induk, dibuat bertingkat sesuai `jalur`."""
@@ -64,6 +82,9 @@ class PengunggahDokumen:
 
     def unggah(self, hasil: HasilDraf, nama_sheet: str) -> HasilUnggah:
         out = HasilUnggah(tab=hasil.tab)
+        if self.dimatikan:
+            out.gagal.append(self.dimatikan)
+            return out
         try:
             id_folder = self.folder(nama_sheet, hasil.tab)
         except Exception as e:
@@ -80,6 +101,10 @@ class PengunggahDokumen:
                 else:
                     out.gagal.append(f"{berkas.name}: ditolak tanpa keterangan")
             except Exception as e:
+                if _TANPA_KUOTA in str(e):
+                    self.dimatikan = PESAN_TANPA_KUOTA
+                    out.gagal.append(PESAN_TANPA_KUOTA)
+                    return out
                 # Sebab aslinya WAJIB ikut tercatat. Tanpa ini laporannya hanya
                 # "0 berkas naik ke Drive", dan tidak ada yang bisa dikerjakan.
                 out.gagal.append(f"{berkas.name}: {e}")

@@ -370,3 +370,51 @@ komputernya.
 Dua bot yang menyapu bersamaan akan saling menimpa `kondisi_sapu.json` dan bisa
 memunculkan alarm yang membingungkan. Satu komputer saja yang menjalankan
 penjadwal.
+
+---
+
+## Kenapa dokumen tidak naik sendiri ke Drive
+
+Google punya batasan yang tidak bisa dilewati: **akun layanan tidak punya jatah
+penyimpanan Drive.** Pesan resminya:
+
+    Service Accounts do not have storage quota.
+    reason: storageQuotaExceeded
+
+Artinya bot **tidak bisa membuat berkas baru** di My Drive siapa pun, walaupun
+sudah diberi peran Editor. Menambah izin tidak akan menolong. (Membuat folder
+tetap bisa, karena folder tidak memakan ruang.)
+
+Dua jalan keluar resmi dari Google — Shared Drive dan OAuth delegation —
+keduanya **butuh langganan Google Workspace**, sedangkan akun Happy Pumpkin
+memakai `@gmail.com` biasa.
+
+### Jalan keluar yang dipakai: Google Drive for Desktop
+
+Cara paling sederhana, gratis, dan tidak mengubah cara kerja bot sama sekali.
+
+1. Pasang **Google Drive for Desktop** dari https://www.google.com/drive/download/
+2. Login dengan akun Bapak. Akan muncul drive baru di komputer, biasanya `G:`
+3. Buat folder di dalamnya, misalnya `G:\My Drive\DOKUMEN OTOMATIS HAPPY PUMPKIN`
+4. Di `config/bot.yaml`, ubah dua baris:
+
+```yaml
+folder_draf: "G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN"
+folder_dokumen_id: ""
+```
+
+Sejak itu bot menulis dokumen ke folder tersebut seperti biasa, dan Google Drive
+for Desktop yang menyalinkannya ke Drive. Berkasnya **dimiliki Bapak**, bukan
+akun layanan, jadi tidak kena batasan kuota.
+
+`folder_dokumen_id` dikosongkan supaya bot berhenti mencoba mengunggah sendiri.
+
+### Kalau Drive for Desktop tidak dipakai
+
+Kosongkan saja `folder_dokumen_id`. Dokumen tetap dibuat lengkap di
+`keluaran/draf/`, tinggal disalin ke Drive secara manual kalau perlu.
+
+Laporan sapuan **tetap naik ke Drive** dengan normal — laporan diunggah ke
+folder LAPORAN BOT, dan ukurannya kecil... tapi perlu dicatat: laporan pun
+berkas baru, jadi kemungkinan besar ikut tertolak. Kalau begitu, kosongkan juga
+`folder_laporan_id`; laporannya tetap tersimpan di `keluaran/sapuan/`.
