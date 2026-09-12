@@ -524,6 +524,7 @@ oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
 | SISTEM OTOMATISASI (ringkasan, diunggah 12 Sep 2026, milik Yosua) | `1Yld4InWIhMXj9uV8fM1pV_0mEUZD7SZse8FJZ5XWiJE` |
 | ALUR KERJA SISTEM (diunggah 12 Sep 2026, milik Yosua) | `1ufPsXLUy42u2zfkexcFlPMGKtVCmtIyebKhl_W5-Kaw` |
 | Folder DOKUMEN OTOMATIS HAPPY PUMPKIN (dibuat 12 Sep 2026) | `1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP` |
+| Folder LAPORAN BOT HAPPY PUMPKIN (dibuat 12 Sep 2026) | `1BTHfFCgULMJGceqGJ9aPDub-Rf8KgBUI` |
 
 Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
 Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
@@ -817,3 +818,36 @@ Tiga keputusan yang jangan diubah tanpa alasan:
 Diuji dengan `SambunganPalsu` (tidak menyentuh Google): susunan folder, cache,
 penimpaan berkas, folder gagal dibuat, dan satu berkas gagal sementara sisanya
 tetap naik. Tes 76 -> 82.
+
+### Akun layanan bot — 12 September 2026
+
+Yosua sudah membuat akun layanannya:
+
+    penyapu-order-sheet@happy-pumpkin-bot.iam.gserviceaccount.com
+
+Proyek Google Cloud: `happy-pumpkin-bot`. Berkas kuncinya ada di tangan Yosua,
+TIDAK pernah dikirim ke sesi ini dan memang tidak perlu.
+
+Izin yang SUDAH diberikan lewat konektor Drive (bertindak sebagai Yosua):
+
+| Tempat | Peran | Keadaan |
+|---|---|---|
+| Folder DOKUMEN OTOMATIS | Editor | selesai |
+| Folder LAPORAN BOT | Editor | selesai |
+| Sheet OTOMATISASI (`1qkd-...`) | Editor | selesai |
+| Folder Order Sheet 2026 (`1RDH...`) | Viewer | **DITOLAK** — "caller does not have permission" |
+| Folder Order Sheet 2025 (`1PiX...`) | Viewer | **DITOLAK** — sama |
+
+Dua folder order sheet dimiliki `happypumpkinkids.id@gmail.com`, dan Yosua tidak
+punya hak membagikannya. Harus dikerjakan pemilik akun itu. Jangan dicoba lagi
+dari sini — hasilnya akan sama.
+
+`config/bot.yaml` sekarang sudah terisi lengkap: `folder_laporan_id`,
+`folder_dokumen_id`, dan `sheet_otomatisasi_id`.
+
+### Belum diputuskan: komputer mana yang menjalankan bot
+
+Sesi Claude Code ini berjalan di wadah sementara yang akan dihapus. Bot tiap 12
+jam tidak bisa hidup di sini. Perlu ditentukan Yosua: komputer kantor yang
+menyala terus, atau server kecil. Berkas kunci dan `data/kondisi_sapu.json`
+harus berada di mesin itu.

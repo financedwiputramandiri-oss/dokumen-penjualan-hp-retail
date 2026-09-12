@@ -17,7 +17,9 @@ folder_order_sheet:
 # ---- KE MANA LAPORAN DITARUH -------------------------------
 # ID folder Drive tempat bot menaruh laporan sapuan.
 # Kosongkan kalau belum ada; laporan tetap tersimpan di komputer.
-folder_laporan_id: ""
+# Folder "LAPORAN BOT HAPPY PUMPKIN" dibuat 12 Sep 2026 di My Drive Yosua,
+# dan sudah di-Share ke akun layanan bot sebagai Editor.
+folder_laporan_id: "1BTHfFCgULMJGceqGJ9aPDub-Rf8KgBUI"
 
 # Nama folder laporan yang dibuat bot di dalam folder di atas.
 nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
