@@ -240,6 +240,15 @@ def sapu(
                                     if pengunggah:
                                         hu = pengunggah.unggah(hd, berkas.nama)
                                         cetak(f"      -> {hu.jumlah} berkas naik ke Drive")
+                                        if hu.gagal:
+                                            # Sebab kegagalan pertama langsung
+                                            # ditampilkan. Kalau hanya dicatat
+                                            # ke laporan, orang melihat "0
+                                            # berkas naik" berulang-ulang tanpa
+                                            # tahu harus berbuat apa.
+                                            cetak(f"      GAGAL: {hu.gagal[0]}")
+                                            if len(hu.gagal) > 1:
+                                                cetak(f"      (dan {len(hu.gagal) - 1} berkas lain, sebab sama)")
                                         masalah.extend(
                                             f"'{tab_penuh}' {x}" for x in hu.gagal
                                         )

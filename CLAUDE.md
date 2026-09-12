@@ -900,3 +900,34 @@ galat izin biasa harus tetap menyuruh Share. Tes 92 -> 94.
 
 **Pelajaran yang berlaku umum:** galat 403 dari Google TIDAK selalu berarti
 masalah izin. Periksa dulu apakah API-nya menyala.
+
+### Sapuan pertama berhasil, tapi unggahan ke Drive gagal — 12 Sep 2026
+
+Bot berhasil jalan di laptop Yosua. Order sheet 2025 dan 2026 terbaca, draf
+dibuat (4 berkas per PO). Tapi tiap PO melaporkan `0 berkas naik ke Drive`.
+
+Sebabnya belum diketahui saat catatan ini ditulis, KARENA `unggah_berkas()`
+menelan `HttpError` dan mengembalikan `None`, lalu `unggah()` hanya mencatat
+"gagal diunggah" tanpa sebab. Laporannya jadi tidak bisa ditindaklanjuti.
+
+Sudah diperbaiki:
+
+| Berkas | Perubahan |
+|---|---|
+| `google.py` | `unggah_berkas()` tidak lagi menelan galat — dibiarkan naik ke pemanggil |
+| `sapu/unggah.py` | Sebab asli ikut dicatat: `f"{nama}: {e}"`, termasuk kegagalan membuat folder |
+| `sapu/bot.py` | Sebab kegagalan pertama LANGSUNG ditampilkan di layar, tidak hanya masuk laporan |
+
+Dikunci dua tes. Tes 94 -> 96.
+
+**Dugaan penyebab yang paling mungkin, belum dipastikan:** akun layanan Google
+tidak punya kuota penyimpanan Drive sendiri. Menaruh berkas BARU ke folder My
+Drive milik orang lain bisa ditolak dengan `storageQuotaExceeded`, walaupun
+akun layanan itu sudah diberi peran Editor. Kalau memang itu sebabnya,
+jalan keluarnya bukan menambah izin, melainkan salah satu dari:
+
+1. Bot tidak mengunggah, cukup menulis ke tab `BOT_` di sheet OTOMATISASI
+2. Folder dokumen dipindah ke Shared Drive (butuh Google Workspace)
+3. Yosua sendiri yang menyalin berkas dari folder `keluaran/draf` ke Drive
+
+**Jangan ambil kesimpulan sebelum pesan galat aslinya terbaca.**

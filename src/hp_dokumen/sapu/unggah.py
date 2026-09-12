@@ -64,14 +64,23 @@ class PengunggahDokumen:
 
     def unggah(self, hasil: HasilDraf, nama_sheet: str) -> HasilUnggah:
         out = HasilUnggah(tab=hasil.tab)
-        id_folder = self.folder(nama_sheet, hasil.tab)
+        try:
+            id_folder = self.folder(nama_sheet, hasil.tab)
+        except Exception as e:
+            out.gagal.append(f"folder '{nama_sheet}/{hasil.tab}' gagal dibuat: {e}")
+            return out
         if not id_folder:
             out.gagal.append(f"folder '{nama_sheet}/{hasil.tab}' tidak bisa dibuat")
             return out
         out.id_folder = id_folder
         for berkas in hasil.berkas:
-            if self.sambung.unggah_berkas(Path(berkas), id_folder):
-                out.jumlah += 1
-            else:
-                out.gagal.append(f"{berkas.name} gagal diunggah")
+            try:
+                if self.sambung.unggah_berkas(Path(berkas), id_folder):
+                    out.jumlah += 1
+                else:
+                    out.gagal.append(f"{berkas.name}: ditolak tanpa keterangan")
+            except Exception as e:
+                # Sebab aslinya WAJIB ikut tercatat. Tanpa ini laporannya hanya
+                # "0 berkas naik ke Drive", dan tidak ada yang bisa dikerjakan.
+                out.gagal.append(f"{berkas.name}: {e}")
         return out

@@ -149,27 +149,28 @@ class Sambungan:
         baru bernama sama, folder Drive cepat penuh berisi banyak "Invoice
         Miniku" dan tidak ada yang tahu mana yang berlaku. Versi lamanya tetap
         aman — tersimpan di folder _KEDALUWARSA di komputer.
+
+        Galat dari Google SENGAJA tidak ditelan di sini. Pernah tertelan, dan
+        akibatnya laporan hanya berbunyi "0 berkas naik ke Drive" tanpa satu
+        pun petunjuk sebabnya — tidak bisa ditindaklanjuti siapa pun.
         """
         media = MediaFileUpload(str(berkas), mimetype=MIME_XLSX, resumable=False)
         sudah_ada = self.cari_berkas(berkas.name, id_folder)
-        try:
-            if sudah_ada:
-                f = (
-                    self.drive.files()
-                    .update(fileId=sudah_ada, media_body=media, fields="id",
-                            supportsAllDrives=True)
-                    .execute()
-                )
-            else:
-                f = (
-                    self.drive.files()
-                    .create(body={"name": berkas.name, "parents": [id_folder]},
-                            media_body=media, fields="id", supportsAllDrives=True)
-                    .execute()
-                )
-            return f.get("id")
-        except HttpError:
-            return None
+        if sudah_ada:
+            f = (
+                self.drive.files()
+                .update(fileId=sudah_ada, media_body=media, fields="id",
+                        supportsAllDrives=True)
+                .execute()
+            )
+        else:
+            f = (
+                self.drive.files()
+                .create(body={"name": berkas.name, "parents": [id_folder]},
+                        media_body=media, fields="id", supportsAllDrives=True)
+                .execute()
+            )
+        return f.get("id")
 
     def buat_folder_kalau_belum_ada(self, nama: str, induk: str) -> Optional[str]:
         aman = nama.replace("'", "\\'")

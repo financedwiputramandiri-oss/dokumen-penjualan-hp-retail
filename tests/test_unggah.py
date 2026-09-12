@@ -104,3 +104,28 @@ def test_satu_berkas_gagal_sisanya_tetap_naik(draf):
     hasil = PengunggahDokumen(s, "INDUK").unggah(draf, "Order Sheet Contoh")
     assert hasil.jumlah == len(draf.berkas) - 1
     assert any(nama_gagal in x for x in hasil.gagal)
+
+
+def test_sebab_kegagalan_ikut_tercatat(draf):
+    """Pesan "gagal" tanpa sebab tidak bisa ditindaklanjuti siapa pun.
+
+    Pernah terjadi: sapuan pertama Yosua menampilkan "0 berkas naik ke Drive"
+    untuk puluhan PO, tanpa satu pun petunjuk kenapa.
+    """
+    class Menolak(SambunganPalsu):
+        def unggah_berkas(self, berkas, id_folder):
+            raise RuntimeError("storageQuotaExceeded: contoh sebab dari Google")
+
+    hasil = PengunggahDokumen(Menolak(), "INDUK").unggah(draf, "Order Sheet Contoh")
+    assert hasil.jumlah == 0
+    assert hasil.gagal
+    assert all("storageQuotaExceeded" in x for x in hasil.gagal), hasil.gagal
+
+
+def test_folder_gagal_dibuat_sebabnya_ikut(draf):
+    class FolderMenolak(SambunganPalsu):
+        def buat_folder_kalau_belum_ada(self, nama, induk):
+            raise RuntimeError("insufficientFilePermissions: contoh sebab")
+
+    hasil = PengunggahDokumen(FolderMenolak(), "INDUK").unggah(draf, "Order Sheet Contoh")
+    assert hasil.gagal and "insufficientFilePermissions" in hasil.gagal[0]
