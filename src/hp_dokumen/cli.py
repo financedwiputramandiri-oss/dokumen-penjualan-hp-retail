@@ -254,6 +254,14 @@ def perintah_sapu(args) -> int:
     return 1 if hasil.genting else 0
 
 
+def perintah_periksa_bot(args) -> int:
+    """Periksa persiapan bot tanpa menjalankan sapuan. Hanya membaca."""
+    from .sapu.bot import Pengaturan as PengaturanBot
+    from .sapu.pemeriksa import cetak as cetak_periksa, periksa
+
+    return 0 if cetak_periksa(periksa(PengaturanBot.muat())) else 1
+
+
 def buat_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="jalankan.py",
@@ -296,6 +304,11 @@ def buat_parser() -> argparse.ArgumentParser:
     g.add_argument("--tampilkan", type=int, default=25,
                    help="Berapa customer teratas ditampilkan di layar (bawaan 25)")
     g.set_defaults(fungsi=perintah_telusuri)
+
+    i = sub.add_parser(
+        "periksa-bot",
+        help="Periksa persiapan bot (kunci, izin folder) tanpa menjalankan sapuan")
+    i.set_defaults(fungsi=perintah_periksa_bot)
 
     h = sub.add_parser("sapu",
                        help="Tarik order sheet dari Google Drive, pantau perubahan (butuh bot)")

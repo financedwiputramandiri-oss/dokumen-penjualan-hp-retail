@@ -192,7 +192,32 @@ menjalankan bot.
 
 Kalau Bapak tidak mau dokumennya naik ke Drive, kosongkan `folder_dokumen_id`.
 
-### Langkah 8 — Coba jalankan
+### Langkah 8 — Periksa dulu, baru jalankan
+
+Ketik ini untuk memastikan semua langkah di atas sudah benar:
+
+```
+python3 jalankan.py periksa-bot
+```
+
+Perintah ini **hanya membaca**, tidak mengubah apa pun. Hasilnya seperti ini:
+
+```
+PEMERIKSAAN PERSIAPAN BOT
+  [OK   ] Berkas kunci bot         terbaca, bot = penyapu-order-sheet@...
+  [OK   ] Sambungan ke Google      berhasil
+  [OK   ] Folder 'Order Sheet 2026'  12 order sheet terbaca
+  [BELUM] Folder dokumen           tidak bisa dibaca: akses ditolak
+
+MASIH ADA 1 HAL YANG PERLU DIBERESKAN:
+  1. Folder dokumen: Share folder ini ke penyapu-order-sheet@... sebagai
+     EDITOR (bukan Viewer, karena bot menaruh berkas di sini)
+```
+
+Kalau ada yang **BELUM**, pesannya menyebut langkah mana yang harus diperbaiki.
+Beresi dulu, lalu jalankan `periksa-bot` lagi sampai semuanya **OK**.
+
+### Langkah 9 — Coba jalankan
 
 ```
 python3 jalankan.py sapu
