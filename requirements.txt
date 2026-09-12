@@ -1,2 +1,9 @@
+# Dipakai semua perintah (membaca order sheet .xlsx dan membuat dokumen)
 openpyxl>=3.1
 PyYAML>=6.0
+
+# Dipakai bot penyapu untuk menyambung ke Google Drive & Sheets.
+# TANPA dua baris ini, `jalankan.py sapu` dan `jalankan.py periksa-bot`
+# berhenti dengan "No module named 'google'".
+google-api-python-client>=2.100
+google-auth>=2.20

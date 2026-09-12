@@ -851,3 +851,22 @@ Sesi Claude Code ini berjalan di wadah sementara yang akan dihapus. Bot tiap 12
 jam tidak bisa hidup di sini. Perlu ditentukan Yosua: komputer kantor yang
 menyala terus, atau server kecil. Berkas kunci dan `data/kondisi_sapu.json`
 harus berada di mesin itu.
+
+### Cacat: requirements.txt tidak memuat komponen Google — SELESAI 12 Sep 2026
+
+Saat Yosua memasang di laptop Windows-nya, `py jalankan.py periksa-bot` berhenti
+dengan `ModuleNotFoundError: No module named 'google'`, padahal pemasangan
+komponen sudah dijalankan benar.
+
+Sebabnya bukan di komputer Yosua: `requirements.txt` hanya berisi `openpyxl` dan
+`PyYAML`. Dua paket yang dipakai `sapu/google.py` tidak pernah dicantumkan:
+
+    google-api-python-client
+    google-auth
+
+Tidak ketahuan selama ini karena di wadah pengembangan kedua paket itu
+kebetulan sudah terpasang.
+
+Sudah ditambahkan, dan dikunci dua tes: satu memastikan keempat paket ada di
+`requirements.txt`, satu lagi menyisir seluruh `src/` untuk memastikan tiap
+paket pihak ketiga yang diimpor memang tercantum. Tes 90 -> 92.

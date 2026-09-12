@@ -45,3 +45,39 @@ def test_tab_tak_dikenal_mengembalikan_none():
 def test_kekurangan_data_terdeteksi():
     c = Customer("X", "", "", "", "per_artikel", 30, "", "", "")
     assert set(c.kekurangan()) == {"nama di dokumen", "alamat", "NPWP"}
+
+
+def test_requirements_memuat_komponen_google():
+    """requirements.txt WAJIB memuat komponen Google.
+
+    Pernah terlewat: berkasnya hanya berisi openpyxl dan PyYAML, sehingga
+    `jalankan.py periksa-bot` di komputer baru berhenti dengan
+    "No module named 'google'" walaupun pemasangan sudah dijalankan benar.
+    """
+    from hp_dokumen.konfigurasi import AKAR
+
+    isi = (AKAR / "requirements.txt").read_text(encoding="utf-8").lower()
+    for paket in ("google-api-python-client", "google-auth", "openpyxl", "pyyaml"):
+        assert paket in isi, f"{paket} tidak ada di requirements.txt"
+
+
+def test_semua_impor_pihak_ketiga_ada_di_requirements():
+    """Tiap paket luar yang diimpor program harus tercantum di requirements."""
+    import re
+    from hp_dokumen.konfigurasi import AKAR
+
+    peta = {                      # nama saat diimpor -> nama saat dipasang
+        "openpyxl": "openpyxl",
+        "yaml": "pyyaml",
+        "google": "google-auth",
+        "googleapiclient": "google-api-python-client",
+    }
+    isi = (AKAR / "requirements.txt").read_text(encoding="utf-8").lower()
+    dipakai = set()
+    for berkas in (AKAR / "src").rglob("*.py"):
+        for baris in berkas.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"\s*(?:from|import)\s+([a-zA-Z_][\w]*)", baris)
+            if m and m.group(1) in peta:
+                dipakai.add(peta[m.group(1)])
+    kurang = [p for p in sorted(dipakai) if p not in isi]
+    assert not kurang, f"diimpor program tapi tidak ada di requirements.txt: {kurang}"
