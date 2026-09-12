@@ -44,6 +44,22 @@ folder_draf: "keluaran/draf"
 #         membuat sapuan jauh lebih lama. Bawaannya mati.
 draf_pdf: false
 
+# ---- KE MANA DOKUMENNYA DINAIKKAN DI DRIVE -----------------
+# Folder Drive tempat Invoice, Surat Jalan, Faktur Pajak, dan Packing List
+# ditaruh supaya divisi bisa langsung membukanya. Susunannya:
+#
+#   DOKUMEN OTOMATIS HAPPY PUMPKIN/
+#     Order Sheet Agustus 2026/
+#       PO 20 Agustus - Miniku/
+#         INVOICE_... , SURAT_JALAN_... , FAKTUR_PAJAK_... , PACKING_LIST_...
+#
+# Berkas bernama sama DITIMPA, bukan ditambah, supaya tidak menumpuk banyak
+# "Invoice Miniku" yang tidak jelas mana yang berlaku. Versi lama tetap aman
+# di folder _KEDALUWARSA pada komputer yang menjalankan bot.
+#
+# Kosongkan kalau tidak mau dokumen dinaikkan ke Drive.
+folder_dokumen_id: "1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP"
+
 # ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
 # Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.
 #

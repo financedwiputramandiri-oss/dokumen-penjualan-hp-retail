@@ -149,6 +149,49 @@ https://drive.google.com/drive/folders/<INI_ID_NYA>
 
 Tempel ID itu ke `config/bot.yaml` pada baris `folder_laporan_id`.
 
+### Langkah 7b — Beri izin folder dokumen
+
+Folder ini **sudah dibuatkan** di My Drive Bapak:
+
+**DOKUMEN OTOMATIS HAPPY PUMPKIN**
+https://drive.google.com/drive/folders/1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP
+
+ID-nya sudah terisi di `config/bot.yaml` pada baris `folder_dokumen_id`, jadi
+tidak perlu diisi lagi. Yang perlu Bapak lakukan hanya **Share folder ini ke
+alamat email bot dengan akses Editor**.
+
+> **Perhatikan bedanya, ini penting:**
+>
+> | Folder | Akses bot | Alasan |
+> |---|---|---|
+> | Order Sheet 2025 & 2026 | **Viewer** | bot hanya membaca, tidak boleh bisa mengubah order sheet |
+> | LAPORAN BOT | **Editor** | bot menaruh laporan di sini |
+> | DOKUMEN OTOMATIS | **Editor** | bot menaruh Invoice, Surat Jalan, Faktur Pajak di sini |
+>
+> Jangan memberi Editor pada folder order sheet. Kalau bot hanya Viewer di
+> sana, order sheet Bapak aman apa pun yang terjadi.
+
+Isi foldernya akan tersusun begini, dibuat sendiri oleh bot:
+
+```
+DOKUMEN OTOMATIS HAPPY PUMPKIN/
+  Order Sheet Agustus 2026/
+    PO 20 Agustus - Miniku/
+      INVOICE_PO_20_Agustus_-_Miniku.xlsx
+      SURAT_JALAN_PO_20_Agustus_-_Miniku.xlsx
+      FAKTUR_PAJAK_PO_20_Agustus_-_Miniku.xlsx
+      PACKING_LIST_PO_20_Agustus_-_Miniku.xlsx
+    PO 31 Agustus - Haritsa/
+      ...
+```
+
+Kalau sebuah PO direvisi, berkas di Drive **ditimpa** dengan yang terbaru —
+bukan ditambah — supaya tidak ada dua "Invoice Miniku" yang membingungkan.
+Versi lamanya tetap aman di folder `_KEDALUWARSA` pada komputer yang
+menjalankan bot.
+
+Kalau Bapak tidak mau dokumennya naik ke Drive, kosongkan `folder_dokumen_id`.
+
 ### Langkah 8 — Coba jalankan
 
 ```

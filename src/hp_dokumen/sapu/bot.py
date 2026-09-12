@@ -27,6 +27,7 @@ from ..nilai_bersih import tentukan_nett
 from ..pemindai import baca_buku, master_harga_dari_buku
 from ..rekonsiliasi import periksa_order
 from .draf import HasilDraf, buat_draf, perlu_draf
+from .unggah import PengunggahDokumen
 from .google import Sambungan
 from .kondisi import Kondisi, sidik_dari_order
 from .laporan_sapu import tulis as tulis_laporan
@@ -49,6 +50,7 @@ class Pengaturan:
     lewati_yang_tidak_berubah: bool = True
     folder_draf: Path = AKAR / "keluaran" / "draf"
     draf_pdf: bool = False
+    folder_dokumen_id: str = ""
 
     @classmethod
     def muat(cls, berkas: Path | None = None) -> "Pengaturan":
@@ -68,6 +70,7 @@ class Pengaturan:
             lewati_yang_tidak_berubah=bool(d.get("lewati_yang_tidak_berubah", True)),
             folder_draf=AKAR / d.get("folder_draf", "keluaran/draf"),
             draf_pdf=bool(d.get("draf_pdf", False)),
+            folder_dokumen_id=(d.get("folder_dokumen_id") or "").strip(),
         )
 
 
@@ -106,6 +109,8 @@ def sapu(
     cfg = konfigurasi or Konfigurasi.muat()
     sambung = Sambungan(p.berkas_kredensial)
     cetak(f"Bot: {sambung.email_bot}")
+    pengunggah = (PengunggahDokumen(sambung, p.folder_dokumen_id)
+                  if p.folder_dokumen_id else None)
 
     kondisi = Kondisi.muat(p.berkas_kondisi)
     perubahan: list[Perubahan] = []
@@ -232,6 +237,12 @@ def sapu(
                                     )
                                     draf.append(hd)
                                     cetak(f"    draf {alasan}: {hd.ringkas()}")
+                                    if pengunggah:
+                                        hu = pengunggah.unggah(hd, berkas.nama)
+                                        cetak(f"      -> {hu.jumlah} berkas naik ke Drive")
+                                        masalah.extend(
+                                            f"'{tab_penuh}' {x}" for x in hu.gagal
+                                        )
                                 except Exception as e:
                                     masalah.append(
                                         f"'{tab_penuh}' drafnya gagal dibuat: {e}"

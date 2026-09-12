@@ -523,6 +523,7 @@ oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
 | DATABASE CUSTOMER (diunggah 11 Sep 2026, milik Yosua) | `1ffT_GlCQSvKIHoAH25A8-OyqHzoFG1TATS0r1EETFN0` |
 | SISTEM OTOMATISASI (ringkasan, diunggah 12 Sep 2026, milik Yosua) | `1Yld4InWIhMXj9uV8fM1pV_0mEUZD7SZse8FJZ5XWiJE` |
 | ALUR KERJA SISTEM (diunggah 12 Sep 2026, milik Yosua) | `1ufPsXLUy42u2zfkexcFlPMGKtVCmtIyebKhl_W5-Kaw` |
+| Folder DOKUMEN OTOMATIS HAPPY PUMPKIN (dibuat 12 Sep 2026) | `1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP` |
 
 Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
 Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
@@ -777,3 +778,42 @@ Tes bertambah dari 60 menjadi 76.
 `ALUR KERJA SISTEM OTOMATISASI HAPPY PUMPKIN`, tujuh bagian: ALUR UTAMA,
 ATURAN SELALU UPDATE, KARAKTERISTIK CUSTOMER, ISI TIAP DOKUMEN, SUMBER ANGKA,
 SUDAH PASTI, MENUNGGU KONFIRMASI. Pembuatnya `alat/alur_kerja.py`.
+
+### Dokumen dinaikkan ke Drive — 12 September 2026
+
+Yosua bertanya di mana dokumen hasil otomatisasi disimpan. Jawabannya waktu itu:
+hanya di komputer yang menjalankan program. Yang naik ke Drive cuma laporan
+sapuan, bukan dokumennya — percuma dibuat otomatis kalau divisi tidak bisa
+mengambilnya.
+
+Folder `DOKUMEN OTOMATIS HAPPY PUMPKIN` karena itu dibuatkan di My Drive Yosua
+dan ID-nya sudah terisi di `config/bot.yaml` (`folder_dokumen_id`).
+
+| Berkas | Isi |
+|---|---|
+| `sapu/unggah.py` | `PengunggahDokumen` — membuat folder bertingkat dan menaruh berkas |
+| `google.py` | `cari_berkas()` dan `unggah_berkas()` yang MENIMPA berkas bernama sama |
+
+Susunan di Drive memakai nama ASLI order sheet dan tab PO (bukan nama berkas
+yang sudah diseragamkan), supaya enak dibaca orang:
+
+    DOKUMEN OTOMATIS HAPPY PUMPKIN/
+      Order Sheet Agustus 2026/
+        PO 20 Agustus - Miniku/
+          INVOICE_... , SURAT_JALAN_... , FAKTUR_PAJAK_... , PACKING_LIST_...
+
+Tiga keputusan yang jangan diubah tanpa alasan:
+
+1. **Berkas bernama sama DITIMPA, bukan ditambah.** Kalau tiap revisi membuat
+   berkas baru, folder Drive penuh berisi banyak "Invoice Miniku" dan tidak ada
+   yang tahu mana yang berlaku. Versi lama tetap aman di `_KEDALUWARSA` pada
+   komputer bot.
+2. **Id folder di-cache selama satu sapuan.** Tanpa itu folder bulan yang sama
+   ditanyakan ke Google berulang kali untuk tiap PO.
+3. **Hak akses bot berbeda per folder:** folder order sheet tetap **Viewer**,
+   folder laporan dan folder dokumen **Editor**. Jangan pernah memberi Editor
+   pada folder order sheet.
+
+Diuji dengan `SambunganPalsu` (tidak menyentuh Google): susunan folder, cache,
+penimpaan berkas, folder gagal dibuat, dan satu berkas gagal sementara sisanya
+tetap naik. Tes 76 -> 82.

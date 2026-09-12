@@ -124,6 +124,53 @@ class Sambungan:
         except HttpError:
             return None
 
+    def cari_berkas(self, nama: str, induk: str) -> Optional[str]:
+        """Id berkas bernama `nama` di dalam folder `induk`, kalau ada."""
+        aman = nama.replace("'", "\\'")
+        try:
+            jawab = (
+                self.drive.files()
+                .list(
+                    q=f"'{induk}' in parents and name = '{aman}' and trashed = false",
+                    fields="files(id)", supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                )
+                .execute()
+            )
+        except HttpError:
+            return None
+        ada = jawab.get("files", [])
+        return ada[0]["id"] if ada else None
+
+    def unggah_berkas(self, berkas: Path, id_folder: str) -> Optional[str]:
+        """Taruh berkas ke folder Drive, MENIMPA yang namanya sama.
+
+        Menimpa, bukan menambah, disengaja: kalau tiap revisi membuat berkas
+        baru bernama sama, folder Drive cepat penuh berisi banyak "Invoice
+        Miniku" dan tidak ada yang tahu mana yang berlaku. Versi lamanya tetap
+        aman — tersimpan di folder _KEDALUWARSA di komputer.
+        """
+        media = MediaFileUpload(str(berkas), mimetype=MIME_XLSX, resumable=False)
+        sudah_ada = self.cari_berkas(berkas.name, id_folder)
+        try:
+            if sudah_ada:
+                f = (
+                    self.drive.files()
+                    .update(fileId=sudah_ada, media_body=media, fields="id",
+                            supportsAllDrives=True)
+                    .execute()
+                )
+            else:
+                f = (
+                    self.drive.files()
+                    .create(body={"name": berkas.name, "parents": [id_folder]},
+                            media_body=media, fields="id", supportsAllDrives=True)
+                    .execute()
+                )
+            return f.get("id")
+        except HttpError:
+            return None
+
     def buat_folder_kalau_belum_ada(self, nama: str, induk: str) -> Optional[str]:
         aman = nama.replace("'", "\\'")
         jawab = (
