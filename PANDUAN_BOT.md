@@ -4,10 +4,49 @@ Bot ini bekerja tiap 12 jam:
 
 1. Menanyakan ke Google Drive: order sheet mana yang berubah sejak sapuan lalu
 2. Untuk yang berubah saja, **membaca isi tab PO langsung** lewat Sheets API
-3. **Membuat draf dokumen** untuk PO yang ATO-nya sudah terisi
-4. **Membandingkan dengan sapuan sebelumnya** — kalau ada PO lama yang qty
+3. **Membandingkan dengan sapuan sebelumnya** — kalau ada PO lama yang qty
    atau rumusnya berubah, bot melapor
+4. **Membuat draf dokumen sendiri** untuk PO yang ATO-nya sudah terisi, dan
+   **membuat ulang** draf PO yang direvisi
 5. Menaruh laporannya ke Google Drive
+
+## Draf dokumen dibuat dan diperbarui sendiri
+
+Sesuai arahan Yosua: ATO terisi berarti pesanan final untuk pertama kali, tapi
+**tidak final selamanya**. Kalau direvisi, dokumennya wajib mengikuti angka
+terbaru.
+
+Yang dikerjakan bot:
+
+| Keadaan PO | Yang dilakukan bot |
+|---|---|
+| ATO belum terisi | Tidak membuat apa-apa |
+| ATO terisi, angka **cocok** dengan order sheet | Membuat draf Invoice, Surat Jalan, Faktur Pajak, Packing List |
+| ATO terisi, angka **belum cocok** | **Tidak membuat dokumen.** Masalahnya dicatat di laporan |
+| Qty / nilai / cara bayar / jumlah baris direvisi | Dokumen **dibuat ulang**, draf lama dipindahkan ke `_KEDALUWARSA` |
+| Hanya rumusnya yang berubah, angkanya tetap | Alarm tetap berbunyi, tapi dokumen **tidak** dibuat ulang — isinya sama |
+| Tidak ada perubahan | Tidak menulis apa-apa |
+
+Letak berkasnya:
+
+```
+keluaran/draf/
+  Order_Sheet_Agustus_2026/
+    PO_20_Agustus_-_Miniku/
+      INVOICE_PO_20_Agustus_-_Miniku.xlsx
+      SURAT_JALAN_PO_20_Agustus_-_Miniku.xlsx
+      FAKTUR_PAJAK_PO_20_Agustus_-_Miniku.xlsx
+      PACKING_LIST_PO_20_Agustus_-_Miniku.xlsx
+  _KEDALUWARSA/
+    PO_20_Agustus_-_Miniku__20260912_062821/   <- draf sebelum revisi
+```
+
+**Draf lama tidak pernah ditimpa**, selalu dipindahkan ke `_KEDALUWARSA` dulu.
+Jadi kalau ada yang bertanya "faktur yang kemarin angkanya berapa", jawabannya
+masih ada.
+
+Kalau mau sekalian PDF-nya, ubah `draf_pdf: true` di `config/bot.yaml`. Perlu
+LibreOffice terpasang, dan sapuannya jadi jauh lebih lama.
 
 ## Bot TIDAK mengunduh order sheet
 

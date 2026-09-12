@@ -731,12 +731,46 @@ paling terbaru"*.
 Yosua menyebut **tiga** dokumen. Packing List tetap dibuat program karena sudah
 ada, tapi perlu dipastikan apakah masih dipakai. Jangan dihapus sebelum dijawab.
 
-### Celah yang masih ada di program
+### Draf otomatis — SELESAI 12 September 2026
 
-`sapu/bot.py` baru **mendaftar** PO yang siap (`draf.append(...)`), belum benar-benar
-memanggil pembuat dokumen. Jadi janji "otomatis keluar draf pertama, dan ikut
-diperbarui kalau direvisi" **belum terpenuhi seluruhnya**. Perubahan sudah
-terdeteksi dan dilaporkan; yang kurang hanya langkah membuat ulang berkasnya.
+Celah "bot hanya mendaftar PO siap, belum membuat dokumennya" sudah ditutup.
+
+| Berkas | Isi |
+|---|---|
+| `berkas_dokumen.py` | Pembuat berkas yang dipakai BERSAMA oleh perintah manual dan bot. Sengaja satu kode, supaya hasil manual dan hasil bot tidak pernah berbeda |
+| `sapu/draf.py` | Memutuskan kapan draf dibuat, kapan dibuat ULANG, dan mengarsipkan draf lama |
+
+Aturannya:
+
+| Keadaan | Tindakan |
+|---|---|
+| ATO belum terisi | tidak membuat apa-apa |
+| ATO terisi, angka cocok | buat draf (Invoice, Surat Jalan, Faktur Pajak, Packing List) |
+| ATO terisi, angka TIDAK cocok | **tidak membuat dokumen**, masalahnya dicatat |
+| qty / nilai / cara bayar / jumlah baris berubah | **buat ulang**, draf lama pindah ke `_KEDALUWARSA` |
+| hanya rumus yang berubah | alarm tetap bunyi, dokumen TIDAK dibuat ulang |
+
+Dua keputusan yang jangan diubah tanpa alasan:
+
+1. **Sidik jari disimpan SETELAH draf dibuat.** Kalau pembuatan draf gagal,
+   sidik lama tetap tersimpan, jadi sapuan berikutnya mencoba lagi — bukan
+   menganggapnya sudah beres.
+2. **Draf lama diarsipkan, tidak ditimpa.** Nama folder arsip diberi angka
+   tambahan kalau bentrok di detik yang sama; tanpa itu `shutil.move` menaruh
+   folder lama DI DALAM arsip sebelumnya dan draf yang lebih tua tersembunyi.
+   Ditemukan saat simulasi, bukan dari teori, dan sudah ada tesnya.
+
+Hasil simulasi lima sapuan pada order sheet Agustus 2026 (16 PO):
+
+| Sapuan | Hasil |
+|---|---|
+| 1 — pertama kali | 16 draf baru |
+| 2 — tanpa revisi | 0 dibuat, 16 dilewati |
+| 3 — qty Miniku direvisi | 1 dibuat ulang, draf lama masuk `_KEDALUWARSA` |
+| 4 — revisi tetap, hanya rumus berubah | 0 dibuat ulang |
+| 5 — tidak ada perubahan | 0 dibuat ulang |
+
+Tes bertambah dari 60 menjadi 76.
 
 ### Berkas alur kerja di Drive
 

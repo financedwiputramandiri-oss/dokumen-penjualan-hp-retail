@@ -11,21 +11,15 @@ Sengaja dibuat sesedikit mungkin dan berbahasa Indonesia:
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from datetime import date
 from pathlib import Path
 
-from openpyxl import Workbook
-
-from .dokumen.faktur_pajak import buat_faktur_pajak
-from .dokumen.invoice import buat_invoice
-from .dokumen.surat_jalan import buat_packing_list, buat_surat_jalan
+from .berkas_dokumen import buat_berkas, nama_aman
 from .konfigurasi import Konfigurasi, AKAR
 from .laporan import cetak_rinci, cetak_ringkas, tulis_laporan_pencocokan, tulis_rekap_penjualan
 from .model import Order
 from .nilai_bersih import tentukan_nett
-from .pdf import ke_pdf, libreoffice_ada
 from .pemindai import baca_master_harga, baca_order_sheet
 from .riwayat import telusuri_berkas
 from .db_customer import bangun as bangun_customer, dugaan_nama_sama
@@ -58,8 +52,7 @@ def _cari_berkas(diberikan: str | None) -> Path:
 
 def _aman(teks: str) -> str:
     """Ubah nama tab jadi nama berkas yang aman."""
-    teks = re.sub(r"[^\w\s\-()&]", "", teks)
-    return re.sub(r"\s+", "_", teks.strip())
+    return nama_aman(teks)
 
 
 def _muat(args) -> tuple[Konfigurasi, list[Order], dict, Path]:
@@ -147,41 +140,12 @@ def _nomor(cfg, urut: int, diberikan: str | None) -> str:
 
 
 def _buat_dokumen(cfg, h: HasilRekonsiliasi, urut: int, args) -> list[Path]:
-    o, k = h.order, h.keputusan
-    cust = cfg.customer.cari(o.nama_tab)
-    nomor = _nomor(cfg, urut, args.nomor)
-    pt = cfg.perusahaan.untuk(cust)
-    folder = FOLDER_KELUARAN / _aman(o.nama_tab)
-    folder.mkdir(parents=True, exist_ok=True)
-    dibuat: list[Path] = []
-
-    tugas = [
-        ("SURAT_JALAN", lambda ws: buat_surat_jalan(ws, o, cust, pt, nomor)),
-        ("PACKING_LIST", lambda ws: buat_packing_list(ws, o, cust, pt, nomor)),
-        ("INVOICE", lambda ws: buat_invoice(ws, o, k, cust, pt, cfg.pengaturan, nomor)),
-        ("FAKTUR_PAJAK", lambda ws: buat_faktur_pajak(ws, o, k, cust, pt, cfg.pengaturan, nomor)),
-    ]
-    for nama, fungsi in tugas:
-        wb = Workbook()
-        ws = wb.active
-        ws.title = nama.replace("_", " ").title()[:31]
-        fungsi(ws)
-        p = folder / f"{nama}_{_aman(o.nama_tab)}.xlsx"
-        wb.save(p)
-        dibuat.append(p)
-
-    if args.pdf:
-        if not libreoffice_ada():
-            print("  (PDF dilewati: LibreOffice tidak terpasang di komputer ini.")
-            print("   Di Ubuntu/Debian: sudo apt install libreoffice-calc)")
-        else:
-            for p in list(dibuat):
-                hasil_pdf, pesan = ke_pdf(p, folder)
-                if hasil_pdf:
-                    dibuat.append(hasil_pdf)
-                else:
-                    print(f"  (PDF {p.name} dilewati: {pesan})")
-    return dibuat
+    folder = FOLDER_KELUARAN / _aman(h.order.nama_tab)
+    return buat_berkas(
+        cfg, h.order, h.keputusan, folder,
+        _nomor(cfg, urut, args.nomor),
+        pdf=args.pdf, cetak=print,
+    )
 
 
 def perintah_buat(args) -> int:

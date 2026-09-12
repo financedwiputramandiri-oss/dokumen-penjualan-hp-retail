@@ -2,10 +2,11 @@
 
 Urutannya:
   1. Daftar semua order sheet di folder Drive
-  2. Unduh masing-masing sebagai .xlsx
+  2. Tarik isi tabnya lewat Sheets API (tidak mengunduh berkas)
   3. Baca semua tab PO, hitung nilainya
   4. Bandingkan dengan keadaan sapuan sebelumnya -> cari perubahan
-  5. Buat draf dokumen untuk PO yang ATO-nya sudah terisi
+  5. Buat draf dokumen untuk PO yang ATO-nya sudah terisi, dan BUAT ULANG
+     draf yang angkanya direvisi sejak sapuan sebelumnya
   6. Tulis laporan, taruh ke Google Drive
 
 Dijalankan tiap 12 jam lewat penjadwal (cron / Task Scheduler).
@@ -19,11 +20,13 @@ from typing import Optional
 
 import yaml
 
+from ..berkas_dokumen import nama_aman
 from ..konfigurasi import AKAR, Konfigurasi
 from ..model import Order
 from ..nilai_bersih import tentukan_nett
 from ..pemindai import baca_buku, master_harga_dari_buku
 from ..rekonsiliasi import periksa_order
+from .draf import HasilDraf, buat_draf, perlu_draf
 from .google import Sambungan
 from .kondisi import Kondisi, sidik_dari_order
 from .laporan_sapu import tulis as tulis_laporan
@@ -44,6 +47,8 @@ class Pengaturan:
     berkas_kredensial: Path
     berkas_kondisi: Path
     lewati_yang_tidak_berubah: bool = True
+    folder_draf: Path = AKAR / "keluaran" / "draf"
+    draf_pdf: bool = False
 
     @classmethod
     def muat(cls, berkas: Path | None = None) -> "Pengaturan":
@@ -61,6 +66,8 @@ class Pengaturan:
             berkas_kredensial=AKAR / d.get("berkas_kredensial", "config/kredensial_bot.json"),
             berkas_kondisi=AKAR / d.get("berkas_kondisi", "data/kondisi_sapu.json"),
             lewati_yang_tidak_berubah=bool(d.get("lewati_yang_tidak_berubah", True)),
+            folder_draf=AKAR / d.get("folder_draf", "keluaran/draf"),
+            draf_pdf=bool(d.get("draf_pdf", False)),
         )
 
 
@@ -68,7 +75,7 @@ class Pengaturan:
 class HasilSapuan:
     perubahan: list[Perubahan]
     diperiksa: list[tuple[str, str, int]]
-    draf: list[str]
+    draf: list[HasilDraf]
     masalah: list[str]
     berkas_laporan: Optional[Path] = None
     id_laporan_drive: Optional[str] = None
@@ -103,7 +110,7 @@ def sapu(
     kondisi = Kondisi.muat(p.berkas_kondisi)
     perubahan: list[Perubahan] = []
     diperiksa: list[tuple[str, str, int]] = []
-    draf: list[str] = []
+    draf: list[HasilDraf] = []
     masalah: list[str] = []
     rekaman: list[dict] = []   # untuk tab BOT_DAFTAR_PO di sheet OTOMATISASI
     dilewati: list[str] = []   # spreadsheet yang tidak berubah sejak sapuan lalu
@@ -196,10 +203,11 @@ def sapu(
                     berkas.id, berkas.nama, tab_penuh, order, keputusan,
                     rumus_per_tab.get(tab_penuh),
                 )
+                # Sidik lama selalu diambil: bukan hanya untuk alarm, tapi juga
+                # untuk tahu apakah draf dokumennya perlu dibuat ulang.
+                lama_sidik = kondisi.ambil(baru_sidik.kunci)
                 if p.pantau_perubahan:
-                    lama_sidik = kondisi.ambil(baru_sidik.kunci)
                     perubahan.extend(bandingkan(lama_sidik, baru_sidik))
-                kondisi.pasang(baru_sidik)
 
                 pt = cfg.perusahaan.untuk(cust)
                 siap, keterangan = False, "ATO belum terisi"
@@ -208,12 +216,36 @@ def sapu(
                     if hr.lolos:
                         siap, keterangan = True, "angka cocok dengan order sheet"
                         if p.buat_draf:
-                            draf.append(f"{berkas.nama} / {tab_penuh}")
+                            # Dokumen HANYA dibuat kalau angkanya sudah cocok
+                            # dengan order sheet. Aturan yang sama dipakai
+                            # perintah manual: lebih baik tidak terbit daripada
+                            # terbit salah.
+                            folder_po = (p.folder_draf / nama_aman(berkas.nama)
+                                         / nama_aman(tab_penuh))
+                            alasan = perlu_draf(lama_sidik, baru_sidik, folder_po)
+                            if alasan:
+                                try:
+                                    hd = buat_draf(
+                                        cfg, order, keputusan, lama_sidik,
+                                        baru_sidik, alasan, p.folder_draf,
+                                        pdf=p.draf_pdf,
+                                    )
+                                    draf.append(hd)
+                                    cetak(f"    draf {alasan}: {hd.ringkas()}")
+                                except Exception as e:
+                                    masalah.append(
+                                        f"'{tab_penuh}' drafnya gagal dibuat: {e}"
+                                    )
                     else:
                         keterangan = "angka belum cocok: " + ", ".join(
                             x.nama for x in hr.yang_gagal
                         )
                         masalah.append(f"'{tab_penuh}' {keterangan}.")
+
+                # Sidik disimpan SETELAH draf dibuat. Kalau pembuatan draf
+                # gagal, sidik lama tetap tersimpan sehingga sapuan berikutnya
+                # mencobanya lagi, bukan menganggapnya sudah beres.
+                kondisi.pasang(baru_sidik)
 
                 rekaman.append({
                     "sumber": berkas.nama, "tab": tab_penuh,
@@ -233,7 +265,8 @@ def sapu(
     waktu = datetime.now()
     nama_laporan = f"LAPORAN_SAPUAN_{waktu:%Y%m%d_%H%M}.xlsx"
     berkas_laporan = AKAR / "keluaran" / "sapuan" / nama_laporan
-    tulis_laporan(berkas_laporan, perubahan, diperiksa, draf, masalah, waktu,
+    tulis_laporan(berkas_laporan, perubahan, diperiksa,
+                  [d.ringkas() for d in draf], masalah, waktu,
                   dilewati, dibaca_tab)
 
     id_drive = None

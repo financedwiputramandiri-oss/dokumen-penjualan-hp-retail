@@ -27,9 +27,22 @@ nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
 sheet_otomatisasi_id: "1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw"
 
 # ---- APA YANG DIKERJAKAN BOT -------------------------------
-buat_draf_dokumen: true      # buat Surat Jalan/Invoice/Packing List/Faktur Pajak
+buat_draf_dokumen: true      # buat Invoice/Surat Jalan/Faktur Pajak/Packing List
 pantau_perubahan: true       # deteksi perubahan pada PO lama
 pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
+
+# ---- DRAF DOKUMEN OTOMATIS ---------------------------------
+# Begitu ATO sebuah PO terisi DAN angkanya cocok dengan order sheet, bot
+# langsung membuat draf dokumennya sendiri. Kalau PO itu kemudian DIREVISI,
+# drafnya dibuat ulang memakai angka terbaru, dan draf lama dipindahkan ke
+# subfolder _KEDALUWARSA supaya tidak terpakai tanpa sengaja.
+#
+# Dokumen TIDAK PERNAH dibuat kalau angkanya belum cocok dengan order sheet.
+folder_draf: "keluaran/draf"
+
+# true -> sekalian dibuatkan PDF-nya. Perlu LibreOffice terpasang, dan
+#         membuat sapuan jauh lebih lama. Bawaannya mati.
+draf_pdf: false
 
 # ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
 # Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.
