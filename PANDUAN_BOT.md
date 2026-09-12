@@ -329,3 +329,44 @@ seharusnya berubah, tanyakan ke yang mengedit.
 **Apakah bot mengirim email atau WhatsApp?**
 Belum. Laporannya ditaruh ke Google Drive. Kalau ingin diberi tahu lewat email,
 bisa ditambahkan menyusul.
+
+---
+
+## Pindah ke komputer lain
+
+Bot tidak terikat pada satu komputer. Boleh dicoba dulu di laptop, lalu
+dipindahkan ke komputer kantor atau server kapan saja.
+
+Yang perlu **ikut pindah** hanya dua berkas:
+
+| Berkas | Isinya | Kalau tertinggal |
+|---|---|---|
+| `config/kredensial_bot.json` | kunci akun layanan | bot tidak bisa masuk ke Google |
+| `data/kondisi_sapu.json` | ingatan sapuan terakhir | bot menganggap semua PO baru, lalu membuat ulang seluruh draf sekali |
+
+Selebihnya (program, pengaturan, panduan) ada di git — cukup `git clone` lagi
+di komputer baru.
+
+Langkahnya:
+
+1. Di komputer baru: `git clone` repo ini, lalu `pip3 install -r requirements.txt`
+2. Salin kedua berkas di atas dari komputer lama (pakai flashdisk atau
+   folder Drive pribadi — **jangan lewat WhatsApp atau email**)
+3. Jalankan `python3 jalankan.py periksa-bot` sampai semuanya OK
+4. Pasang penjadwalnya (lihat folder `jadwal/`)
+5. **Matikan penjadwal di komputer lama**, supaya tidak ada dua bot yang
+   menyapu bersamaan
+
+Akun layanannya **tidak perlu dibuat ulang**. Alamat email bot dan semua izin
+folder tetap berlaku, karena izinnya melekat pada akun layanan, bukan pada
+komputernya.
+
+> Kalau `data/kondisi_sapu.json` tertinggal, tidak ada yang rusak — bot hanya
+> membuat ulang semua draf satu kali, lalu tenang lagi. Isi folder Drive tetap
+> benar karena berkas bernama sama ditimpa, bukan ditambah.
+
+### Jangan jalankan dua bot sekaligus
+
+Dua bot yang menyapu bersamaan akan saling menimpa `kondisi_sapu.json` dan bisa
+memunculkan alarm yang membingungkan. Satu komputer saja yang menjalankan
+penjadwal.
