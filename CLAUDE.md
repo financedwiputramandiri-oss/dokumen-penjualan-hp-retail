@@ -521,6 +521,7 @@ oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
 | Folder order sheet 2026 | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` |
 | Folder order sheet 2025 | `1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57` |
 | DATABASE CUSTOMER (diunggah 11 Sep 2026, milik Yosua) | `1ffT_GlCQSvKIHoAH25A8-OyqHzoFG1TATS0r1EETFN0` |
+| SISTEM OTOMATISASI (ringkasan, diunggah 12 Sep 2026, milik Yosua) | `1Yld4InWIhMXj9uV8fM1pV_0mEUZD7SZse8FJZ5XWiJE` |
 
 Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
 Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
@@ -670,3 +671,23 @@ orang berhenti percaya pada laporannya.
 | 18 grup nama di PERIKSA_NAMA | Perlu dipastikan sama atau beda. Sudah ada di Google Sheet "DATABASE CUSTOMER HAPPY PUMPKIN 2025-2026" di My Drive Yosua, lembar PERIKSA_NAMA |
 | Order Sheet Juni 2025 | Terlalu besar untuk diekspor, belum terbaca |
 | Format nomor dokumen | Menunggu Yosua |
+
+
+### Berkas ringkasan sistem — 12 September 2026
+
+Yosua bertanya apakah ada berkas spreadsheet yang memuat sistem ini. Jawabannya
+saat itu: belum ada. Sheet `OTOMATISASI_HAPPY_PUMPKIN_SINKRON` **belum disentuh
+sama sekali** — diperiksa 12 Sep 2026, `modifiedTime` masih 10 Sep 2026 10:52
+(suntingan Yosua sendiri) dan tidak ada satu pun tab berawalan `BOT_`. Itu memang
+sesuai rancangan: tab `BOT_` baru muncul setelah akun layanan Google dibuat.
+
+Karena itu dibuat berkas ringkasan `SISTEM OTOMATISASI DOKUMEN PENJUALAN HAPPY
+PUMPKIN` di My Drive Yosua, berisi tujuh bagian: MULAI DI SINI, ISI SISTEM,
+4 ATURAN WAJIB, CARA PAKAI HARIAN, BOT PENYAPU, ANGKA TERVERIFIKASI, dan
+YANG DITUNGGU. Pembuatnya `alat/ringkasan_sistem.py`, menghasilkan `.xlsx`
+(tujuh tab) dan `.csv` (satu lembar).
+
+Catatan teknis unggahan: konektor Drive menolak `base64Content` yang panjang
+(berkas 16 KB gagal). Jalur yang berhasil adalah `textContent` berisi CSV dengan
+`contentMimeType: text/csv`, yang dikonversi Google menjadi Spreadsheet. Untuk
+unggahan berikutnya, pakai CSV lewat `textContent`, jangan xlsx lewat base64.
