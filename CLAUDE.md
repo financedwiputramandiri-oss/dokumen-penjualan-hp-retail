@@ -870,3 +870,33 @@ kebetulan sudah terpasang.
 Sudah ditambahkan, dan dikunci dua tes: satu memastikan keempat paket ada di
 `requirements.txt`, satu lagi menyisir seluruh `src/` untuk memastikan tiap
 paket pihak ketiga yang diimpor memang tercantum. Tes 90 -> 92.
+
+### Pemeriksa salah mendiagnosis "API belum dinyalakan" — SELESAI 12 Sep 2026
+
+Saat Yosua menjalankan `periksa-bot` di laptopnya, enam dari tujuh pemeriksaan
+lolos. Yang gagal cuma sheet OTOMATISASI, dengan galat Google:
+
+    HttpError 403 ... Google Sheets API has not been used in project
+    76910858898 before or it is disabled ... 'reason': 'SERVICE_DISABLED'
+
+Sebabnya: pada Langkah 2, hanya **Google Drive API** yang dinyalakan; **Google
+Sheets API** belum. Terbukti dari gejalanya — pembacaan folder Drive (5 dari 5)
+berhasil, hanya pembacaan tab spreadsheet yang ditolak.
+
+Tapi `pemeriksa.py` menyarankan *"Share sheet OTOMATISASI sebagai Editor"*,
+padahal izin sheet itu memang sudah benar sejak awal (diberikan lewat konektor
+Drive). Saran yang salah ini berbahaya: orang akan men-Share ulang berkas yang
+sudah benar, masalahnya tidak selesai, dan kepercayaan pada pemeriksa hilang.
+
+Sekarang pemeriksa membedakan dua sebab itu. Kalau galatnya mengandung
+`SERVICE_DISABLED`, `has not been used in project`, `it is disabled`, atau
+`accessNotConfigured`, sarannya berubah jadi menyalakan API di Cloud Console,
+menyebut nama API-nya, dan **menegaskan bahwa ini bukan masalah izin sehingga
+jangan men-Share ulang apa pun**.
+
+Berlaku untuk ketiga pemeriksaan (folder order sheet, folder tujuan, sheet
+OTOMATISASI). Dikunci dua tes: galat API-mati tidak boleh menyuruh Share, dan
+galat izin biasa harus tetap menyuruh Share. Tes 92 -> 94.
+
+**Pelajaran yang berlaku umum:** galat 403 dari Google TIDAK selalu berarti
+masalah izin. Periksa dulu apakah API-nya menyala.

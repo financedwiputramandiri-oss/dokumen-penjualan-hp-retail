@@ -16,6 +16,38 @@ from typing import Optional
 LULUS = "OK"
 GAGAL = "BELUM"
 
+# Penanda galat Google "API-nya belum dinyalakan". Penting dibedakan dari
+# masalah izin: kalau tertukar, orang disuruh men-Share ulang berkas yang
+# sebenarnya sudah benar, dan masalahnya tidak akan pernah selesai.
+_API_MATI = ("SERVICE_DISABLED", "has not been used in project",
+             "it is disabled", "accessNotConfigured")
+
+
+def _api_mati(galat) -> bool:
+    return any(tanda in str(galat) for tanda in _API_MATI)
+
+
+def _nama_api(galat) -> str:
+    teks = str(galat)
+    if "sheets.googleapis.com" in teks:
+        return "Google Sheets API"
+    if "drive.googleapis.com" in teks:
+        return "Google Drive API"
+    return "API Google yang dipakai"
+
+
+def _saran(galat, saran_izin: str) -> str:
+    """Saran perbaikan yang sesuai sebab aslinya, bukan tebakan seragam."""
+    if _api_mati(galat):
+        return (
+            f"Langkah 2: {_nama_api(galat)} belum dinyalakan di proyek Google "
+            "Cloud. Buka https://console.cloud.google.com/apis/library , "
+            "pastikan proyeknya benar, cari nama API itu, lalu klik ENABLE. "
+            "Tunggu 1-2 menit, lalu jalankan periksa-bot lagi. "
+            "Ini BUKAN masalah izin berkas - jangan men-Share ulang apa pun."
+        )
+    return saran_izin
+
 
 @dataclass
 class Hasil:
@@ -79,8 +111,8 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
         except Exception as e:
             hasil.append(Hasil(
                 f"Folder '{nama}'", GAGAL, f"tidak bisa dibaca: {e}",
-                f"Langkah 6: Share folder ini ke {email} sebagai Viewer. "
-                "Yang men-Share harus pemilik order sheet.",
+                _saran(e, f"Langkah 6: Share folder ini ke {email} sebagai "
+                          "Viewer. Yang men-Share harus pemilik order sheet."),
             ))
             continue
         lembar = [x for x in isi
@@ -109,8 +141,8 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
         except Exception as e:
             hasil.append(Hasil(
                 nama, GAGAL, f"tidak bisa dibaca: {e}",
-                f"Share folder ini ke {email} sebagai EDITOR (bukan Viewer, "
-                "karena bot menaruh berkas di sini)",
+                _saran(e, f"Share folder ini ke {email} sebagai EDITOR (bukan "
+                          "Viewer, karena bot menaruh berkas di sini)"),
             ))
         else:
             hasil.append(Hasil(nama, LULUS, "terbaca"))
@@ -122,7 +154,7 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
         except Exception as e:
             hasil.append(Hasil(
                 "Sheet OTOMATISASI", GAGAL, f"tidak bisa dibaca: {e}",
-                f"Share sheet OTOMATISASI ke {email} sebagai Editor",
+                _saran(e, f"Share sheet OTOMATISASI ke {email} sebagai Editor"),
             ))
         else:
             hasil.append(Hasil("Sheet OTOMATISASI", LULUS, f"{len(tab)} tab terbaca"))

@@ -112,3 +112,45 @@ def test_cetak_menampilkan_daftar_perbaikan(kunci):
     assert siap is False
     assert "PERLU DIBERESKAN" in teks
     assert "Viewer" in teks
+
+
+# --------------------------------------------- API mati vs masalah izin
+GALAT_API_MATI = (
+    "<HttpError 403 when requesting https://sheets.googleapis.com/v4/"
+    "spreadsheets/1qkd... returned \"Google Sheets API has not been used in "
+    "project 76910858898 before or it is disabled. Enable it by visiting "
+    "https://console.developers.google.com/apis/api/sheets.googleapis.com/"
+    "overview?project=76910858898 then retry.\". Details: 'reason': "
+    "'SERVICE_DISABLED'>"
+)
+
+
+class SambunganApiMati(SambunganPalsu):
+    """Meniru keadaan nyata: Drive jalan, Sheets API belum dinyalakan."""
+
+    def nama_tab(self, _id):
+        raise RuntimeError(GALAT_API_MATI)
+
+
+def test_api_belum_dinyalakan_tidak_disuruh_share_ulang(kunci):
+    """Kalau sebabnya API mati, saran 'Share sebagai Editor' menyesatkan.
+
+    Orang akan men-Share ulang berkas yang izinnya sudah benar, dan
+    masalahnya tidak akan pernah selesai.
+    """
+    hasil = periksa(_atur(kunci), buat_sambungan=SambunganApiMati)
+    h = next(x for x in hasil if x.nama == "Sheet OTOMATISASI")
+    assert not h.lulus
+    assert "Google Sheets API" in h.perbaikan
+    assert "ENABLE" in h.perbaikan
+    assert "Share" not in h.perbaikan.replace("jangan men-Share", "")
+
+
+def test_masalah_izin_tetap_disuruh_share(kunci):
+    """Kebalikannya: galat izin biasa harus tetap menyarankan Share."""
+    def gagal(b):
+        return SambunganPalsu(b, folder_gagal={"D"})
+    hasil = periksa(_atur(kunci), buat_sambungan=gagal)
+    h = next(x for x in hasil if x.nama == "Folder dokumen")
+    assert "EDITOR" in h.perbaikan
+    assert "ENABLE" not in h.perbaikan
