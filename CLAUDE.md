@@ -522,6 +522,7 @@ oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
 | Folder order sheet 2025 | `1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57` |
 | DATABASE CUSTOMER (diunggah 11 Sep 2026, milik Yosua) | `1ffT_GlCQSvKIHoAH25A8-OyqHzoFG1TATS0r1EETFN0` |
 | SISTEM OTOMATISASI (ringkasan, diunggah 12 Sep 2026, milik Yosua) | `1Yld4InWIhMXj9uV8fM1pV_0mEUZD7SZse8FJZ5XWiJE` |
+| ALUR KERJA SISTEM (diunggah 12 Sep 2026, milik Yosua) | `1ufPsXLUy42u2zfkexcFlPMGKtVCmtIyebKhl_W5-Kaw` |
 
 Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
 Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
@@ -691,3 +692,54 @@ Catatan teknis unggahan: konektor Drive menolak `base64Content` yang panjang
 (berkas 16 KB gagal). Jalur yang berhasil adalah `textContent` berisi CSV dengan
 `contentMimeType: text/csv`, yang dikonversi Google menjadi Spreadsheet. Untuk
 unggahan berikutnya, pakai CSV lewat `textContent`, jangan xlsx lewat base64.
+
+
+## 15. Alur kerja resmi — penjelasan Yosua 12 September 2026
+
+Yosua memperjelas alurnya dengan kalimatnya sendiri:
+
+> "dari spreadsheet (External) Order Sheet terdapat tab PO, lalu dari bagian
+> Available to Order buatlah Invoice, Surat Jalan, dan Faktur Pajak sesuai
+> dengan karakteristik Invoice, Surat Jalan masing-masing setiap customer dan
+> buat sistem itu selalu update setiap ada perubahan pada (External) Order Sheet."
+
+### Yang menjadi PASTI
+
+| Hal | Keputusan |
+|---|---|
+| Sumber | Bagian **AVAILABLE TO ORDER** pada tab PO. ORIGINAL PO tidak dipakai |
+| Dokumen | **Invoice, Surat Jalan, Faktur Pajak** — mengikuti karakteristik tiap customer |
+| Kapan final | Saat ATO terisi. **Tapi tidak final selamanya** |
+| Kalau direvisi | Dokumen **wajib dibuat ulang** mengikuti data paling terbaru |
+| Sifat sistem | Selalu ikut berubah setiap order sheet berubah |
+
+Kutipan Yosua untuk poin revisi: *"itu tidak sepenuhnya final karena jika ada
+revisi anda juga harus memperbaikinya lagi dan menyesuaikannya dengan data yang
+paling terbaru"*.
+
+### Yang MASIH menunggu konfirmasi Yosua (dinyatakan sendiri olehnya)
+
+| Hal | Sementara program memakai |
+|---|---|
+| Pengiriman bertahap | 1 PO = 1 Surat Jalan = 1 Invoice |
+| Perusahaan pemroses DPM/MTN — per customer atau per pesanan | Per customer, di `config/customer.csv` |
+| Urutan penerbitan dokumen | Ketiganya dibuat sekaligus |
+| Rumus nomor dokumen | Nomor dikosongkan, diisi manual |
+
+### Packing List tidak disebut Yosua
+
+Yosua menyebut **tiga** dokumen. Packing List tetap dibuat program karena sudah
+ada, tapi perlu dipastikan apakah masih dipakai. Jangan dihapus sebelum dijawab.
+
+### Celah yang masih ada di program
+
+`sapu/bot.py` baru **mendaftar** PO yang siap (`draf.append(...)`), belum benar-benar
+memanggil pembuat dokumen. Jadi janji "otomatis keluar draf pertama, dan ikut
+diperbarui kalau direvisi" **belum terpenuhi seluruhnya**. Perubahan sudah
+terdeteksi dan dilaporkan; yang kurang hanya langkah membuat ulang berkasnya.
+
+### Berkas alur kerja di Drive
+
+`ALUR KERJA SISTEM OTOMATISASI HAPPY PUMPKIN`, tujuh bagian: ALUR UTAMA,
+ATURAN SELALU UPDATE, KARAKTERISTIK CUSTOMER, ISI TIAP DOKUMEN, SUMBER ANGKA,
+SUDAH PASTI, MENUNGGU KONFIRMASI. Pembuatnya `alat/alur_kerja.py`.
