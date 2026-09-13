@@ -359,7 +359,10 @@ def buat_parser() -> argparse.ArgumentParser:
         "faktur-pajak",
         help="Satu berkas format Coretax berisi semua PO, untuk unggah borongan")
     f.add_argument("po", nargs="?", help="Saring PO tertentu (opsional)")
-    f.add_argument("--berkas")
+    # JANGAN tambahkan --berkas di sini. Pernah ada, dan diam-diam menimpa
+    # --berkas milik perintah induk dengan None, sehingga
+    # "jalankan.py --berkas juli.xlsx faktur-pajak" membuat faktur pajak
+    # dari order sheet bulan lain tanpa memberi tahu siapa pun.
     f.add_argument("--nomor")
     f.add_argument("--abaikan-pencocokan", action="store_true", dest="abaikan_pencocokan")
     f.set_defaults(fungsi=perintah_faktur_pajak)

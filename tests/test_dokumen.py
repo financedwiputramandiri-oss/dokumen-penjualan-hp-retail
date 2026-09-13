@@ -108,16 +108,24 @@ def test_invoice_satu_tabel_menerus_dan_total_cocok(bahan, tmp_path):
     judul = [r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "No."]
     assert len(judul) == 1, "invoice tidak boleh dipecah per tabel"
 
-    # jumlah kolom H pada baris data harus sama dengan nett order sheet
-    # Faktur asli: kolom H = Jumlah KOTOR, kolom G = Nilai Diskon.
-    # Nilai bersihnya = jumlah H dikurangi jumlah G.
+    # Faktur asli DPM: kolom H = Jumlah SETELAH diskon, kolom G = Nilai
+    # Diskon, kolom E x kolom D = nilai kotor. Dibuktikan pada
+    # 0310726 MAE BEBE: 18 x 62.900 = 1.132.200, G = 283.050, H = 849.150.
+    # Jadi jumlah kolom H harus sama dengan nett order sheet, dan
+    # H + G harus sama dengan qty x harga baris per baris.
     r = _baris_data_pertama(ws, judul[0])
-    kotor = diskon = 0.0
+    jumlah_h = 0.0
     while isinstance(ws.cell(r, 1).value, int):
-        kotor += ws.cell(r, 8).value or 0
-        diskon += ws.cell(r, 7).value or 0
+        qty = ws.cell(r, 4).value or 0
+        harga = ws.cell(r, 5).value or 0
+        nilai_diskon = ws.cell(r, 7).value or 0
+        h = ws.cell(r, 8).value or 0
+        assert abs((h + nilai_diskon) - qty * harga) < 0.01, (
+            f"baris {r}: kolom H bukan nilai setelah diskon"
+        )
+        jumlah_h += h
         r += 1
-    assert abs((kotor - diskon) - k.nett_total) < 0.01
+    assert abs(jumlah_h - k.nett_total) < 0.01
     assert abs(ringkas["nett"] - k.nett_total) < 0.01
     assert ringkas["qty"] == o.qty
     # warna tidak boleh muncul di invoice
@@ -271,6 +279,19 @@ def test_invoice_judul_tabel_tiga_tingkat(bahan, tmp_path):
     assert ws.cell(12, 7).value == "Nilai" and ws.cell(13, 7).value == "Diskon"
     assert ws.cell(12, 8).value == "Jumlah"
     assert isinstance(ws.cell(15, 1).value, int), "data mulai baris 15"
+
+
+def test_invoice_persen_diskon_di_bawah_labelnya(bahan, tmp_path):
+    """Persen diskon ada di F13, bukan F14.
+
+    Faktur asli 0010726 BABY WISE dan 0310726 MAE BEBE sama-sama menaruh
+    label "Diskon " sendirian di F12 dan persennya di sel gabungan F13:F14.
+    Versi lama terbalik: label digabung F12:F13 dan persen jatuh ke F14.
+    """
+    ws = _invoice_jadi(bahan, tmp_path)
+    assert str(ws.cell(12, 6).value).strip() == "Diskon"
+    assert ws.cell(13, 6).value not in (None, ""), "persen diskon harus di F13"
+    assert "F13:F14" in {str(m) for m in ws.merged_cells.ranges}
 
 
 def test_invoice_memuat_blok_rekening(bahan, tmp_path):

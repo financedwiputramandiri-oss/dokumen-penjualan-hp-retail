@@ -194,9 +194,21 @@ def tulis(berkas, kumpulan, perusahaan) -> HasilCoretax:
             hasil.peringatan.append(
                 "ID TKU Penjual (22 digit NITKU) belum diisi — wajib menurut DJP."
             )
-        if not baris_f.get("Alamat Pembeli"):
+        nama_pembeli = baris_f.get("Nama Pembeli")
+        acuan = baris_f.get("Referensi") or "(tanpa acuan)"
+        if not nama_pembeli:
+            # Coretax menolak faktur tanpa nama pembeli. Ini terjadi kalau
+            # tab PO belum dikenali di config/customer.csv — lebih sering
+            # daripada yang disangka: order sheet Juli 2026 punya 22 tab
+            # seperti itu dari 30.
             hasil.peringatan.append(
-                f"Alamat pembeli '{baris_f.get('Nama Pembeli')}' belum diisi."
+                f"{acuan}: nama pembeli kosong karena customernya belum "
+                "terdaftar. Tambahkan di config/customer.csv — Coretax akan "
+                "menolak faktur tanpa nama pembeli."
+            )
+        elif not baris_f.get("Alamat Pembeli"):
+            hasil.peringatan.append(
+                f"Alamat pembeli '{nama_pembeli}' belum diisi."
             )
         r_f += 1
 

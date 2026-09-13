@@ -1091,3 +1091,121 @@ kurang sebelum berkasnya layak diunggah.
 NITKU dilihat di Coretax: Profil Wajib Pajak -> Tempat Kegiatan Usaha.
 
 Delapan tes mengunci formatnya. Tes 102 -> 110.
+
+## 18. Uji silang dengan faktur asli Juli 2026 — 13 September 2026
+
+Yosua minta contoh dokumen dari bulan lain. Dipilih **Juli 2026** dengan
+sengaja, karena folder faktur asli `1KqROb51...` juga berisi Juli 2026 —
+jadi hasil program bisa diadu langsung dengan berkas yang benar-benar
+dikirim ke customer.
+
+Dibandingkan baris per baris: `0310726 MAE BEBE JONNI SETIADI` dan
+`0010726 BABY WISE` melawan keluaran program untuk `PO 17 Juli - Mae Bebe`
+dan `PO 07 Juli - Baby Wise`.
+
+### Dua cacat format yang baru ketahuan
+
+**1. Kolom H (Jumlah) berisi nilai SETELAH diskon, bukan nilai kotor.**
+
+Bagian 16 mencatat sebaliknya, dan itu SALAH. Buktinya aritmetika faktur
+asli sendiri, pada dua berkas berbeda:
+
+| Berkas | Baris | Qty x Harga | Nilai Diskon (G) | Jumlah (H) |
+|---|---|---:|---:|---:|
+| 0310726 MAE BEBE | 1 | 18 x 62.900 = 1.132.200 | 283.050 | **849.150** |
+| 0010726 BABY WISE | 1 | 2 x 53.900 = 107.800 | 26.950 | **80.850** |
+
+Jumlah seluruh kolom H sama dengan baris **Total**, bukan **Subtotal**.
+Pada Mae Bebe: jumlah H = 11.932.650 = Total. Subtotal 15.910.200 adalah
+jumlah kotor yang tidak pernah muncul di kolom mana pun.
+
+Sudah diperbaiki. Tesnya kini memeriksa `H + G = Qty x Harga` di **setiap**
+baris, bukan hanya totalnya — supaya cacat semacam ini tidak bisa lolos
+lagi hanya karena totalnya kebetulan cocok.
+
+**2. Persen diskon ada di F13, bukan F14.**
+
+Faktur asli: `F12` berisi label `Diskon ` sendirian, `F13:F14` digabung
+berisi persennya. Versi lama terbalik — `F12:F13` digabung untuk label dan
+persennya jatuh ke `F14`.
+
+### Hasil setelah perbaikan
+
+Invoice Mae Bebe keluaran program sekarang **sama persis** dengan faktur
+asli, sel demi sel, kecuali harga 2 artikel (lihat di bawah). Surat Jalan
+cocok **seluruhnya**: kedua tabel bertumpuk, 24 baris, kode artikel, warna,
+letak kolom ukuran, qty per ukuran, sampai total 288 pcs.
+
+### Harga Milo Set berbeda — order sheet Juli tertinggal
+
+Satu-satunya selisih angka:
+
+| Artikel | Faktur asli 0310726 | Order Sheet Juli 2026 |
+|---|---:|---:|
+| `42022.A` Milo Set (Small Size) | 61.000 | 49.400 |
+| `4202200.A` Milo Set (Big Size) | 69.500 | 55.400 |
+
+Ditelusuri ke seluruh arsip: harga 61.000 / 69.500 **hanya ada di**
+`Order Sheet Agustus 2026 Harga Baru`. Juni 2026, Juli 2026, dan
+Agustus 2026 Harga Lama semuanya masih 49.400 / 55.400.
+
+Artinya faktur yang diterbitkan 28 Juli 2026 **sudah memakai harga baru**,
+padahal order sheet Juli tidak pernah ikut diperbarui. Dampaknya pada satu
+PO ini saja:
+
+| | Faktur asli | Dari order sheet Juli |
+|---|---:|---:|
+| Subtotal | 15.910.200 | 14.985.000 |
+| Total (nett) | 11.932.650 | 11.238.750 |
+| **Selisih** | | **693.900** |
+
+**Jangan ditambal program.** Program benar membaca order sheetnya; yang
+perlu dipastikan Yosua adalah mana yang berlaku untuk Juli — harga lama
+atau harga baru — lalu order sheetnya yang dirapikan.
+
+### Tanggal dokumen bukan tanggal PO
+
+Faktur asli 0310726 bertanggal **28 Juli 2026**, sedangkan tabnya
+`PO 17 Juli`. Program memakai tanggal PO. Perlu dipastikan Yosua apakah
+tanggal dokumen harus tanggal terbit (hari dicetak) atau tanggal PO.
+
+### Cacat `--berkas` ditelan sub-perintah faktur-pajak
+
+    python3 jalankan.py --berkas "order sheet Juli.xlsx" faktur-pajak
+
+diam-diam membaca `data/order_sheet.xlsx` (bulan lain) dan tetap melapor
+"berhasil". Sebabnya sub-perintah `faktur-pajak` mendeklarasikan `--berkas`
+sendiri; argparse memakai satu namespace, jadi yang belakangan menimpa yang
+depan dengan `None`.
+
+Faktur pajak bulan yang salah adalah kesalahan yang mahal. Sudah dihapus,
+dan dikunci `tests/test_cli_argumen.py` yang menyisir SEMUA sub-perintah,
+bukan hanya yang ini.
+
+### Order sheet Juli 2026 jauh lebih besar dari Agustus
+
+| | Juli 2026 | Agustus 2026 |
+|---|---:|---:|
+| PO berisi data | **30** | 16 |
+| Baris | 1.334 | 1.194 |
+| Qty | 10.689 pcs | 8.600 pcs |
+| Sebelum diskon | Rp771.475.700 | Rp561.768.900 |
+| Nilai bersih | Rp582.599.096 | Rp424.156.009 |
+
+Ke-30 PO **COCOK** dengan baris TOTAL masing-masing tab.
+
+Dua hal yang perlu Yosua rapikan di order sheet Juli:
+
+1. **6 tab bernama `Sheet4` sampai `Sheet9`** berisi data PO sungguhan
+   (masing-masing 5-56 baris, sampai 621 pcs) tapi tidak punya nama
+   customer. Program tidak bisa menebak ini milik siapa.
+2. **22 dari 30 PO customernya belum terdaftar** di `config/customer.csv`,
+   antara lain Liz & Co (Surabaya/Bali), Babyland, Piikmii, Halo Baby,
+   Mulia Makmur, Millenium, Erka Kids, Joy Baby, HUMAIRAA, Ayleen,
+   Katamama Cikaret.
+
+Untuk faktur pajak ini fatal: Coretax menolak faktur tanpa nama pembeli.
+Peringatannya sekarang menyebut nama tabnya satu per satu, bukan tanda
+petik kosong.
+
+Tes 110 -> 113.

@@ -157,13 +157,15 @@ def buat_invoice(
         gaya.sel_judul(ws, j, kolom, atas)
         ws.merge_cells(start_row=j + 1, start_column=kolom, end_row=j + 2, end_column=kolom)
         gaya.sel_judul(ws, j + 1, kolom, bawah)
-    # kolom Diskon: judulnya di atas, persennya di bawah
-    ws.merge_cells(start_row=j, start_column=6, end_row=j + 1, end_column=6)
+    # Kolom Diskon: label "Diskon " sendirian di baris judul paling atas,
+    # persennya di sel gabungan dua baris di bawahnya. Persis seperti
+    # 0010726 BABY WISE dan 0310726 MAE BEBE: F12 label, F13:F14 persen.
     gaya.sel_judul(ws, j, 6, "Diskon ")
+    ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
     if teks_persen:
-        gaya.sel_judul(ws, j + 2, 6, teks_persen)
+        gaya.sel_judul(ws, j + 1, 6, teks_persen)
     else:
-        sel = gaya.sel_judul(ws, j + 2, 6, angka_persen or 0)
+        sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0)
         sel.number_format = "0%"
 
     # ---- isi tabel ------------------------------------------------------
@@ -182,7 +184,11 @@ def buat_invoice(
         gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
         gaya.sel_isi(ws, r, 6, diskon_satuan, angka=gaya.FORMAT_RP)
         gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP)
+        # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada faktur
+        # asli: 0310726 MAE BEBE baris 1 -> 18 x 62.900 = 1.132.200, diskon
+        # 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama dengan
+        # baris "Total", bukan "Subtotal".
+        gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP)
         r += 1
     akhir = r - 1
     gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
