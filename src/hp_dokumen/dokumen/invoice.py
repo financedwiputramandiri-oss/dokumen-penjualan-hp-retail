@@ -29,7 +29,38 @@ KOLOM_TERAKHIR = 8          # A..H, persis seperti faktur asli DPM
 BARIS_KOP = 2               # kop mulai baris 2 (baris 1 dibiarkan kosong)
 BARIS_JUDUL = 12            # baris judul tabel: 12-14, tiga baris bertingkat
 BARIS_DATA = 15             # baris pertama data
-LEBAR = {1: 4.3, 2: 12.6, 3: 39.4, 4: 5.0, 5: 12.1, 6: 12.6, 7: 12.6, 8: 15.6}
+# Lebar kolom diambil dari faktur asli DPM 0010726 BABY WISE. Jumlah A..H
+# 107,7 satuan — muat satu halaman A4 tegak dengan margin 0,15 inci.
+# Versi lama memakai kolom C selebar 39,4 dan tabelnya terpotong saat dicetak.
+LEBAR = {1: 4.0, 2: 15.6, 3: 29.9, 4: 4.9, 5: 12.1, 6: 12.7, 7: 13.6, 8: 15.6}
+
+# Jatah lebar A..H yang masih muat satu halaman A4 tegak. Kolom B dan C boleh
+# melebar mengikuti isinya, tapi jumlah keduanya tidak boleh melewati jatah ini.
+JATAH_A4 = sum(LEBAR.values())
+MIN_KODE, MAKS_KODE = 11.0, 23.0
+MIN_DESKRIPSI = 22.0
+
+
+def lebar_menyesuaikan(baris) -> dict:
+    """Lebarkan kolom ARTICLE CODE dan DESKRIPSI mengikuti isi terpanjang.
+
+    Lebar tetap seperti faktur asli memotong kode panjang macam
+    `71092.S (Bottom/Celana)` menjadi `71092.S (Bottom/Celan` — di invoice itu
+    fatal, customer tidak bisa tahu barang mana yang ditagih.
+
+    Yang melebar hanya B dan C, dan keduanya berbagi satu jatah tetap, jadi
+    jumlah A..H tidak pernah berubah dan dokumennya tetap muat A4 tegak.
+    """
+    lebar = dict(LEBAR)
+    if not baris:
+        return lebar
+    huruf = 1.05  # perkiraan lebar satu huruf Calibri 10 dalam satuan kolom
+    kode = max(len(str(b.kode)) for b in baris) * huruf + 1.5
+    lebar[2] = min(max(kode, MIN_KODE), MAKS_KODE)
+    sisa = JATAH_A4 - sum(v for k, v in lebar.items() if k != 3)
+    deskripsi = max(len(str(b.deskripsi)) for b in baris) * huruf + 1.5
+    lebar[3] = max(min(deskripsi, sisa), MIN_DESKRIPSI)
+    return lebar
 
 
 @dataclass
@@ -132,8 +163,6 @@ def buat_invoice(
     G-H dan informasi rekening di kolom B.
     """
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
-    for kolom, lebar in LEBAR.items():
-        ws.column_dimensions[gaya.huruf(kolom)].width = lebar
 
     gaya.kop_dpm(
         ws, perusahaan,
@@ -174,6 +203,10 @@ def buat_invoice(
         pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
+    # Lebar kolom dipasang di sini, setelah isinya diketahui.
+    for kolom, lebar in lebar_menyesuaikan(baris).items():
+        ws.column_dimensions[gaya.huruf(kolom)].width = lebar
+
     r = BARIS_DATA
     for i, b in enumerate(baris, start=1):
         diskon_satuan = (b.diskon / b.qty) if b.qty else 0.0
@@ -216,6 +249,13 @@ def buat_invoice(
     rekening = perusahaan.baris_rekening()
     for i, teks in enumerate(rekening):
         gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=(i == 0))
+
+    # Kedua blok diberi garis kotak, persis seperti faktur asli: satu kotak
+    # mengelilingi blok penutup Subtotal..Total, satu lagi mengelilingi blok
+    # rekening. Tanpa ini keduanya melayang tanpa batas dan sulit dibaca.
+    gaya.kotak(ws, p, 7, p + len(penutup) - 1, 8)
+    if rekening:
+        gaya.kotak(ws, p + 1, 2, p + len(rekening), 3)
 
     baris_hormat = p + len(penutup)
     ws.merge_cells(start_row=baris_hormat, start_column=7, end_row=baris_hormat, end_column=8)

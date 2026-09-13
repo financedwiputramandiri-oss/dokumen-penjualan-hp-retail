@@ -1209,3 +1209,106 @@ Peringatannya sekarang menyebut nama tabnya satu per satu, bukan tanda
 petik kosong.
 
 Tes 110 -> 113.
+
+## 19. Siap cetak A4 — 13 September 2026
+
+Yosua melaporkan tiga hal dari contoh Juli: blok "PEMBAYARAN DITRANSFER KE
+REKENING" dan blok penutup Subtotal tidak berkotak, dan lebar kolom belum
+pas untuk kertas A4. Untuk Surat Jalan ia memberi berkas acuan baru:
+`FA 030426 TOKO BABY FAME (MTN)` — `1bIKVDfPgetI5Lnr_I-S9PloiU2VlgSPA`.
+
+### Surat Jalan ternyata dicetak TEGAK, bukan mendatar
+
+Cacat paling menentukan. Program memakai `landscape=True`, padahal **semua**
+Surat Jalan asli portrait — baik yang DPM maupun yang MTN:
+
+| Berkas | Kertas | Arah | fitToPage | Skala |
+|---|---|---|---|---|
+| FA 030426 BABY FAME (MTN) | A4 (paperSize 9) | portrait | ya | 93 |
+| 0010726 BABY WISE (DPM) | — | portrait | ya | — |
+| 0310726 MAE BEBE (DPM) | — | portrait | ya | 93 |
+
+Karena itu dokumen tidak pernah pas di A4 yang dipakai divisi.
+
+### Lebar kolom diambil dari berkas asli, bukan dikira-kira
+
+Faktur asli (jumlah A..H):
+
+| Berkas | A | B | C | D | E | F | G | H | Jumlah |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0010726 BABY WISE | 4,00 | 15,57 | 29,86 | 4,29 | 12,14 | 12,71 | 13,57 | 15,57 | **107,7** |
+| 0310726 MAE BEBE | 4,14 | 10,86 | 33,29 | 4,86 | 14,29 | 14,00 | 15,00 | 16,57 | 113,0 |
+| versi lama program | 4,30 | 12,60 | **39,40** | 5,00 | 12,10 | 12,60 | 12,60 | 15,60 | 114,2 |
+
+Margin faktur asli juga jauh lebih sempit dari bawaan Excel:
+0,13-0,15 kiri/kanan, bukan 0,7. Margin bawaan itu sendiri sudah cukup
+untuk mendorong tabel ke halaman kedua.
+
+Surat Jalan asli: deskripsi barang +-29 satuan (C+D+E digabung di DPM,
+kolom C tunggal di MTN — dua-duanya berujung di angka yang sama), WARNA
++-10,3, kolom ukuran sempit, Qty +-7.
+
+### Lebar kolom invoice sekarang menyesuaikan isi
+
+Lebar tetap memotong kode artikel panjang. Pada contoh Mei 2026,
+`71092.S (Bottom/Celana)` tercetak jadi `71092.S (Bottom/Celan` — di invoice
+itu fatal, customer tidak bisa tahu barang mana yang ditagih.
+
+Aturannya: kolom B dan C berbagi satu **jatah tetap** (`JATAH_A4`, jumlah
+lebar A..H dari faktur asli). B melebar mengikuti kode terpanjang, dibatasi
+11-23 satuan; sisanya untuk C, minimal 22. Karena jatahnya tetap, jumlah
+A..H tidak pernah bertambah dan dokumennya tetap muat A4 tegak.
+
+### Yang dikunci tes
+
+`tests/test_cetak_a4.py`:
+
+1. Blok penutup dan blok rekening invoice punya garis kotak mengelilinginya.
+2. Invoice, Surat Jalan, dan Packing List semuanya A4 **tegak** dengan
+   `fitToWidth=1` dan `fitToPage=True`.
+3. Jumlah lebar kolom sampai kolom cetak terakhir tidak lebih dari 115
+   satuan — cukup longgar untuk Surat Jalan sembilan ukuran, tapi tetap
+   menangkap kolom kebablasan seperti C selebar 39,4.
+4. Lebar yang menyesuaikan isi tidak pernah melebihi jatah A4.
+
+`gaya.kotak()` sengaja hanya menggambar garis di **tepi** blok dan
+mempertahankan garis sel yang sudah ada, supaya tidak berubah jadi kisi-kisi.
+
+### Dibuktikan pada PDF sungguhan, bukan pada pengaturan saja
+
+Kedelapan contoh 2026 diubah ke PDF lewat LibreOffice lalu diperiksa:
+ke-16 berkas ber-MediaBox 595 x 842 pt — **A4 tegak persis**. Diperiksa juga
+isi halaman pertama Surat Jalan Miniku (288 baris, 5 halaman): kolom paling
+kanan (Qty) ikut tercetak di halaman yang sama, jadi halaman banyak itu
+memanjang ke bawah, bukan terpotong ke samping.
+
+### Yang BELUM diubah dan perlu dipastikan Yosua
+
+Berkas acuan yang diberikan kali ini milik **CV. Mutiara Timur Nusantara**,
+dan tata letaknya berbeda dari Surat Jalan DPM:
+
+| | Surat Jalan DPM | Surat Jalan MTN |
+|---|---|---|
+| Kolom terpakai | A..M | A..K |
+| Deskripsi barang | C:E digabung | C tunggal |
+| Kolom WARNA | F | D |
+| Kolom ukuran | G.. | E..J |
+| Kepala dokumen | kop + Kepada Yth. | label CUSTOMER / SURAT JALAN / TANGGAL |
+| Baris BRAND | ada | tidak ada |
+
+**Hanya lebar kolom dan pengaturan cetaknya yang diambil.** Tata letak DPM
+dipertahankan, sebab bagian 18 baru saja membuktikan Surat Jalan program
+cocok seluruhnya dengan Surat Jalan DPM asli. Kalau tata letak MTN yang
+dipakai untuk semua, kecocokan itu hilang.
+
+Perlu dijawab Yosua: apakah dokumen MTN memang memakai tata letak sendiri
+(kalau ya, program perlu dua tata letak, dipilih dari kolom
+`perusahaan_pemroses`), atau MTN yang menyusul mengikuti DPM.
+
+### Nomor dokumen pada contoh 8 bulan
+
+Contoh Januari-Agustus 2026 memakai nomor urut `001` tiap bulan
+(`0010126` sampai `0010826`). Itu **nomor contoh**, bukan nomor terbit.
+Nomor urut yang sebenarnya tetap tidak ditebak program.
+
+Tes 113 -> 118.

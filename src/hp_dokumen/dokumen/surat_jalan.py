@@ -37,7 +37,15 @@ BARIS_KALIMAT = 9
 BARIS_MEREK = 10
 BARIS_TABEL = 12
 
-LEBAR = {1: 5.0, 2: 14.0, 3: 5.6, 4: 5.6, 5: 21.3, 6: 12.0}
+# Lebar kolom diambil dari Surat Jalan asli: 0010726 BABY WISE (DPM) dan
+# FA 030426 TOKO BABY FAME (MTN). Keduanya sama-sama A4 TEGAK, dengan
+# deskripsi barang selebar +-29 satuan (C+D+E yang digabung) dan kolom
+# ukuran yang sempit. Kolom ukuran disetel 5,6 supaya sembilan kolom pun
+# tetap muat satu halaman A4 tegak.
+LEBAR = {1: 5.0, 2: 15.3, 3: 5.6, 4: 5.6, 5: 18.1, 6: 10.3}
+LEBAR_UKURAN = 5.6      # tiap kolom ukuran (G dan seterusnya)
+LEBAR_QTY = 7.0         # kolom Qty paling kanan
+LEBAR_GUDANG = 11.0     # kolom JUMLAH DIKIRIM / NO. KOLI pada Packing List
 KALIMAT = "Diterima dengan baik barang-barang tersebut dibawah ini :"
 
 
@@ -127,6 +135,14 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     kolom_akhir = _kolom_terakhir(order, len(kolom_gudang))
     for kolom, lebar in LEBAR.items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
+    # Kolom ukuran, Qty, dan kolom gudang tidak bisa ditulis tetap seperti di
+    # atas: jumlahnya ikut berapa banyak ukuran yang benar-benar terpakai.
+    kolom_qty = kolom_akhir - len(kolom_gudang)
+    for kolom in range(KOL_UKURAN_MULAI, kolom_qty):
+        ws.column_dimensions[gaya.huruf(kolom)].width = LEBAR_UKURAN
+    ws.column_dimensions[gaya.huruf(kolom_qty)].width = LEBAR_QTY
+    for kolom in range(kolom_qty + 1, kolom_akhir + 1):
+        ws.column_dimensions[gaya.huruf(kolom)].width = LEBAR_GUDANG
 
     gaya.kop_dpm(
         ws, perusahaan,
@@ -153,7 +169,11 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
 
     r += 1
     gaya.blok_tanda_tangan(ws, r, [2, 5, 10], ["Pengirim :", "Penerima : ", "Mengetahui :"])
-    gaya.siapkan_cetak(ws, kolom_akhir, landscape=True)
+    # Surat Jalan asli dicetak TEGAK, bukan mendatar — baik yang DPM
+    # (0010726 BABY WISE) maupun yang MTN (FA 030426 TOKO BABY FAME).
+    # Versi lama memakai landscape dan hasilnya tidak cocok dengan
+    # kertas A4 yang dipakai divisi.
+    gaya.siapkan_cetak(ws, kolom_akhir, landscape=False)
 
 
 def buat_surat_jalan(ws, order, customer, perusahaan, nomor: str, tanggal_dokumen=None) -> None:

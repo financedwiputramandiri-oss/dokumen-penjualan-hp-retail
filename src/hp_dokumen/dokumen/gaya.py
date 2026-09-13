@@ -123,6 +123,26 @@ def beri_garis(ws: Worksheet, r1: int, c1: int, r2: int, c2: int) -> None:
             ws.cell(r, c).border = GARIS
 
 
+def kotak(ws: Worksheet, r1: int, c1: int, r2: int, c2: int,
+          tebal: str = "medium") -> None:
+    """Beri garis kotak MENGELILINGI satu blok, tanpa garis di dalamnya.
+
+    Dipakai untuk blok rekening dan blok penutup invoice, supaya keduanya
+    terbaca sebagai satu kotak seperti di faktur asli DPM — bukan kisi-kisi
+    per sel. Garis dalam sel yang sudah ada dipertahankan.
+    """
+    sisi = Side(style=tebal, color="000000")
+    for r in range(r1, r2 + 1):
+        for c in range(c1, c2 + 1):
+            g = ws.cell(r, c).border
+            ws.cell(r, c).border = Border(
+                left=sisi if c == c1 else g.left,
+                right=sisi if c == c2 else g.right,
+                top=sisi if r == r1 else g.top,
+                bottom=sisi if r == r2 else g.bottom,
+            )
+
+
 def atur_lebar(ws: Worksheet, lebar: dict[int, float]) -> None:
     for kolom, w in lebar.items():
         ws.column_dimensions[get_column_letter(kolom)].width = w
@@ -137,10 +157,13 @@ def siapkan_cetak(ws: Worksheet, kolom_terakhir: int, *, landscape: bool = False
     ws.page_setup.fitToHeight = 0
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
     ws.print_options.horizontalCentered = False
-    ws.page_margins.left = 0.4
-    ws.page_margins.right = 0.4
-    ws.page_margins.top = 0.5
-    ws.page_margins.bottom = 0.5
+    # Margin diambil dari faktur asli DPM (0010726 BABY WISE dan
+    # 0310726 MAE BEBE). Margin bawaan Excel 0,7 inci membuat tabel
+    # terdorong ke halaman kedua saat dicetak di A4.
+    ws.page_margins.left = 0.15
+    ws.page_margins.right = 0.15
+    ws.page_margins.top = 0.2
+    ws.page_margins.bottom = 0.25
     ws.print_area = f"A1:{get_column_letter(kolom_terakhir)}{max(ws.max_row, 1)}"
 
 
