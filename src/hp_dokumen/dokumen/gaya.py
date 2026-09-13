@@ -149,3 +149,115 @@ def blok_tanda_tangan(ws: Worksheet, baris: int, kolom: list[int], label: list[s
         _tulis(ws, baris, c, teks, size=10)
         _tulis(ws, baris + 4, c, "(................................)", size=9)
     return baris + 5
+
+
+def pecah_alamat(alamat: str, maksimal: int = 4) -> list[str]:
+    """Pecah alamat satu baris jadi beberapa baris pendek seperti faktur asli.
+
+    Faktur DPM menulis alamat customer 3-4 baris, dipotong di koma. Kalau
+    dijejalkan satu baris panjang, kopnya tidak seperti aslinya.
+    """
+    if not alamat or not alamat.strip():
+        return []
+    bagian = [x.strip() for x in alamat.split(",") if x.strip()]
+    if len(bagian) <= maksimal:
+        return bagian
+    # gabungkan kelebihannya ke baris terakhir supaya tidak ada yang hilang
+    kepala = bagian[: maksimal - 1]
+    return kepala + [", ".join(bagian[maksimal - 1:])]
+
+
+def kop_dpm(
+    ws: Worksheet,
+    perusahaan,
+    *,
+    nama_customer: str,
+    alamat_customer: str,
+    tanggal_dokumen: Optional[date],
+    baris_mulai: int,
+    kolom_kanan: int,
+) -> None:
+    """Kop surat persis seperti faktur asli CV Dwi Putra Mandiri.
+
+    Susunannya diambil dari berkas asli di Drive (0250726 KATAMAMA TAPOS,
+    0010726 BABY WISE): ruang logo di kolom A-B yang digabung, teks perusahaan
+    di kolom C, lalu tanggal dan "Kepada Yth." di kolom kanan.
+
+    JANGAN diubah tanpa memeriksa ulang berkas aslinya. Divisi mengenali
+    fakturnya dari bentuk ini.
+    """
+    r = baris_mulai
+
+    # ---- ruang logo: A..B digabung setinggi blok teks -------------------
+    ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=2)
+    logo = perusahaan.berkas_logo()
+    if logo:
+        try:
+            from openpyxl.drawing.image import Image as XlImage
+
+            img = XlImage(str(logo))
+            if img.height:
+                rasio = img.width / img.height
+                img.height = 70
+                img.width = int(70 * rasio)
+            ws.add_image(img, f"A{r}")
+        except Exception:  # logo rusak tidak boleh menggagalkan dokumen
+            pass
+
+    # ---- teks perusahaan di kolom C ------------------------------------
+    _tulis(ws, r, 3, perusahaan.nama, bold=True, size=11)
+    for i, baris_alamat in enumerate(perusahaan.alamat_baris, start=1):
+        _tulis(ws, r + i, 3, baris_alamat, size=9)
+
+    # ---- blok kanan: tanggal, Kepada Yth., nama, alamat ----------------
+    k = kolom_kanan
+    _tulis(ws, r, k, f"{perusahaan.kota_penerbitan}, {tanggal_indonesia(tanggal_dokumen)}", size=10)
+    _tulis(ws, r + 1, k, "Kepada Yth.", size=10)
+    _tulis(ws, r + 2, k, nama_customer or "(nama customer belum diisi)", bold=True, size=10)
+    baris_alamat_cust = pecah_alamat(alamat_customer)
+    if not baris_alamat_cust:
+        baris_alamat_cust = ["(alamat belum diisi)"]
+    for i, teks in enumerate(baris_alamat_cust, start=3):
+        _tulis(ws, r + i, k, teks, size=9)
+
+
+def judul_faktur(ws: Worksheet, baris: int, nomor: str, merek: str = "HAPPY PUMPKIN") -> None:
+    """Dua baris penanda di bawah kop: nomor faktur dan merek.
+
+    Faktur asli selalu memuat keduanya. Baris BRAND sempat tidak ada di versi
+    sebelumnya dan itu salah satu yang membuat hasilnya terlihat berbeda.
+    """
+    _tulis(ws, baris, 1, f"FAKTUR No. {nomor}", bold=True, size=11)
+    _tulis(ws, baris + 1, 1, f"BRAND :  {merek}", bold=True, size=10)
+
+
+# ---------------------------------------------------------------- pembantu
+FORMAT_RP = "#,##0"
+
+
+def huruf(kolom: int) -> str:
+    from openpyxl.utils import get_column_letter
+
+    return get_column_letter(kolom)
+
+
+def sel_judul(ws: Worksheet, baris: int, kolom: int, teks):
+    """Sel judul tabel: tebal, rata tengah, berbingkai."""
+    sel = ws.cell(baris, kolom, teks)
+    sel.font = Font(name=FONT, size=9, bold=True)
+    sel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    sel.border = GARIS
+    return sel
+
+
+def sel_isi(ws: Worksheet, baris: int, kolom: int, nilai, *, rata: str = "left",
+            angka: Optional[str] = None, tebal: bool = False):
+    """Sel isi tabel."""
+    sel = ws.cell(baris, kolom, nilai)
+    sel.font = Font(name=FONT, size=9, bold=tebal)
+    sel.alignment = Alignment(horizontal=rata, vertical="center")
+    if angka:
+        sel.number_format = angka
+        if rata == "left":
+            sel.alignment = Alignment(horizontal="right", vertical="center")
+    return sel

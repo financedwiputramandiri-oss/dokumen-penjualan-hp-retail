@@ -29,6 +29,24 @@ def bahan(tmp_path_factory):
     return orders, daftar, perusahaan, Pengaturan()
 
 
+def _ada_mengandung(ws, kolom, potongan):
+    """Cari baris yang isinya MEMUAT potongan teks (bukan sama persis)."""
+    return any(potongan in str(ws.cell(r, kolom).value or "")
+               for r in range(1, ws.max_row + 1))
+
+
+def _baris_data_pertama(ws, baris_judul):
+    """Baris data pertama sesudah judul tabel.
+
+    Judul invoice asli bertingkat tiga baris, jadi data TIDAK mulai tepat di
+    bawah baris "No." seperti anggapan versi sebelumnya.
+    """
+    r = baris_judul + 1
+    while r <= ws.max_row and not isinstance(ws.cell(r, 1).value, int):
+        r += 1
+    return r
+
+
 def _cari_baris(ws, kolom, teks):
     for r in range(1, ws.max_row + 1):
         if ws.cell(r, kolom).value == teks:
@@ -47,12 +65,20 @@ def test_surat_jalan_satu_tabel_per_blok(bahan, tmp_path):
     ws = openpyxl.load_workbook(p).active
     judul = [r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "No."]
     assert len(judul) == len(o.blok) == 2, "harus ada satu tabel per blok"
-    total_rows = [r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "TOTAL"]
-    assert len(total_rows) == 2, "tiap tabel punya baris TOTAL sendiri"
-    assert _cari_baris(ws, 1, "TOTAL SELURUH PO") is not None
-    # label ukuran tiap tabel berbeda
-    assert ws.cell(judul[0], 5).value == "0-3M"
-    assert ws.cell(judul[1], 5).value == "1"
+
+    # Judul kolom berbahasa Indonesia, sesuai faktur asli DPM
+    assert ws.cell(judul[0], 2).value == "ARTICLE CODE"
+    assert ws.cell(judul[0], 3).value == "DESKRIPSI BARANG"
+    assert ws.cell(judul[0], 6).value == "WARNA"
+
+    # Faktur asli TIDAK punya baris TOTAL per tabel; jumlahnya di kolom Qty
+    assert not [r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "TOTAL"]
+    assert _ada_mengandung(ws, 1, "BRAND : HAPPY PUMPKIN")
+    assert _ada_mengandung(ws, 1, "Diterima dengan baik")
+
+    # label ukuran tiap tabel diambil dari bloknya sendiri, mulai kolom G
+    assert ws.cell(judul[0], 7).value == "0-3M"
+    assert ws.cell(judul[1], 7).value == "1"
 
 
 def test_packing_list_punya_kolom_gudang(bahan, tmp_path):
@@ -83,12 +109,15 @@ def test_invoice_satu_tabel_menerus_dan_total_cocok(bahan, tmp_path):
     assert len(judul) == 1, "invoice tidak boleh dipecah per tabel"
 
     # jumlah kolom H pada baris data harus sama dengan nett order sheet
-    r = judul[0] + 1
-    jumlah = 0.0
+    # Faktur asli: kolom H = Jumlah KOTOR, kolom G = Nilai Diskon.
+    # Nilai bersihnya = jumlah H dikurangi jumlah G.
+    r = _baris_data_pertama(ws, judul[0])
+    kotor = diskon = 0.0
     while isinstance(ws.cell(r, 1).value, int):
-        jumlah += ws.cell(r, 8).value or 0
+        kotor += ws.cell(r, 8).value or 0
+        diskon += ws.cell(r, 7).value or 0
         r += 1
-    assert abs(jumlah - k.nett_total) < 0.01
+    assert abs((kotor - diskon) - k.nett_total) < 0.01
     assert abs(ringkas["nett"] - k.nett_total) < 0.01
     assert ringkas["qty"] == o.qty
     # warna tidak boleh muncul di invoice
@@ -107,8 +136,7 @@ def test_invoice_penutup_lengkap_dan_berurutan(bahan, tmp_path):
     wb.save(p)
     ws = openpyxl.load_workbook(p).active
     # penutup ada SESUDAH tabel data, jadi mulai memindai dari baris terakhir tabel
-    awal = _cari_baris(ws, 1, "No.")
-    r = awal + 1
+    r = _baris_data_pertama(ws, _cari_baris(ws, 1, "No."))
     while isinstance(ws.cell(r, 1).value, int):
         r += 1
     abaikan = {"Hormat kami,", "(................................)"}
@@ -205,3 +233,71 @@ def test_perusahaan_dipilih_dari_master_customer(tmp_path):
     assert daftar.untuk(lewat_dpm).kenakan_ppn is True
     assert daftar.untuk(belum).kode == "DPM", "kalau kosong, pakai perusahaan bawaan"
     assert daftar.untuk(None).kode == "DPM"
+
+
+# ================= format harus sama dengan faktur asli DPM =================
+# Patokan diambil dari berkas asli di Drive: 0250726 KATAMAMA TAPOS dan
+# 0010726 BABY WISE. Kalau tes di bawah ini gagal, JANGAN diubah begitu saja —
+# periksa dulu berkas aslinya, karena divisi mengenali fakturnya dari bentuk ini.
+
+def _invoice_jadi(bahan, tmp_path, nama="TOP"):
+    orders, daftar, perusahaan, pengaturan = bahan
+    o = next(x for x in orders if nama in x.nama_tab)
+    c = daftar.cari(o.nama_tab)
+    wb = Workbook()
+    buat_invoice(wb.active, o, tentukan_nett(o, c), c, perusahaan, pengaturan, "0250726")
+    p = tmp_path / "inv_format.xlsx"
+    wb.save(p)
+    return openpyxl.load_workbook(p).active
+
+
+def test_invoice_kop_seperti_faktur_asli(bahan, tmp_path):
+    ws = _invoice_jadi(bahan, tmp_path)
+    # ruang logo digabung A2:B6, teks perusahaan di kolom C mulai baris 2
+    assert "A2:B6" in [str(m) for m in ws.merged_cells.ranges]
+    assert ws.cell(2, 3).value, "nama perusahaan harus di kolom C baris 2"
+    assert str(ws.cell(9, 1).value).startswith("FAKTUR No."), "baris FAKTUR No. wajib ada"
+    assert "BRAND" in str(ws.cell(10, 1).value), "baris BRAND wajib ada"
+
+
+def test_invoice_judul_tabel_tiga_tingkat(bahan, tmp_path):
+    ws = _invoice_jadi(bahan, tmp_path)
+    assert ws.cell(12, 1).value == "No."
+    assert ws.cell(12, 2).value == "ARTICLE CODE"
+    assert ws.cell(12, 3).value == "DESKRIPSI BARANG"
+    assert ws.cell(12, 4).value == "Qty" and ws.cell(13, 4).value == "PCS"
+    assert ws.cell(12, 5).value == "Harga" and ws.cell(13, 5).value == "Satuan"
+    assert str(ws.cell(12, 6).value).strip() == "Diskon"
+    assert ws.cell(12, 7).value == "Nilai" and ws.cell(13, 7).value == "Diskon"
+    assert ws.cell(12, 8).value == "Jumlah"
+    assert isinstance(ws.cell(15, 1).value, int), "data mulai baris 15"
+
+
+def test_invoice_memuat_blok_rekening(bahan, tmp_path):
+    ws = _invoice_jadi(bahan, tmp_path)
+    assert _ada_mengandung(ws, 2, "PEMBAYARAN DITRANSFER KE REKENING")
+    # kalimat pengantar tidak boleh muncul dua kali
+    jumlah = sum("PEMBAYARAN DITRANSFER" in str(ws.cell(r, 2).value or "")
+                 for r in range(1, ws.max_row + 1))
+    assert jumlah == 1, "baris rekening kembar"
+
+
+def test_surat_jalan_tidak_mencetak_kolom_ukuran_yang_kosong(bahan, tmp_path):
+    """Kolom ukuran ke-9 order sheet tidak pernah terisi; jangan dicetak."""
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "001")
+    p = tmp_path / "sj_format.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    for baris_judul in [r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "No."]:
+        kolom = 7
+        while ws.cell(baris_judul, kolom).value not in (None, "", "Qty"):
+            label = str(ws.cell(baris_judul, kolom).value)
+            terpakai = any(ws.cell(rr, kolom).value
+                           for rr in range(baris_judul + 2, baris_judul + 40)
+                           if isinstance(ws.cell(rr, 1).value, int))
+            assert terpakai, f"kolom ukuran '{label}' tercetak tapi kosong"
+            kolom += 1

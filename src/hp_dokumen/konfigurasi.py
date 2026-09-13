@@ -188,6 +188,17 @@ class Perusahaan:
     rekening: list[str]
     kota_penerbitan: str = "Jakarta"
 
+    def baris_rekening(self) -> list[str]:
+        """Blok rekening seperti di faktur asli, diawali kalimat pengantarnya."""
+        if not self.rekening:
+            return []
+        pengantar = "PEMBAYARAN DITRANSFER KE REKENING :"
+        # Sebagian konfigurasi sudah memuat kalimat pengantarnya sendiri.
+        # Kalau ditambahkan lagi, barisnya kembar di faktur.
+        if self.rekening[0].strip().upper().startswith("PEMBAYARAN"):
+            return list(self.rekening)
+        return [pengantar] + list(self.rekening)
+
     def berkas_logo(self) -> Optional[Path]:
         if not self.logo:
             return None

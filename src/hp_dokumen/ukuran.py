@@ -41,8 +41,12 @@ def tulis_untuk_deskripsi(label: str, akhiran_y_untuk_angka: bool) -> str:
 
 
 def deskripsi_dengan_ukuran(nama_barang: str, label: str, akhiran_y_untuk_angka: bool) -> str:
-    """'Alice Ruffle Sleeveless Top Small Size' + '2' -> '... Small Size - 2Y'."""
-    return f"{nama_barang} - {tulis_untuk_deskripsi(label, akhiran_y_untuk_angka)}"
+    """'Luma Satin Kutubaru Kebaya Set Medium Size' + '5-6Y' -> '... Uk. 5-6Y'.
+
+    Pemisahnya ' Uk. ', bukan ' - ', mengikuti faktur asli CV Dwi Putra Mandiri
+    (berkas 0250726 KATAMAMA TAPOS di Drive).
+    """
+    return f"{nama_barang} Uk. {tulis_untuk_deskripsi(label, akhiran_y_untuk_angka)}"
 
 
 def bagi_rata_nilai(total: float, bobot: list[int]) -> list[float]:

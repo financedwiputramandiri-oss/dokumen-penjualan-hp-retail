@@ -954,3 +954,62 @@ batasannya serta jalan keluarnya. Dikunci dua tes. Tes 96 -> 98.
 **Catatan yang belum diuji:** laporan sapuan juga berkas baru, jadi
 kemungkinan besar ikut tertolak. Kalau terbukti begitu, `folder_laporan_id`
 dikosongkan juga.
+
+## 16. Format Invoice & Surat Jalan diperbaiki dari berkas asli — 13 Sep 2026
+
+Yosua melaporkan format invoice dan surat jalan **salah dan berbeda** dari
+format CV Dwi Putra Mandiri, lalu memberi folder berisi faktur asli:
+`1KqROb51kVZx6_kc7fxC4GXOlCb36Pck1` (± 50 berkas, Juli-Agustus 2026).
+
+Berkas acuan yang dibongkar sel per sel:
+
+| Berkas | Kegunaan |
+|---|---|
+| `0250726 KATAMAMA TAPOS.xlsx` | customer per ukuran, Surat Jalan satu tabel |
+| `0310726 MAE BEBE JONNI SETIADI.xlsx` | Surat Jalan BERTUMPUK dua tabel |
+| `0010726 BABY WISE.xlsx` | customer per artikel, faktur berhalaman |
+
+**Tiap berkas punya tab bernama `FORMAT INVOICE` dan `FORMAT SURAT JALAN`.**
+Di situlah tata letak resminya. Kalau suatu saat format berubah lagi, bongkar
+tab itu, jangan mengarang.
+
+### Yang ternyata salah pada versi lama
+
+| Bagian | Versi lama (salah) | Faktur asli |
+|---|---|---|
+| Kop | teks mulai kolom A | ruang logo digabung A2:B6, teks di kolom C |
+| Judul dokumen | `INVOICE` | `FAKTUR No. <nomor>` |
+| Baris BRAND | tidak ada | `BRAND :  HAPPY PUMPKIN` — selalu ada |
+| Baris info PO/termin | ada | tidak ada di faktur asli |
+| Judul tabel invoice | satu baris | **tiga baris bertingkat** (12-14), data mulai baris 15 |
+| Kolom diskon | angka desimal mentah `0.2317...` | `25%` atau `22% + 1,5%` |
+| Kolom H | nilai bersih | **Jumlah KOTOR**; nett = Jumlah - Nilai Diskon |
+| Pemisah ukuran | `... - 3-6M` | `... Uk. 3-6M` |
+| Judul kolom Surat Jalan | PRODUCT NAME / COLOUR / TOTAL | **DESKRIPSI BARANG / WARNA / Qty-PCS** |
+| Deskripsi Surat Jalan | satu kolom | tiga kolom digabung (C:E) |
+| Kalimat pembuka SJ | tidak ada | `Diterima dengan baik barang-barang tersebut dibawah ini :` |
+| Baris TOTAL per tabel SJ | ada | **tidak ada**; jumlah qty ditaruh di kanan baris 9 |
+| Penanda blok | `Kategori 1 dari 2` | tidak ada |
+| Kolom ukuran | semua kolom blok | **hanya yang benar-benar terisi** |
+
+### Yang TERBUKTI benar dan dipertahankan
+
+- **Surat Jalan memang bisa bertumpuk.** Mae Bebe punya dua tabel (sistem
+  ukuran berbeda), Katamama hanya satu. Jadi aturan "satu tabel per blok"
+  benar — bukan selalu bertumpuk, bukan selalu tunggal.
+- Penutup invoice: Subtotal, Diskon, Total, Uang Muka, DPP, PPN 11%, Total.
+- DPP dihitung mundur `Total x 100/111`.
+- Blok rekening di kolom B, sejajar penutup.
+
+### Catatan teknis
+
+- `config/perusahaan.yaml` sudah memuat kalimat "PEMBAYARAN DITRANSFER KE
+  REKENING :" di daftar rekening, jadi `baris_rekening()` tidak boleh
+  menambahkannya lagi — pernah kembar.
+- Kolom ukuran ke-9 berjudul angka `9` dan tidak pernah terisi. Surat Jalan
+  sekarang hanya mencetak kolom sampai ukuran terakhir yang ada isinya.
+- `buat_invoice` tetap mengembalikan dict yang sama seperti sebelumnya supaya
+  laporan dan tes tidak rusak, walaupun tata letaknya berubah total.
+
+Empat tes baru mengunci bentuknya (kop, judul tiga tingkat, blok rekening tidak
+kembar, kolom ukuran kosong tidak dicetak). Tes 98 -> 102.

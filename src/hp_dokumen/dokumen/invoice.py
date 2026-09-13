@@ -25,11 +25,11 @@ from ..nilai_bersih import nett_baris, persen_diskon_efektif
 from ..ukuran import bagi_rata_nilai, deskripsi_dengan_ukuran
 from . import gaya
 
-JUDUL_KOLOM = [
-    "No.", "ARTICLE CODE", "DESKRIPSI BARANG", "Qty (PCS)",
-    "Harga (Satuan)", "Diskon (%)", "Nilai (Diskon)", "Jumlah",
-]
-KOLOM_TERAKHIR = 8
+KOLOM_TERAKHIR = 8          # A..H, persis seperti faktur asli DPM
+BARIS_KOP = 2               # kop mulai baris 2 (baris 1 dibiarkan kosong)
+BARIS_JUDUL = 12            # baris judul tabel: 12-14, tiga baris bertingkat
+BARIS_DATA = 15             # baris pertama data
+LEBAR = {1: 4.3, 2: 12.6, 3: 39.4, 4: 5.0, 5: 12.1, 6: 12.6, 7: 12.6, 8: 15.6}
 
 
 @dataclass
@@ -91,6 +91,29 @@ def susun_baris(order: Order, keputusan: KeputusanNett, *, pecah_per_ukuran: boo
     return [kumpul[k] for k in urutan]
 
 
+def _persen_tertulis(order: Order, keputusan: KeputusanNett, pengaturan) -> tuple:
+    """Tulisan diskon di baris judul, meniru faktur asli.
+
+    Faktur asli menulisnya dengan dua cara:
+      - satu angka persen, contoh 25%            -> Baby Wise 0010726
+      - gabungan dasar + tambahan, "22% + 1,5%"  -> Katamama 0250726
+
+    Yang kedua dipakai kalau nilai bersihnya diambil dari kolom CBD/COD, karena
+    di situ ada potongan tambahan di atas diskon dasar.
+    """
+    from ..nilai_bersih import tarif_tambahan_tertulis
+
+    kotor = sum(b.nilai_kotor for blok in order.blok for b in blok.baris)
+    efektif = persen_diskon_efektif(kotor, keputusan.nett_total)
+    tambahan = tarif_tambahan_tertulis(keputusan.kolom_sumber)
+    if tambahan:
+        dasar = max(0.0, efektif - tambahan)
+        teks = (f"{dasar * 100:.0f}% + "
+                f"{tambahan * 100:.1f}%".replace(".", ","))
+        return teks, None
+    return None, efektif
+
+
 def buat_invoice(
     ws: Worksheet,
     order: Order,
@@ -99,133 +122,115 @@ def buat_invoice(
     perusahaan,
     pengaturan,
     nomor: str,
-    *,
-    uang_muka: float = 0.0,
     tanggal_dokumen: Optional[date] = None,
-) -> dict:
-    tanggal_dokumen = tanggal_dokumen or order.tanggal_po
-    pecah = bool(customer and customer.pecah_per_ukuran)
-    baris_inv = susun_baris(
+) -> None:
+    """Tulis invoice ke satu lembar, mengikuti faktur asli CV Dwi Putra Mandiri.
+
+    Tata letaknya disalin dari berkas asli di Drive, bukan dikarang: kop dengan
+    ruang logo, baris FAKTUR No., baris BRAND, judul tabel tiga tingkat, lalu
+    penutup Subtotal / Diskon / Total / Uang Muka / DPP / PPN / Total di kolom
+    G-H dan informasi rekening di kolom B.
+    """
+    tanggal = tanggal_dokumen or order.tanggal_po or date.today()
+    for kolom, lebar in LEBAR.items():
+        ws.column_dimensions[gaya.huruf(kolom)].width = lebar
+
+    gaya.kop_dpm(
+        ws, perusahaan,
+        nama_customer=(customer.nama_di_dokumen if customer else "") or order.customer_kunci,
+        alamat_customer=(customer.alamat if customer else ""),
+        tanggal_dokumen=tanggal,
+        baris_mulai=BARIS_KOP,
+        kolom_kanan=6,
+    )
+    gaya.judul_faktur(ws, 9, nomor)
+
+    # ---- judul tabel: tiga baris bertingkat ----------------------------
+    j = BARIS_JUDUL
+    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
+    tegak = [(1, "No."), (2, "ARTICLE CODE"), (3, "DESKRIPSI BARANG"), (8, "Jumlah")]
+    for kolom, teks in tegak:
+        ws.merge_cells(start_row=j, start_column=kolom, end_row=j + 2, end_column=kolom)
+        gaya.sel_judul(ws, j, kolom, teks)
+    bertingkat = [(4, "Qty", "PCS"), (5, "Harga", "Satuan"), (7, "Nilai", "Diskon")]
+    for kolom, atas, bawah in bertingkat:
+        gaya.sel_judul(ws, j, kolom, atas)
+        ws.merge_cells(start_row=j + 1, start_column=kolom, end_row=j + 2, end_column=kolom)
+        gaya.sel_judul(ws, j + 1, kolom, bawah)
+    # kolom Diskon: judulnya di atas, persennya di bawah
+    ws.merge_cells(start_row=j, start_column=6, end_row=j + 1, end_column=6)
+    gaya.sel_judul(ws, j, 6, "Diskon ")
+    if teks_persen:
+        gaya.sel_judul(ws, j + 2, 6, teks_persen)
+    else:
+        sel = gaya.sel_judul(ws, j + 2, 6, angka_persen or 0)
+        sel.number_format = "0%"
+
+    # ---- isi tabel ------------------------------------------------------
+    baris = susun_baris(
         order, keputusan,
-        pecah_per_ukuran=pecah,
+        pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
-
-    r = gaya.tulis_kop(
-        ws, perusahaan,
-        kolom_terakhir=KOLOM_TERAKHIR,
-        nama_customer=customer.nama_di_dokumen if customer else "",
-        alamat_customer=customer.alamat if customer else "",
-        tanggal_dokumen=tanggal_dokumen,
-    )
-
-    gaya.judul(ws, r, 1, "INVOICE", ukuran=16)
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=KOLOM_TERAKHIR)
-    r += 1
-    termin = customer.termin_hari if customer else pengaturan.termin_hari_default
-    jatuh_tempo = (tanggal_dokumen + timedelta(days=termin)) if tanggal_dokumen else None
-    info = ws.cell(
-        r, 1,
-        f"No. {nomor}    |    PO: {order.nama_tab}    |    "
-        f"Termin: {termin} hari    |    Jatuh tempo: {gaya.tanggal_indonesia(jatuh_tempo) or '-'}",
-    )
-    info.font = Font(name=gaya.FONT, size=9)
-    info.alignment = Alignment(horizontal="center")
-    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=KOLOM_TERAKHIR)
-    r += 2
-
-    kotor_total = sum(x.kotor for x in baris_inv)
-    nett_total = sum(x.nett for x in baris_inv)
-    persen = persen_diskon_efektif(kotor_total, nett_total)
-
-    awal_tabel = r
-    gaya.baris_judul_tabel(ws, r, JUDUL_KOLOM)
-    # persen diskon ditulis sekali di baris judul, seperti faktur asli
-    sel_persen = ws.cell(r, 6, persen)
-    sel_persen.number_format = "0.00%"
-    sel_persen.font = Font(name=gaya.FONT, size=9, bold=True)
-    sel_persen.alignment = Alignment(horizontal="center", vertical="center")
-    r += 1
-
-    for no, x in enumerate(baris_inv, start=1):
-        ws.cell(r, 1, no).alignment = Alignment(horizontal="center")
-        ws.cell(r, 2, x.kode)
-        ws.cell(r, 3, x.deskripsi)
-        c = ws.cell(r, 4, x.qty); c.alignment = Alignment(horizontal="center"); c.number_format = gaya.ANGKA
-        c = ws.cell(r, 5, x.harga); c.number_format = gaya.RUPIAH
-        c = ws.cell(r, 7, x.diskon); c.number_format = gaya.RUPIAH
-        c = ws.cell(r, 8, x.nett); c.number_format = gaya.RUPIAH
-        for cc in range(1, KOLOM_TERAKHIR + 1):
-            ws.cell(r, cc).font = Font(name=gaya.FONT, size=9)
+    r = BARIS_DATA
+    for i, b in enumerate(baris, start=1):
+        diskon_satuan = (b.diskon / b.qty) if b.qty else 0.0
+        gaya.sel_isi(ws, r, 1, i, rata="center")
+        gaya.sel_isi(ws, r, 2, b.kode)
+        gaya.sel_isi(ws, r, 3, b.deskripsi)
+        gaya.sel_isi(ws, r, 4, b.qty, rata="center")
+        gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 6, diskon_satuan, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP)
         r += 1
-
-    gaya.beri_garis(ws, awal_tabel, 1, r - 1, KOLOM_TERAKHIR)
-    akhir_tabel = r - 1
-    r += 1
+    akhir = r - 1
+    gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
 
     # ---- penutup di kolom G-H ------------------------------------------
-    # PPN hanya dikenakan kalau order diproses lewat perusahaan yang memungut
-    # PPN. Lihat config/perusahaan.yaml -> kenakan_ppn.
-    kena_ppn = getattr(perusahaan, "kenakan_ppn", True)
-    tarif = pengaturan.tarif_ppn if kena_ppn else 0.0
-    total_setelah_muka = nett_total - uang_muka
-    dpp = total_setelah_muka / (1 + tarif) if tarif else total_setelah_muka
-    ppn = total_setelah_muka - dpp
+    kotor = sum(b.kotor for b in baris)
+    diskon = sum(b.diskon for b in baris)
+    total = kotor - diskon
+    tarif = pengaturan.tarif_ppn if perusahaan.kenakan_ppn else 0.0
+    dpp = total / (1 + tarif) if tarif else total
+    ppn = total - dpp
 
+    label_ppn = f"PPN {tarif * 100:.0f}%" if tarif else "PPN (tidak dikenakan)"
     penutup = [
-        ("Subtotal", kotor_total),
-        ("Diskon", -(kotor_total - nett_total)),
-        ("Total", nett_total),
-        ("Uang Muka", -uang_muka),
+        ("Subtotal", kotor), ("Diskon", diskon), ("Total", total),
+        ("Uang Muka", 0), ("DPP", dpp), (label_ppn, ppn), ("Total", dpp + ppn),
     ]
-    if kena_ppn:
-        penutup += [("DPP", dpp), (f"PPN {tarif:.0%}", ppn)]
-    else:
-        penutup += [("DPP", dpp), ("PPN", 0.0)]
-    penutup.append(("Total", total_setelah_muka))
-    awal_penutup = r
-    for label, nilai in penutup:
-        sel = ws.cell(r, 7, label)
-        sel.font = Font(name=gaya.FONT, size=9, bold=label == "Total")
-        sel.alignment = Alignment(horizontal="right")
-        n = ws.cell(r, 8, nilai)
-        n.number_format = gaya.RUPIAH
-        n.font = Font(name=gaya.FONT, size=9, bold=label == "Total")
-        r += 1
-    gaya.beri_garis(ws, awal_penutup, 7, r - 1, 8)
+    p = akhir + 1
+    for i, (label, nilai) in enumerate(penutup):
+        tebal = label == "Subtotal" or i == len(penutup) - 1
+        gaya.sel_isi(ws, p + i, 7, label, tebal=tebal)
+        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP, tebal=tebal)
 
-    # ---- info rekening di kolom B --------------------------------------
-    rb = awal_penutup
-    for teks in perusahaan.rekening:
-        sel = ws.cell(rb, 2, teks)
-        sel.font = Font(name=gaya.FONT, size=9, bold=teks.endswith(":"))
-        rb += 1
+    # ---- rekening di kolom B, sejajar penutup --------------------------
+    rekening = perusahaan.baris_rekening()
+    for i, teks in enumerate(rekening):
+        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=(i == 0))
 
-    r = max(r, rb) + 2
-    sel = ws.cell(r, 7, "Hormat kami,")
-    sel.font = Font(name=gaya.FONT, size=10)
-    sel.alignment = Alignment(horizontal="center")
-    sel = ws.cell(r + 4, 7, "(................................)")
-    sel.font = Font(name=gaya.FONT, size=9)
-    sel.alignment = Alignment(horizontal="center")
+    baris_hormat = p + len(penutup)
+    ws.merge_cells(start_row=baris_hormat, start_column=7, end_row=baris_hormat, end_column=8)
+    gaya.sel_isi(ws, baris_hormat, 7, "Hormat kami,", rata="center")
 
-    gaya.atur_lebar(ws, {1: 5, 2: 18, 3: 46, 4: 9, 5: 14, 6: 10, 7: 15, 8: 16})
-    gaya.siapkan_cetak(ws, KOLOM_TERAKHIR, landscape=False)
+    gaya.siapkan_cetak(ws, KOLOM_TERAKHIR)
 
+    # Nilai balik ini dipakai laporan dan tes. Bentuknya sengaja dipertahankan
+    # walaupun tata letaknya berubah, supaya tidak ada pemanggil yang rusak.
+    termin = customer.termin_hari if customer else pengaturan.termin_hari_default
     return {
-        "baris_invoice": len(baris_inv),
-        "qty": sum(x.qty for x in baris_inv),
-        "kotor": kotor_total,
-        "nett": nett_total,
-        "persen_efektif": persen,
+        "baris_invoice": len(baris),
+        "qty": sum(b.qty for b in baris),
+        "kotor": kotor,
+        "nett": total,
+        "persen_efektif": persen_diskon_efektif(kotor, total),
         "dpp": dpp,
         "ppn": ppn,
-        "total_setelah_muka": total_setelah_muka,
+        "total_setelah_muka": dpp + ppn,
         "termin_hari": termin,
-        "jatuh_tempo": jatuh_tempo,
-        "kena_ppn": kena_ppn,
+        "jatuh_tempo": tanggal + timedelta(days=termin) if termin else None,
+        "kena_ppn": bool(perusahaan.kenakan_ppn),
         "perusahaan": getattr(perusahaan, "nama", ""),
-        "dipecah_per_ukuran": pecah,
-        "awal_tabel": awal_tabel,
-        "akhir_tabel": akhir_tabel,
     }

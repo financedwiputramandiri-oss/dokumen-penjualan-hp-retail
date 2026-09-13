@@ -125,9 +125,10 @@ def test_invoice_per_ukuran_memakai_label_blok_asal(orders, daftar):
     k = tentukan_nett(cbd, daftar.cari(cbd.nama_tab))
     baris = susun_baris(cbd, k, pecah_per_ukuran=True, akhiran_y=True)
     desk = {x.deskripsi for x in baris}
-    assert "Contoh Set Big Size - S" in desk
-    assert "Contoh Set Big Size - M" in desk
-    assert "Contoh Set Big Size - L" in desk
+    # pemisahnya " Uk. ", mengikuti faktur asli DPM
+    assert "Contoh Set Big Size Uk. S" in desk
+    assert "Contoh Set Big Size Uk. M" in desk
+    assert "Contoh Set Big Size Uk. L" in desk
     # total tetap sama persis walau dipecah
     assert sum(x.qty for x in baris) == cbd.qty
     assert abs(sum(x.nett for x in baris) - k.nett_total) < 0.005
