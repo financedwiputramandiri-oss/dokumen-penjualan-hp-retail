@@ -34,9 +34,14 @@ BARIS_DATA = 15             # baris pertama data
 # Versi lama memakai kolom C selebar 39,4 dan tabelnya terpotong saat dicetak.
 LEBAR = {1: 4.0, 2: 15.6, 3: 29.9, 4: 4.9, 5: 12.1, 6: 12.7, 7: 13.6, 8: 15.6}
 
-# Jatah lebar A..H yang masih muat satu halaman A4 tegak. Kolom B dan C boleh
-# melebar mengikuti isinya, tapi jumlah keduanya tidak boleh melewati jatah ini.
+# Jatah lebar A..H. Faktur asli memakai 107,7 satuan dengan skala cetak 97%.
+# Karena `fitToWidth` menyusutkan sendiri isinya agar selebar satu halaman,
+# jatah ini boleh melar sampai MAKS_JATAH tanpa ada yang terpotong ke samping —
+# yang terjadi hanya hurufnya mengecil. 135 satuan setara skala +-78%, masih
+# terbaca, dan itu batas yang benar-benar dibutuhkan: invoice Haritsa yang
+# dipecah per ukuran butuh kode 23 huruf dan deskripsi 43 huruf sekaligus.
 JATAH_A4 = sum(LEBAR.values())
+MAKS_JATAH = 135.0
 MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 22.0
 
@@ -57,9 +62,14 @@ def lebar_menyesuaikan(baris) -> dict:
     huruf = 1.05  # perkiraan lebar satu huruf Calibri 10 dalam satuan kolom
     kode = max(len(str(b.kode)) for b in baris) * huruf + 1.5
     lebar[2] = min(max(kode, MIN_KODE), MAKS_KODE)
-    sisa = JATAH_A4 - sum(v for k, v in lebar.items() if k != 3)
+
     deskripsi = max(len(str(b.deskripsi)) for b in baris) * huruf + 1.5
-    lebar[3] = max(min(deskripsi, sisa), MIN_DESKRIPSI)
+    lain = sum(v for k, v in lebar.items() if k != 3)
+    # Pakai lebar seperlunya. Kalau totalnya masih di bawah jatah faktur asli,
+    # sisanya diberikan ke deskripsi supaya bentuknya tetap seperti aslinya.
+    lebar[3] = max(deskripsi, JATAH_A4 - lain, MIN_DESKRIPSI)
+    if lain + lebar[3] > MAKS_JATAH:
+        lebar[3] = max(MAKS_JATAH - lain, MIN_DESKRIPSI)
     return lebar
 
 

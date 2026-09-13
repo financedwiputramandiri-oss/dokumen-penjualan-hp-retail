@@ -1318,4 +1318,18 @@ Terlihat pada contoh Januari 2026: `41065 (Bottom/Celana)` tercetak jadi
 melebar mengikuti kode terpanjang PO itu (11-23 satuan), tambahannya
 diambil dari kolom deskripsi, jadi total lebarnya tidak berubah.
 
+### Jatah lebar boleh melar sampai 135 satuan
+
+Awalnya jatah dikunci di 107,7 (angka faktur asli) dan hasilnya kolom
+saling berebut: begitu kode artikel dilebarkan, deskripsi yang terpotong.
+Invoice Haritsa Januari 2026 butuh keduanya sekaligus — kode 23 huruf
+(`4106500 (Bottom/Celana)`) dan deskripsi 43 huruf
+(`Nilo Straight Denim Pants Small Size Uk. 1Y`).
+
+Karena `fitToWidth` menyusutkan sendiri isinya supaya selebar satu halaman,
+jatah yang lebih besar **tidak** membuat dokumen terpotong ke samping —
+yang terjadi hanya hurufnya mengecil. 135 satuan setara skala +-78%.
+Dibuktikan pada PDF: invoice Haritsa 64 baris, teks utuh, satu halaman A4
+tegak, masih terbaca.
+
 Tes 113 -> 119.

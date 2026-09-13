@@ -26,7 +26,7 @@ from hp_dokumen.nilai_bersih import tentukan_nett
 from hp_dokumen.pemindai import baca_order_sheet
 from buat_contoh import buat_contoh
 
-BATAS_LEBAR_A4 = 115.0
+BATAS_LEBAR_A4 = 135.0
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ def test_semua_dokumen_a4_tegak_dan_muat(bahan, tmp_path, dokumen):
 def test_invoice_lebar_menyesuaikan_tetap_dalam_jatah_a4():
     """Kolom B dan C boleh melebar, tapi jumlah A..H tidak boleh bertambah."""
     from hp_dokumen.dokumen.invoice import (
-        JATAH_A4, MAKS_KODE, BarisInvoice, lebar_menyesuaikan,
+        MAKS_JATAH, MAKS_KODE, BarisInvoice, lebar_menyesuaikan,
     )
 
     panjang = [BarisInvoice(
@@ -124,7 +124,7 @@ def test_invoice_lebar_menyesuaikan_tetap_dalam_jatah_a4():
     # Yang wajib: tidak pernah MELEBIHI jatah. Lebih sempit selalu aman.
     for baris in (panjang, pendek, []):
         lebar = lebar_menyesuaikan(baris)
-        assert sum(lebar.values()) <= JATAH_A4 + 0.01, (
+        assert sum(lebar.values()) <= MAKS_JATAH + 0.01, (
             "jumlah lebar A..H melebihi jatah A4"
         )
 
