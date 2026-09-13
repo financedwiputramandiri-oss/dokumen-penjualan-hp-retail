@@ -1311,4 +1311,11 @@ Contoh Januari-Agustus 2026 memakai nomor urut `001` tiap bulan
 (`0010126` sampai `0010826`). Itu **nomor contoh**, bukan nomor terbit.
 Nomor urut yang sebenarnya tetap tidak ditebak program.
 
-Tes 113 -> 118.
+### Surat Jalan juga memotong kode artikel
+
+Terlihat pada contoh Januari 2026: `41065 (Bottom/Celana)` tercetak jadi
+`41065 (Bottom/Celana`. Aturan yang sama dipakai — kolom ARTICLE CODE
+melebar mengikuti kode terpanjang PO itu (11-23 satuan), tambahannya
+diambil dari kolom deskripsi, jadi total lebarnya tidak berubah.
+
+Tes 113 -> 119.

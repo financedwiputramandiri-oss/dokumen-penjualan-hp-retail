@@ -46,6 +46,30 @@ LEBAR = {1: 5.0, 2: 15.3, 3: 5.6, 4: 5.6, 5: 18.1, 6: 10.3}
 LEBAR_UKURAN = 5.6      # tiap kolom ukuran (G dan seterusnya)
 LEBAR_QTY = 7.0         # kolom Qty paling kanan
 LEBAR_GUDANG = 11.0     # kolom JUMLAH DIKIRIM / NO. KOLI pada Packing List
+
+MIN_KODE, MAKS_KODE = 11.0, 23.0
+MIN_DESKRIPSI = 20.0
+
+
+def _lebar_menyesuaikan(order) -> dict[int, float]:
+    """Lebarkan kolom ARTICLE CODE mengikuti kode terpanjang di PO ini.
+
+    Aturannya sama dengan invoice: kode seperti `41065 (Bottom/Celana)`
+    terpotong kalau lebarnya tetap, dan gudang tidak bisa memastikan barang
+    mana yang dikirim. Tambahan lebar kolom B diambil dari kolom deskripsi
+    (E), jadi jumlah lebar seluruh kolom tidak berubah dan Surat Jalan tetap
+    muat satu halaman A4 tegak.
+    """
+    lebar = dict(LEBAR)
+    kode = [str(b.kode) for blok in order.blok for b in blok.baris if b.qty > 0]
+    if not kode:
+        return lebar
+    huruf = 1.05
+    butuh = min(max(max(len(k) for k in kode) * huruf + 1.5, MIN_KODE), MAKS_KODE)
+    tambahan = butuh - lebar[2]
+    lebar[2] = butuh
+    lebar[5] = max(lebar[5] - tambahan, MIN_DESKRIPSI)
+    return lebar
 KALIMAT = "Diterima dengan baik barang-barang tersebut dibawah ini :"
 
 
@@ -133,7 +157,7 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
             kolom_gudang: list[str]) -> None:
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
     kolom_akhir = _kolom_terakhir(order, len(kolom_gudang))
-    for kolom, lebar in LEBAR.items():
+    for kolom, lebar in _lebar_menyesuaikan(order).items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
     # Kolom ukuran, Qty, dan kolom gudang tidak bisa ditulis tetap seperti di
     # atas: jumlahnya ikut berapa banyak ukuran yang benar-benar terpakai.

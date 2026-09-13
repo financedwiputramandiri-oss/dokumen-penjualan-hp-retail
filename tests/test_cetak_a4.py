@@ -131,3 +131,16 @@ def test_invoice_lebar_menyesuaikan_tetap_dalam_jatah_a4():
     # kode panjang harus dapat ruang lebih daripada kode pendek
     assert lebar_menyesuaikan(panjang)[2] > lebar_menyesuaikan(pendek)[2]
     assert lebar_menyesuaikan(panjang)[2] <= MAKS_KODE
+
+
+def test_surat_jalan_kode_panjang_tidak_menambah_lebar(bahan):
+    """Kolom ARTICLE CODE boleh melebar, tapi total lebar tidak bertambah."""
+    from hp_dokumen.dokumen.surat_jalan import LEBAR, _lebar_menyesuaikan
+
+    orders, _ = bahan
+    for o in orders:
+        lebar = _lebar_menyesuaikan(o)
+        assert sum(lebar.values()) <= sum(LEBAR.values()) + 0.01, (
+            f"{o.nama_tab}: lebar kolom tetap bertambah, bisa tidak muat A4"
+        )
+        assert lebar[5] >= 20.0, "kolom deskripsi terlalu sempit"
