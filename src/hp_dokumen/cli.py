@@ -254,6 +254,56 @@ def perintah_sapu(args) -> int:
     return 1 if hasil.genting else 0
 
 
+def perintah_faktur_pajak(args) -> int:
+    """Satu berkas format Coretax berisi SEMUA PO — untuk unggah borongan."""
+    from .dokumen.coretax import susun_faktur, tulis
+    from .dokumen.invoice import susun_baris
+
+    cfg, orders, master, berkas = _muat(args)
+    orders = _saring(orders, args.po)
+    hasil = _periksa_semua(cfg, orders, master)
+
+    gagal = [h for h in hasil if not h.lolos]
+    if gagal and not args.abaikan_pencocokan:
+        print("\nBERHENTI. Angka belum cocok dengan order sheet:\n")
+        for h in gagal:
+            cetak_rinci(h)
+        print("\nFaktur pajak TIDAK dibuat. Perbaiki dulu order sheetnya.")
+        return 1
+
+    kumpulan = []
+    perusahaan_dipakai = cfg.perusahaan.bawaan()
+    for i, h in enumerate(hasil):
+        cust = cfg.customer.cari(h.order.nama_tab)
+        pt = cfg.perusahaan.untuk(cust)
+        perusahaan_dipakai = pt
+        baris_inv = susun_baris(
+            h.order, h.keputusan,
+            pecah_per_ukuran=bool(cust and cust.pecah_per_ukuran),
+            akhiran_y=cfg.pengaturan.akhiran_y_untuk_angka,
+        )
+        kumpulan.append(susun_faktur(
+            h.order, h.keputusan, cust, pt, cfg.pengaturan, baris_inv,
+            _nomor(cfg, i, args.nomor), None,
+        ))
+
+    out = FOLDER_KELUARAN / "FAKTUR_PAJAK_CORETAX.xlsx"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    ringkas = tulis(out, kumpulan, perusahaan_dipakai)
+
+    print(f"\n{ringkas.faktur} faktur, {ringkas.detail} baris rincian.")
+    print(f"Selisih pembulatan seluruhnya: Rp{ringkas.selisih_pembulatan:,.2f} "
+          "(wajar, DJP hanya mengizinkan 2 angka di belakang koma)")
+    print(f"Berkas: {out.relative_to(AKAR)}")
+    if ringkas.peringatan:
+        print("\nBELUM SIAP DIUNGGAH — lengkapi dulu:")
+        for w in ringkas.peringatan:
+            print(f"  - {w}")
+    else:
+        print("\nSiap dimasukkan ke Converter Excel->XML milik DJP.")
+    return 0
+
+
 def perintah_periksa_bot(args) -> int:
     """Periksa persiapan bot tanpa menjalankan sapuan. Hanya membaca."""
     from .sapu.bot import Pengaturan as PengaturanBot
@@ -304,6 +354,15 @@ def buat_parser() -> argparse.ArgumentParser:
     g.add_argument("--tampilkan", type=int, default=25,
                    help="Berapa customer teratas ditampilkan di layar (bawaan 25)")
     g.set_defaults(fungsi=perintah_telusuri)
+
+    f = sub.add_parser(
+        "faktur-pajak",
+        help="Satu berkas format Coretax berisi semua PO, untuk unggah borongan")
+    f.add_argument("po", nargs="?", help="Saring PO tertentu (opsional)")
+    f.add_argument("--berkas")
+    f.add_argument("--nomor")
+    f.add_argument("--abaikan-pencocokan", action="store_true", dest="abaikan_pencocokan")
+    f.set_defaults(fungsi=perintah_faktur_pajak)
 
     i = sub.add_parser(
         "periksa-bot",

@@ -24,6 +24,9 @@ perusahaan:
       - "Wa:(+62) 0877 7950 0992"
       - "Email : DPMTEX@yahoo.com"
     logo: ""
+    # NITKU 22 digit, WAJIB untuk faktur pajak Coretax.
+    # Lihat di Coretax: menu Profil Wajib Pajak -> Tempat Kegiatan Usaha.
+    id_tku: ""
     rekening:
       - "PEMBAYARAN DITRANSFER KE REKENING :"
       - "CV. DWI PUTRA MANDIRI"
@@ -38,6 +41,7 @@ perusahaan:
     alamat_baris:
       - "(alamat belum diisi)"     # BELUM DIISI - mohon dilengkapi Yosua
     logo: ""
+    id_tku: ""
     rekening:
       - "PEMBAYARAN DITRANSFER KE REKENING :"
       - "CV. MUTIARA TIMUR NUSANTARA"

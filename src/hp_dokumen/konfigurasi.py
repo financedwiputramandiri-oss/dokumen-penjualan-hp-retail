@@ -25,6 +25,7 @@ class Customer:
     cara_bayar_paksa: str    # "" | "TOP" | "CBD" | "COD"
     perusahaan_pemroses: str  # kode perusahaan, contoh "DPM" / "MTN"; "" = bawaan
     catatan: str
+    id_tku: str = ""          # NITKU pembeli 22 digit, wajib untuk Coretax
 
     @property
     def pecah_per_ukuran(self) -> bool:
@@ -139,6 +140,7 @@ class DaftarCustomer:
                         nama_di_dokumen=(row.get("nama_di_dokumen") or "").strip(),
                         alamat=(row.get("alamat") or "").strip(),
                         npwp=(row.get("npwp") or "").strip(),
+                        id_tku=(row.get("id_tku") or "").strip(),
                         format_invoice=(row.get("format_invoice") or "per_artikel").strip(),
                         termin_hari=termin,
                         cara_bayar_paksa=(row.get("cara_bayar_paksa") or "").strip().upper(),
@@ -187,6 +189,7 @@ class Perusahaan:
     logo: str
     rekening: list[str]
     kota_penerbitan: str = "Jakarta"
+    id_tku: str = ""            # NITKU 22 digit, wajib untuk Coretax
 
     def baris_rekening(self) -> list[str]:
         """Blok rekening seperti di faktur asli, diawali kalimat pengantarnya."""
@@ -238,6 +241,7 @@ class DaftarPerusahaan:
                     logo=(x.get("logo") or "").strip(),
                     rekening=list(x.get("rekening") or []),
                     kota_penerbitan=kota,
+                    id_tku=(x.get("id_tku") or "").strip(),
                 )
             )
         return cls(semua, d.get("perusahaan_bawaan", ""), kota)

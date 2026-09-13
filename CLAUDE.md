@@ -1013,3 +1013,81 @@ tab itu, jangan mengarang.
 
 Empat tes baru mengunci bentuknya (kop, judul tiga tingkat, blok rekening tidak
 kembar, kolom ukuran kosong tidak dicetak). Tes 98 -> 102.
+
+## 17. Faktur Pajak format Coretax — 13 September 2026
+
+Permintaan Yosua: faktur pajak dalam bentuk Excel yang bisa langsung dimasukkan
+ke **Converter Excel->XML milik DJP**, lalu XML-nya diunggah ke Coretax untuk
+membuat faktur **secara borongan**.
+
+`www.pajak.go.id` DIBLOKIR dari sesi ini, jadi templatenya tidak bisa diunduh
+langsung. Template resminya didapat dari repo publik
+`ACC-TAX-REIGHTEEN/Auto-Input-XML-Pajak-Coretax`, berkas
+`Dapur/Template_v.1.6.1.xlsx`. **Struktur di bawah ini dibaca dari berkas itu,
+bukan ditebak.**
+
+### Susunan template resmi v1.6.1
+
+| Lembar | Isi |
+|---|---|
+| `Faktur` | B1 = NPWP Penjual; judul di baris 3; data mulai baris 4; ditutup `END` |
+| `DetailFaktur` | judul di baris 1; data mulai baris 2; ditutup `END` |
+
+Kolom `Faktur` (18): Baris, Tanggal Faktur, Jenis Faktur, Kode Transaksi,
+Keterangan Tambahan, Dokumen Pendukung, Period Dok Pendukung, Referensi,
+Cap Fasilitas, ID TKU Penjual, NPWP/NIK Pembeli, Jenis ID Pembeli,
+Negara Pembeli, Nomor Dokumen Pembeli, Nama Pembeli, Alamat Pembeli,
+Email Pembeli, ID TKU Pembeli.
+
+Kolom `DetailFaktur` (14): Baris, Barang/Jasa, Kode Barang Jasa,
+Nama Barang/Jasa, Nama Satuan Ukur, Harga Satuan, Jumlah Barang Jasa,
+Total Diskon, DPP, DPP Nilai Lain, Tarif PPN, PPN, Tarif PPnBM, PPnBM.
+
+### Aturan yang paling mudah salah (dari lembar `Keterangan`)
+
+| Aturan | Nilai |
+|---|---|
+| Tanggal Faktur | `DD/MM/YYYY` |
+| Jenis Faktur | selalu `Normal` |
+| Kode Transaksi | `01` = kepada selain Pemungut PPN |
+| Satuan ukur | `UM.0021` = Piece |
+| Barang/Jasa | `A` = Barang |
+| NPWP pembeli tidak diketahui | isi `0000000000000000`, Jenis ID bukan TIN |
+| ID TKU Pembeli bukan TIN | isi `000000` |
+| DPP Nilai Lain | **sama dengan DPP** kalau tidak memakai nilai lain |
+| DPP | harus `Harga Satuan x Jumlah - Total Diskon` |
+| PPN | `Tarif PPN x DPP Nilai Lain` |
+| Angka | maksimal 2 angka di belakang koma |
+
+### Hal paling menentukan: harga di order sheet SUDAH termasuk PPN
+
+Coretax meminta Harga Satuan dan DPP **tanpa PPN**. Jadi tiap nilai dibagi
+`(1 + tarif)` lebih dulu. Kalau ini terlewat, DPP jadi 11% terlalu besar dan
+pajak yang dilaporkan salah.
+
+Diuji ulang: `DPP + PPN` kembali ke nilai bersih invoice. Pada order sheet
+Agustus 2026 selisihnya **Rp0,01** dari 571 baris — murni pembulatan 2 desimal
+yang memang diwajibkan DJP. Program mengawasi selisih ini sendiri dan
+memperingatkan kalau ada faktur yang meleset lebih dari Rp1.
+
+### Perintah baru
+
+    python3 jalankan.py faktur-pajak
+
+Menghasilkan SATU berkas `keluaran/FAKTUR_PAJAK_CORETAX.xlsx` berisi SEMUA PO
+sekaligus — itulah gunanya untuk unggah borongan. Program menolak membuatnya
+kalau angka belum cocok dengan order sheet, dan menyebutkan apa yang masih
+kurang sebelum berkasnya layak diunggah.
+
+### Yang masih harus diisi Yosua sebelum bisa diunggah
+
+| Hal | Tempat |
+|---|---|
+| NPWP CV Dwi Putra Mandiri & CV Mutiara Timur Nusantara | `config/perusahaan.yaml` |
+| **ID TKU Penjual (NITKU 22 digit)** | `config/perusahaan.yaml` -> `id_tku` |
+| NPWP & NITKU tiap customer | `config/customer.csv` -> `npwp`, `id_tku` |
+| Alamat 8 customer | `config/customer.csv` |
+
+NITKU dilihat di Coretax: Profil Wajib Pajak -> Tempat Kegiatan Usaha.
+
+Delapan tes mengunci formatnya. Tes 102 -> 110.
