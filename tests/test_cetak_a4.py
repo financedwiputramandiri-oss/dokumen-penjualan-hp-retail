@@ -176,6 +176,14 @@ def test_blok_penutup_invoice_bergaris_penuh(bahan, tmp_path):
                 assert sisi.style, (
                     f"{ws.cell(r, c_).coordinate} tidak bergaris di sisi {nama}"
                 )
+                # Garisnya harus SERAGAM TIPIS, termasuk bingkai luar.
+                # Permintaan Yosua, dan memang begitu di faktur asli
+                # 0020826 CV. BASA MANDIRI (K27..M31 semuanya thin).
+                assert sisi.style == "thin", (
+                    f"{ws.cell(r, c_).coordinate} sisi {nama} bergaris "
+                    f"'{sisi.style}', seharusnya 'thin' — bingkai luar blok "
+                    "penutup tidak boleh ditebalkan"
+                )
 
 
 def test_uang_muka_nol_tampil_sebagai_strip(bahan, tmp_path):

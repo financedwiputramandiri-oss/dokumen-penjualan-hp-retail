@@ -298,13 +298,14 @@ def buat_invoice(
     for i, teks in enumerate(rekening):
         gaya.sel_isi(ws, p + 1 + i, 1, teks, tebal=True)
 
-    # Blok penutup bergaris PENUH — tiap sel punya empat sisi, jadi ada garis
-    # antar baris dan antara label dengan nilainya. Dibaca dari faktur asli
-    # 0020826 CV. BASA MANDIRI: K27..M31 semuanya thin di keempat sisi.
-    # Versi sebelumnya hanya menggambar kotak luar, sehingga barisnya
-    # berhimpitan tanpa pemisah.
+    # Blok penutup bergaris PENUH dan SERAGAM TIPIS — tiap sel punya empat
+    # sisi tipis, termasuk bingkai luarnya. Permintaan Yosua 14 September
+    # 2026: garis luarnya jangan ditebalkan.
+    #
+    # Ini justru mengembalikannya ke bentuk faktur asli: di
+    # 0020826 CV. BASA MANDIRI sel K27..M31 semuanya `thin` di keempat sisi,
+    # tanpa bingkai tebal sama sekali. Jangan panggil `gaya.kotak()` di sini.
     gaya.beri_garis(ws, p, 7, p + len(penutup) - 1, 8)
-    gaya.kotak(ws, p, 7, p + len(penutup) - 1, 8)
 
     # Blok rekening TIDAK bergaris penuh — satu kotak saja mengelilingi
     # keempat barisnya, juga seperti faktur asli (A28:A31 hanya bergaris tepi).

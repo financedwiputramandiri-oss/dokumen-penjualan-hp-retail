@@ -1561,3 +1561,26 @@ dokumennya yang dipaksa.
 | Pencocokan Agustus 2026 | 16 dari 16 PO cocok |
 
 Tiga tes baru. Tes 126 -> 129.
+
+### Bingkai luar blok penutup TIDAK ditebalkan — 14 September 2026
+
+Perbaikan lanjutan Yosua: *"untuk bagian subtotal border luarnya jangan
+dicetak tebal"*.
+
+Sebelumnya blok penutup memakai kisi `thin` di dalam ditambah bingkai
+`medium` di luar — 18 sisi tebal mengelilingi blok Subtotal..Total.
+
+Sekarang `gaya.kotak()` **tidak lagi dipanggil** untuk blok penutup; yang
+tersisa hanya `beri_garis()`, jadi keempat sisi tiap sel seragam `thin`.
+
+Ini justru mengembalikannya ke bentuk faktur asli: di
+`0020826 CV. BASA MANDIRI` sel K27..M31 memang semuanya `thin`, tanpa
+bingkai tebal sama sekali. Bingkai medium itu tambahan saya sendiri yang
+tidak ada di aslinya.
+
+**Blok rekening TETAP berbingkai medium** — Yosua hanya menyebut bagian
+subtotal, dan bingkai tebal di blok rekening itu memang membantu memisahkan
+dari tabel barang.
+
+Tesnya diperketat: tiap sisi blok penutup wajib bergaya persis `thin`,
+bukan sekadar "ada garisnya". Jumlah tes tetap 129.
