@@ -144,3 +144,61 @@ def test_surat_jalan_kode_panjang_tidak_menambah_lebar(bahan):
             f"{o.nama_tab}: lebar kolom tetap bertambah, bisa tidak muat A4"
         )
         assert lebar[5] >= 20.0, "kolom deskripsi terlalu sempit"
+
+
+def test_blok_penutup_invoice_bergaris_penuh(bahan, tmp_path):
+    """Tiap sel blok penutup punya garis di keempat sisinya.
+
+    Permintaan Yosua 14 September 2026, dan memang begitu aslinya: di
+    0020826 CV. BASA MANDIRI sel K27..M31 semuanya bergaris `thin` di
+    keempat sisi. Versi sebelumnya hanya menggambar kotak luar, sehingga
+    Subtotal/Diskon/Total/DPP/PPN berhimpitan tanpa pemisah.
+    """
+    orders, cfg = bahan
+    o = orders[0]
+    c = cfg.customer.cari(o.nama_tab)
+    wb = Workbook()
+    buat_invoice(wb.active, o, tentukan_nett(o, c), c, cfg.perusahaan.untuk(c),
+                 cfg.pengaturan, "001")
+    ws = _simpan(wb.active, tmp_path, "inv_garis.xlsx")
+
+    mulai = next(r for r in range(1, ws.max_row + 1)
+                 if ws.cell(r, 7).value == "Subtotal")
+    akhir = max(r for r in range(mulai, ws.max_row + 1)
+                if ws.cell(r, 7).value not in (None, "", "Hormat kami,"))
+    assert akhir > mulai, "blok penutup tidak ditemukan"
+
+    for r in range(mulai, akhir + 1):
+        for c_ in (7, 8):
+            b = ws.cell(r, c_).border
+            for sisi, nama in ((b.left, "kiri"), (b.right, "kanan"),
+                               (b.top, "atas"), (b.bottom, "bawah")):
+                assert sisi.style, (
+                    f"{ws.cell(r, c_).coordinate} tidak bergaris di sisi {nama}"
+                )
+
+
+def test_uang_muka_nol_tampil_sebagai_strip(bahan, tmp_path):
+    """Uang Muka kosong harus tampil '-', bukan angka 0.
+
+    Dicapai lewat bagian ketiga format akuntansi Rupiah (`_-"Rp"* "-"_-`)
+    yang memang khusus untuk nilai nol. Kalau format ini diganti dengan
+    format angka biasa, yang tercetak kembali jadi 0.
+    """
+    orders, cfg = bahan
+    o = orders[0]
+    c = cfg.customer.cari(o.nama_tab)
+    wb = Workbook()
+    buat_invoice(wb.active, o, tentukan_nett(o, c), c, cfg.perusahaan.untuk(c),
+                 cfg.pengaturan, "001")
+    ws = _simpan(wb.active, tmp_path, "inv_uangmuka.xlsx")
+
+    baris = next(r for r in range(1, ws.max_row + 1)
+                 if ws.cell(r, 7).value == "Uang Muka")
+    sel = ws.cell(baris, 8)
+    assert sel.value == 0
+    bagian = sel.number_format.split(";")
+    assert len(bagian) >= 3, "format angka tidak punya bagian khusus nol"
+    assert '"-"' in bagian[2], (
+        f"nilai nol tidak tampil sebagai '-' (format nol: {bagian[2]!r})"
+    )

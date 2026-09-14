@@ -1439,3 +1439,33 @@ Bukan kesalahan, memang begitu aslinya:
 
 Empat tes baru mengunci: total qty tidak tercetak, nomor SJ besar dan polos,
 urutan tanda tangan, dan bentuk faktur tanpa diskon. Tes 119 -> 123.
+
+### Blok penutup bergaris penuh & Uang Muka nol jadi "-" — 14 September 2026
+
+Dua perbaikan lanjutan dari Yosua setelah melihat contoh April.
+
+**1. Blok penutup bergaris PENUH, bukan cuma kotak luar.**
+
+Versi sebelumnya hanya menggambar tepi luar, jadi Subtotal sampai Total
+berhimpitan tanpa pemisah. Faktur asli `0020826 CV. BASA MANDIRI` memberi
+garis `thin` di **keempat sisi tiap sel** (K27..M31), sehingga ada garis
+antar baris dan antara label dengan nilainya.
+
+Sekarang `beri_garis()` dipanggil dulu untuk mengisi kisi, baru `kotak()`
+menebalkan tepi luarnya. Urutan ini penting: `kotak()` sengaja
+mempertahankan garis yang sudah ada di sisi dalam.
+
+Blok rekening TETAP hanya berkotak luar, juga sesuai aslinya (A28:A31).
+
+**2. Uang Muka nol ditulis "-", bukan angka 0.**
+
+Tidak perlu logika khusus. Bagian ketiga format akuntansi Rupiah
+(`_-"Rp"* "-"_-`) memang bagian untuk nilai nol. Sebelumnya baris Uang Muka
+sengaja dikecualikan memakai format angka biasa sehingga tercetak `0`;
+pengecualian itu dihapus dan seluruh kolom nilai kini memakai satu format
+yang sama.
+
+Dikunci dua tes: tiap sel blok penutup wajib bergaris di keempat sisi, dan
+format angka Uang Muka wajib punya bagian nol yang berisi `"-"`.
+
+Tes 123 -> 125.

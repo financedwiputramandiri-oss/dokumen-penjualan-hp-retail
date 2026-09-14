@@ -284,9 +284,10 @@ def buat_invoice(
     for i, (label, nilai) in enumerate(penutup):
         tebal = i == 0 or i == len(penutup) - 1
         gaya.sel_isi(ws, p + i, 7, label, tebal=True)
-        # "Uang Muka" nol ditulis polos tanpa "Rp", sama seperti faktur asli.
-        angka = gaya.FORMAT_ANGKA if label == "Uang Muka" else gaya.FORMAT_RP
-        gaya.sel_isi(ws, p + i, 8, nilai, angka=angka, tebal=tebal)
+        # Seluruh kolom nilai memakai format akuntansi Rupiah yang sama.
+        # Bagian ketiga format itu (`_-"Rp"* "-"_-`) khusus untuk nol, jadi
+        # Uang Muka yang kosong tampil sebagai tanda "-", bukan angka 0.
+        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP, tebal=tebal)
 
     # ---- rekening di kolom A, sejajar penutup --------------------------
     # Faktur asli menaruhnya di kolom A (0020826 A28:A31), bukan kolom B.
@@ -294,8 +295,16 @@ def buat_invoice(
     for i, teks in enumerate(rekening):
         gaya.sel_isi(ws, p + 1 + i, 1, teks, tebal=True)
 
-    # Kedua blok diberi garis kotak, persis seperti faktur asli.
+    # Blok penutup bergaris PENUH — tiap sel punya empat sisi, jadi ada garis
+    # antar baris dan antara label dengan nilainya. Dibaca dari faktur asli
+    # 0020826 CV. BASA MANDIRI: K27..M31 semuanya thin di keempat sisi.
+    # Versi sebelumnya hanya menggambar kotak luar, sehingga barisnya
+    # berhimpitan tanpa pemisah.
+    gaya.beri_garis(ws, p, 7, p + len(penutup) - 1, 8)
     gaya.kotak(ws, p, 7, p + len(penutup) - 1, 8)
+
+    # Blok rekening TIDAK bergaris penuh — satu kotak saja mengelilingi
+    # keempat barisnya, juga seperti faktur asli (A28:A31 hanya bergaris tepi).
     if rekening:
         gaya.kotak(ws, p + 1, 1, p + len(rekening), 3)
 
