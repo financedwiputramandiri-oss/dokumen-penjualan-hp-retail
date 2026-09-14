@@ -227,6 +227,49 @@ def _tanggal(nama_tab: str, tahun_bawaan: int) -> Optional[date]:
         return None
 
 
+def _samakan_dengan_master(blok_list, master: dict, nama_tab: str) -> list[str]:
+    """Timpa harga dan nama barang tiap baris dengan isi tab 'Harga Retail'.
+
+    Tab master adalah sumber kebenaran harga. Kalau Sales mengetik harga
+    sendiri di baris PO dan angkanya beda, yang dipakai adalah master —
+    tapi selisihnya DILAPORKAN, bukan didiamkan, karena berarti nilai kotor
+    di order sheet ikut salah dan pencocokan akan gagal.
+
+    Kode yang tidak terdaftar di master dibiarkan apa adanya dan dilaporkan.
+    """
+    if not master:
+        return []
+    beda_harga, tak_terdaftar = [], []
+    for blok in blok_list:
+        for b in blok.baris:
+            m = cari_di_master(master, b.kode)
+            if m is None:
+                if b.kode:
+                    tak_terdaftar.append(b.kode)
+                continue
+            nama_master, harga_master = m
+            if harga_master > 0 and abs(harga_master - b.harga) > 0.5:
+                beda_harga.append(f"{b.kode} (PO {b.harga:,.0f} -> master {harga_master:,.0f})")
+                b.harga = harga_master
+            if nama_master:
+                b.nama = nama_master
+
+    pesan = []
+    if beda_harga:
+        pesan.append(
+            f"HARGA DISESUAIKAN ke tab Harga Retail pada {len(beda_harga)} baris: "
+            + ", ".join(sorted(set(beda_harga))[:5])
+            + ". Nilai kotor di order sheet kemungkinan ikut salah — periksa."
+        )
+    if tak_terdaftar:
+        pesan.append(
+            f"{len(set(tak_terdaftar))} kode artikel tidak ada di tab Harga Retail, "
+            "harganya memakai angka di baris PO: "
+            + ", ".join(sorted(set(tak_terdaftar))[:5])
+        )
+    return pesan
+
+
 def baca_order_sheet(
     berkas: Path,
     daftar_customer: DaftarCustomer,
@@ -244,6 +287,11 @@ def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> 
     Google Sheets API). Keduanya menyediakan antarmuka yang sama, jadi
     hasilnya identik — sudah diuji pada seluruh tab order sheet Agustus 2026.
     """
+    # Tab 'Harga Retail' adalah SATU-SATUNYA sumber harga dan nama barang.
+    # Permintaan Yosua 14 September 2026. Angka di baris PO hanya dipakai
+    # kalau kodenya memang tidak terdaftar di master.
+    master = master_harga_dari_buku(wb)
+
     hasil: list[Order] = []
     for ws in wb.worksheets:
         nama = ws.title
@@ -255,6 +303,7 @@ def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> 
         blok, total, peringatan = pindai_tab(ws, pakai_kolom_ori=packing)
         if not blok:
             continue
+        peringatan = list(peringatan) + _samakan_dengan_master(blok, master, nama)
         tata = blok[0].tata
         kc = tata.kolom_jenis("CBD") if tata else None
         kd = tata.kolom_jenis("COD") if tata else None
@@ -298,3 +347,23 @@ def master_harga_dari_buku(wb) -> dict[str, tuple[str, float]]:
             continue
         master[kode] = (_teks(ws.cell(r, 2).value), angka(ws.cell(r, 3).value))
     return master
+
+
+def cari_di_master(master: dict, kode: str):
+    """Cari kode artikel di master harga, TIDAK peduli huruf besar-kecil.
+
+    Sales kadang mengetik `41065 (bottom/Celana)` padahal di tab Harga Retail
+    tertulis `41065 (Bottom/Celana)`. Pencarian yang peka huruf menganggap itu
+    artikel yang tidak terdaftar, padahal barangnya sama. Ditemukan pada tiga
+    kode di order sheet Januari dan Februari 2026.
+    """
+    if not master or not kode:
+        return None
+    tepat = master.get(kode)
+    if tepat is not None:
+        return tepat
+    dicari = kode.strip().casefold()
+    for k, v in master.items():
+        if k.strip().casefold() == dicari:
+            return v
+    return None

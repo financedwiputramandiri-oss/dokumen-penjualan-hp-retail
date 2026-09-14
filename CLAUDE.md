@@ -1502,3 +1502,62 @@ Blok rekening TETAP tebal, itu tidak diubah.
 
 Dikunci satu tes: tidak ada satu pun sel di blok penutup yang boleh
 `font.bold`. Tes 125 -> 126.
+
+## 21. Tab Harga Retail jadi satu-satunya sumber harga — 14 September 2026
+
+Permintaan Yosua: *"untuk bagian harga sesuaikan dengan tab master harga yang
+ada di setiap tab yang ada di order sheet"*.
+
+### Diperiksa dulu sebelum diubah
+
+Sebelum menyentuh kode, harga di baris PO dibandingkan dengan tab
+`Harga Retail` pada **seluruh 8.845 baris** order sheet 2026:
+
+| Order sheet | Baris | Harga BEDA dari master |
+|---|---:|---:|
+| Januari - September 2026 (10 berkas) | 8.845 | **0** |
+
+**Tidak ada satu baris pun yang harganya berbeda.** Jadi aturan ini tidak
+mengubah angka mana pun hari ini. Gunanya menangkap kalau suatu saat Sales
+mengetik harga sendiri di baris PO.
+
+Nama barang juga sudah sama di seluruh 8.845 baris.
+
+### Tiga kode yang dikira tidak terdaftar — ternyata cuma beda huruf
+
+| Kode di baris PO | Kode di Harga Retail |
+|---|---|
+| `41065 (bottom/Celana)` | `41065 (Bottom/Celana)` |
+| `71092.M (Top/atasan)` | `71092.M (Top/Atasan)` |
+| `71092.S (Top/atasan)` | `71092.S (Top/Atasan)` |
+
+Pencarian master dulu peka huruf besar-kecil, jadi ketiganya dianggap artikel
+tidak terdaftar. `cari_di_master()` sekarang mengabaikan besar-kecil huruf dan
+spasi di tepi. Setelah diperbaiki: **0 kode tidak terdaftar** dari 8.845 baris.
+
+### Aturannya sekarang
+
+`_samakan_dengan_master()` di `pemindai.py` berjalan untuk tiap tab PO:
+
+| Keadaan | Tindakan |
+|---|---|
+| kode ada di master, harga sama | tidak terjadi apa-apa |
+| kode ada di master, harga BEDA | **master yang dipakai**, selisihnya dilaporkan |
+| kode ada di master, nama beda | **master yang dipakai** |
+| kode TIDAK ada di master | harga baris PO dipakai, dilaporkan |
+
+Penyesuaian harga **tidak pernah didiamkan**. Kalau harga di baris PO berbeda,
+berarti `TOTAL ATO VALUE` di order sheet ikut salah dan pencocokan akan gagal —
+peringatannya menyebut itu supaya order sheetnya yang dirapikan, bukan
+dokumennya yang dipaksa.
+
+### Dibuktikan tidak merusak apa pun
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Baris 2026 yang harganya diubah | 0 dari 8.845 |
+| Kode tidak terdaftar di master | 0 dari 8.845 |
+| Pencocokan Juli 2026 | 30 dari 30 PO cocok |
+| Pencocokan Agustus 2026 | 16 dari 16 PO cocok |
+
+Tiga tes baru. Tes 126 -> 129.
