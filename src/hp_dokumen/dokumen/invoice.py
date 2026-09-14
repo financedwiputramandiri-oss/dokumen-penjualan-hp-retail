@@ -282,12 +282,15 @@ def buat_invoice(
     ]
     p = akhir + 1
     for i, (label, nilai) in enumerate(penutup):
-        tebal = i == 0 or i == len(penutup) - 1
-        gaya.sel_isi(ws, p + i, 7, label, tebal=True)
+        # TIDAK ada cetak tebal di blok penutup — permintaan Yosua
+        # 14 September 2026. Faktur asli menebalkan seluruh blok ini, tapi
+        # begitu tiap sel diberi garis, huruf tebalnya jadi terlalu ramai.
+        # Garis sudah cukup untuk memisahkan, jadi hurufnya dibiarkan biasa.
+        gaya.sel_isi(ws, p + i, 7, label)
         # Seluruh kolom nilai memakai format akuntansi Rupiah yang sama.
         # Bagian ketiga format itu (`_-"Rp"* "-"_-`) khusus untuk nol, jadi
         # Uang Muka yang kosong tampil sebagai tanda "-", bukan angka 0.
-        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP, tebal=tebal)
+        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP)
 
     # ---- rekening di kolom A, sejajar penutup --------------------------
     # Faktur asli menaruhnya di kolom A (0020826 A28:A31), bukan kolom B.

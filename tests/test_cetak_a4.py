@@ -202,3 +202,31 @@ def test_uang_muka_nol_tampil_sebagai_strip(bahan, tmp_path):
     assert '"-"' in bagian[2], (
         f"nilai nol tidak tampil sebagai '-' (format nol: {bagian[2]!r})"
     )
+
+
+def test_blok_penutup_invoice_tidak_bercetak_tebal(bahan, tmp_path):
+    """Blok penutup tidak boleh bercetak tebal.
+
+    Permintaan Yosua 14 September 2026. Faktur asli menebalkan seluruh blok
+    ini, tapi begitu tiap sel diberi garis, huruf tebalnya jadi terlalu
+    ramai. Garisnya sudah cukup memisahkan.
+    """
+    orders, cfg = bahan
+    o = orders[0]
+    c = cfg.customer.cari(o.nama_tab)
+    wb = Workbook()
+    buat_invoice(wb.active, o, tentukan_nett(o, c), c, cfg.perusahaan.untuk(c),
+                 cfg.pengaturan, "001")
+    ws = _simpan(wb.active, tmp_path, "inv_tanpa_tebal.xlsx")
+
+    mulai = next(r for r in range(1, ws.max_row + 1)
+                 if ws.cell(r, 7).value == "Subtotal")
+    akhir = max(r for r in range(mulai, ws.max_row + 1)
+                if ws.cell(r, 7).value not in (None, "", "Hormat kami,"))
+
+    for r in range(mulai, akhir + 1):
+        for c_ in (7, 8):
+            sel = ws.cell(r, c_)
+            assert not sel.font.bold, (
+                f"{sel.coordinate} ({sel.value!r}) masih bercetak tebal"
+            )

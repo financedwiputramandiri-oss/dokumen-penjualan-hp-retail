@@ -1469,3 +1469,36 @@ Dikunci dua tes: tiap sel blok penutup wajib bergaris di keempat sisi, dan
 format angka Uang Muka wajib punya bagian nol yang berisi `"-"`.
 
 Tes 123 -> 125.
+
+### Jawaban Yosua 14 September 2026: kolom diskon otomatis SUDAH BENAR
+
+Pertanyaan di bagian 20 ("perlu dipastikan Yosua apakah pilihan otomatis ini
+benar") dijawab Yosua: **"ya benar"**.
+
+Jadi ini sekarang keputusan tetap, bukan dugaan:
+
+| Keadaan order | Bentuk faktur |
+|---|---|
+| ada diskon | kolom Diskon % + Nilai Diskon, penutup memuat Subtotal & Diskon |
+| tanpa diskon | tanpa kolom diskon, penutup langsung Total |
+
+Program memilih sendiri dari ada tidaknya diskon pada order itu. Jangan
+dijadikan pengaturan manual.
+
+### Blok penutup TIDAK bercetak tebal — 14 September 2026
+
+Permintaan Yosua setelah melihat hasil bergaris. Faktur asli
+`0020826 CV. BASA MANDIRI` menebalkan seluruh blok penutup, tapi begitu tiap
+sel diberi garis, huruf tebalnya jadi terlalu ramai.
+
+**Ini penyimpangan yang DISENGAJA dari faktur asli, atas permintaan Yosua
+sendiri.** Jangan "diperbaiki" kembali menjadi tebal hanya karena berkas
+aslinya begitu.
+
+Baris Subtotal dan Total terakhir yang dulu ditebalkan juga ikut dibuat
+biasa — garisnya sudah cukup memisahkan.
+
+Blok rekening TETAP tebal, itu tidak diubah.
+
+Dikunci satu tes: tidak ada satu pun sel di blok penutup yang boleh
+`font.bold`. Tes 125 -> 126.
