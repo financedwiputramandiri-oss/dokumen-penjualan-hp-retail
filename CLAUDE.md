@@ -1584,3 +1584,117 @@ dari tabel barang.
 
 Tesnya diperketat: tiap sisi blok penutup wajib bergaya persis `thin`,
 bukan sekadar "ada garisnya". Jumlah tes tetap 129.
+
+## 22. Bongkar ulang folder faktur asli Apr–Agu 2026 — 14 September 2026
+
+Yosua: *"masih salah coba pelajari lagi seluruh folder dan file yang memuat
+tentang invoice, surat jalan"* — folder `12I3Y0if4mNk-FOprhjrm48JOn0cYl_5L`,
+berisi subfolder `4. APRIL`, `5. MEI `, `6. JUNI`, `7. JULI`, `INVOICE AGUSTUS`.
+
+### Sebab utamanya: bagian 20 dibangun di atas SATU berkas yang menyendiri
+
+Bagian 20 memakai `0020826 - CV. BASA MANDIRI - FAKTUR.xlsx` sebagai acuan
+tunggal. Berkas itu ternyata memakai template LAMA. Empat faktur asli lain —
+termasuk dua yang paling baru — sepakat melawan berkas itu:
+
+| Bagian | BASA 0020826 (dipakai bagian 20) | 0010726 BW | 0310726 MB | 0110826 BW | 0420826 YULIS |
+|---|---|---|---|---|---|
+| Baris judul | `FAKTUR NO.` sz 16 | `FAKTUR No.` sz 16 | `FAKTUR No.` sz 16 | `FAKTUR No.` sz 18 | `FAKTUR No.` sz 18 |
+| Garis bawah nomor | — | tidak | tidak | tidak | tidak |
+| Baris BRAND di faktur | **tidak ada** | **ADA** A10 | **ADA** A10 | **ADA** A10 | **ADA** A10 |
+| Telepon & WA di kop | satu baris `;` | **dua baris** | **dua baris** | **dua baris** | **dua baris** |
+| Blok rekening | kolom A | **kolom B** | **kolom B** | **kolom B** | **kolom B** |
+
+Yang diperbaiki: `FAKTUR No.` (bukan `NO.`) ukuran 18 tanpa garis bawah,
+baris `BRAND :  HAPPY PUMPKIN` (DUA spasi) dikembalikan di A10, blok rekening
+pindah ke kolom B dengan kotak `medium` selebar B..C.
+
+**Pelajaran umum: jangan pernah menyimpulkan format dari satu berkas.**
+Bandingkan minimal tiga, dan menangkan yang terbaru.
+
+### Berkas acuan terbaik: `0420826 YULIS BABY SHOP` (28 Agustus 2026)
+
+Paling baru dan paling bersih, punya tab `FORMAT INVOICE`,
+`FORMAT SURAT JALAN (2)`, dan `PACKING LIST`.
+
+Invoice: lebar A..H = 4,00 / 16,14 / 27,00 / 5,00 / 13,29 / 12,71 / 13,57 /
+15,57 (jumlah 107,3); print_area `A2:H66`; judul tabel baris 12–14 (A12:A14,
+B12:B14, C12:C14, H12:H14 digabung tegak; D/E/F/G judul di 12, sublabel
+digabung 13:14); data mulai 15; penutup label di G, nilai di H, **seluruh
+sisinya `thin`, tanpa bingkai tebal** — ini membenarkan perbaikan 14 Sep.
+
+Surat Jalan: logo A1:B5, kop C1:C6, judul `SURAT JALAN` A8:M8 tengah sz 16,
+kalimat pembuka A9, **nomor di H9:M9 sz 18 tebal tanpa awalan "No."**,
+`BRAND : HAPPY PUMPKIN` (SATU spasi) di A10:E10, judul tabel 12–13,
+data mulai 14, tabel kedua bertumpuk mulai 34. Tanda tangan
+**Penerima (B) / Pengirim (F) / Mengetahui (K)** — urutan bagian 20 benar.
+
+### Potongan CBD/COD MEMANG dicetak di invoice — bagian 6 keliru
+
+Bagian 6 menulis *"Baris diskon CBD/COD tidak dicetak di invoice"*. Yang benar:
+**baris terpisahnya** tidak ada, tapi tarifnya ikut masuk ke persen diskon dan
+ikut dihitung per baris.
+
+Bukti `0220826 KATAMAMA TAPOS`:
+
+| | |
+|---|---:|
+| Sel diskon | `22% + 1.5%` |
+| Subtotal | 27.332.900 |
+| Diskon | 6.333.032,93 |
+| Total | 20.999.867,07 |
+
+dan `27.332.900 x 0,78 x 0,985 = 20.999.867,07` **persis**. Jadi kedua potongan
+BERUNTUN, bukan dijumlahkan.
+
+Karena itu `_persen_tertulis()` memulihkan diskon dasar dengan MEMBAGI
+(`1 - (1-efektif)/(1-tambahan)`), bukan mengurangi. Cara lama memberi 21,67%
+untuk Katamama, seharusnya 22%. Penulisannya juga disamakan dengan aslinya:
+`22% + 1.5%` — TITIK desimal, tanpa nol yang tidak perlu.
+
+Faktur `0420826 YULIS` menulis `22%` polos karena order itu memang TOP, bukan
+CBD. Jadi kedua bentuk itu benar, dan program sudah memilih sendiri dari kolom
+AD/AE. Tidak ada yang perlu diubah di situ.
+
+### Dokumen asli sering DIPECAH — dua sebab yang berbeda
+
+| Berkas | Pecah jadi | Sebabnya |
+|---|---|---|
+| `0100426 HARITSA` | `FAKTUR 0100426` + `FAKTUR 0100426.A`, `SURAT JALAN 1` + `2` | **KATEGORI**: FASHION (ukuran 1–6) vs BASIC (NB/S/M/L). Nomor kedua berakhiran `.A` |
+| `0160426 BABY WISE` | `FAKTUR (1)` + `(2)`, `SURAT JALAN 1` + `2` | **PANJANG HALAMAN**. Nomor SAMA (`0160426`), ukuran sama (1–6), penomoran baris menyambung (SJ2 mulai dari 34) |
+
+Pembeda pastinya: nomor `.A` + label kategori = pecah kategori; nomor sama +
+penomoran menyambung = sekadar halaman.
+
+Pecah kategori **hanya untuk Haritsa**. Disisir di `4. APRIL`, `5. MEI `,
+`6. JUNI`, `INVOICE AGUSTUS` (± 150 berkas): satu-satunya nama berkas yang
+memuat FASHION/BASIC adalah Haritsa (`0380626 PT. HARITSA - FASHION/BASIC`,
+`0160826 PT. HARITSA - BASIC`, `0170826 PT. HARITSA - FASHION`). Ini akhirnya
+menjawab "Kekhususan Haritsa yang belum dikonfirmasi" di bagian 7: **ya,
+Haritsa menerima faktur terpisah per kategori produk.**
+
+Pecah karena halaman **tidak perlu ditiru** — divisi dulu mengerjakannya
+manual baris per baris. Program memakai `fitToPage` + A4 tegak, jadi Excel
+dan PDF memecah halaman sendiri.
+
+**Label FASHION/BASIC tidak ada di order sheet mana pun.** Sumbernya di luar
+order sheet, jadi program TIDAK boleh menebaknya. Perlu jawaban Yosua sebelum
+pecah kategori Haritsa bisa diprogram.
+
+### Berkas lama memang berantakan — jangan dijadikan acuan format
+
+`0160426 BABY WISE` memuat tab `FAKTUR` berisi **customer lain** (JONNI
+SETIADI / Mae Bebe), bernomor `0150426.A`, seluruh nilainya `#N/A`; juga baris
+`#N/A` dan nol yang tertinggal di kedua Surat Jalannya, dan judul kolom
+`Harga setelah Diskon 22%+2%` yang tidak pernah terisi. Itu sisa salin-tempel,
+bukan bagian dari format.
+
+Untuk acuan format pakai berkas AGUSTUS 2026 yang bertab `FORMAT INVOICE` /
+`FORMAT SURAT JALAN`, jangan berkas April.
+
+### Yang perlu dijawab Yosua
+
+| Hal | Kenapa perlu |
+|---|---|
+| Faktur Haritsa dipecah FASHION / BASIC | Sudah pasti terjadi, tapi label kategorinya tidak ada di order sheet. Artikel mana masuk FASHION, mana BASIC? |
+| Nomor kedua berakhiran `.A` | Perlu dipastikan polanya memang begitu untuk seterusnya |

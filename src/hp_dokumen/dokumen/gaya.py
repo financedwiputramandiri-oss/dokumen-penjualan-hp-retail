@@ -18,6 +18,17 @@ RUPIAH = '"Rp"#,##0'
 RUPIAH_DESIMAL = '"Rp"#,##0.00'
 ANGKA = "#,##0"
 
+# Ukuran huruf baris "FAKTUR No." dan "BRAND" — 18 pada faktur asli
+# 0110826 BABY WISE dan 0420826 YULIS BABY SHOP.
+UKURAN_JUDUL_NOMOR = 18
+
+# Format angka akuntansi Rupiah, disalin apa adanya dari faktur asli
+# 0020826 CV. BASA MANDIRI. "Rp" menempel di tepi kiri sel — itu FORMAT
+# angka, bukan kolom tersendiri. Bagian ketiga (`_-"Rp"* "-"_-`) adalah
+# bagian untuk nilai NOL, sehingga Uang Muka kosong tampil sebagai "-".
+FORMAT_RP = r'_-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-'
+FORMAT_ANGKA = "#,##0"
+
 _tipis = Side(style="thin", color="000000")
 GARIS = Border(left=_tipis, right=_tipis, top=_tipis, bottom=_tipis)
 
@@ -245,31 +256,44 @@ def kop_dpm(
 
 
 def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3) -> None:
-    """Baris penanda faktur: "FAKTUR NO." lalu nomornya BERGARIS BAWAH.
+    """Baris penanda faktur: "FAKTUR No." lalu nomornya di sel sebelahnya.
 
-    Dibaca dari 0020826 CV. BASA MANDIRI: A9 berisi "FAKTUR NO." tebal, dan
-    nomornya ada di sel TERPISAH dengan garis bawah. Bukan satu kalimat
-    "FAKTUR No. 0020826" seperti versi sebelumnya.
+    Dibongkar ulang 14 September 2026 dari EMPAT faktur asli yang sepakat:
+    0010726 BABY WISE, 0310726 MAE BEBE, 0110826 BABY WISE, dan
+    0420826 YULIS BABY SHOP (yang terbaru, 28 Agustus 2026).
 
-    Faktur asli TIDAK memuat baris BRAND — itu hanya ada di Surat Jalan.
+    Semuanya menulis "FAKTUR No." — huruf besar-kecil seperti itu — dengan
+    ukuran besar (16-18) dan TANPA garis bawah.
+
+    Versi sebelumnya ("FAKTUR NO." ukuran 11 bergaris bawah) diambil dari
+    0020826 CV. BASA MANDIRI. Berkas itu ternyata memakai template lama dan
+    menyendiri terhadap keempat berkas di atas. JANGAN dipakai lagi sebagai
+    acuan tunggal.
     """
-    _tulis(ws, baris, 1, "FAKTUR NO.", bold=True, size=11)
-    sel = _tulis(ws, baris, kolom_nomor, nomor, bold=True, size=11)
-    sel.font = Font(name=FONT, size=11, bold=True, underline="single")
-    return sel
+    _tulis(ws, baris, 1, "FAKTUR No.", bold=True, size=UKURAN_JUDUL_NOMOR)
+    return _tulis(ws, baris, kolom_nomor, f" {nomor}" if nomor else "",
+                  bold=True, size=UKURAN_JUDUL_NOMOR)
 
 
-# ---------------------------------------------------------------- pembantu
-# Format akuntansi Rupiah persis seperti faktur asli DPM: "Rp" menempel di
-# tepi KIRI sel dan angkanya rata kanan. Dibaca dari 0020826 CV. BASA MANDIRI.
-# Inilah sebabnya "Rp" terlihat seperti kolom sendiri padahal bukan.
-FORMAT_RP = r'_-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-'
-FORMAT_ANGKA = "#,##0"
+def baris_merek(ws: Worksheet, baris: int, teks: str = "BRAND :  HAPPY PUMPKIN"):
+    """Baris BRAND. ADA di invoice MAUPUN di Surat Jalan.
+
+    Bagian 20 CLAUDE.md sempat mencatat "faktur asli TIDAK memuat baris
+    BRAND" — itu SALAH, kesimpulan dari satu berkas (0020826 CV. BASA
+    MANDIRI). Keempat faktur asli lain memuatnya di baris 10:
+
+        0010726 BABY WISE   A10 = "BRAND :  HAPPY PUMPKIN"
+        0310726 MAE BEBE    A10 = "BRAND :  HAPPY PUMPKIN"
+        0110826 BABY WISE   A10 = "BRAND :  HAPPY PUMPKIN"
+        0420826 YULIS       A10 = "BRAND :  HAPPY PUMPKIN"
+
+    Perhatikan DUA spasi sesudah titik dua — begitu aslinya.
+    """
+    return _tulis(ws, baris, 1, teks, bold=True, size=UKURAN_JUDUL_NOMOR)
 
 
 def huruf(kolom: int) -> str:
     from openpyxl.utils import get_column_letter
-
     return get_column_letter(kolom)
 
 

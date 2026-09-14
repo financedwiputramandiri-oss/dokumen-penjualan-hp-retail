@@ -264,15 +264,18 @@ def test_invoice_kop_seperti_faktur_asli(bahan, tmp_path):
     # ruang logo digabung A2:B6, teks perusahaan di kolom C mulai baris 2
     assert "A2:B6" in [str(m) for m in ws.merged_cells.ranges]
     assert ws.cell(2, 3).value, "nama perusahaan harus di kolom C baris 2"
-    # Faktur asli 0020826 CV. BASA MANDIRI: "FAKTUR NO." di A9 dan NOMORNYA
-    # di sel terpisah dengan garis bawah — bukan satu kalimat "FAKTUR No. 001".
-    assert ws.cell(9, 1).value == "FAKTUR NO.", "baris FAKTUR NO. wajib ada"
+    # "FAKTUR No." di A9, nomornya di sel terpisah (C9), keduanya berhuruf
+    # besar dan TANPA garis bawah. Dikunci dari empat faktur asli yang
+    # sepakat: 0010726 & 0110826 BABY WISE, 0310726 MAE BEBE, 0420826 YULIS.
+    assert ws.cell(9, 1).value == "FAKTUR No.", "baris FAKTUR No. wajib ada"
     nomor = ws.cell(9, 3)
     assert nomor.value, "nomor faktur harus di sel terpisah"
-    assert nomor.font.underline == "single", "nomor faktur harus bergaris bawah"
-    # Baris BRAND hanya ada di Surat Jalan, tidak di faktur.
-    teks_awal = " ".join(str(ws.cell(r, 1).value or "") for r in range(9, 12))
-    assert "BRAND" not in teks_awal, "faktur asli tidak memuat baris BRAND"
+    assert nomor.font.underline != "single", "nomor faktur TIDAK bergaris bawah"
+    assert nomor.font.size >= 16, "nomor faktur berhuruf besar seperti aslinya"
+    # Baris BRAND ADA di faktur, tepat di baris 10. Pernah dihapus karena
+    # satu berkas (0020826 CV. BASA MANDIRI) menyendiri — jangan diulang.
+    assert "BRAND" in str(ws.cell(10, 1).value or ""), \
+        "faktur asli memuat baris BRAND di A10"
 
 
 def test_invoice_judul_tabel_tiga_tingkat(bahan, tmp_path):
@@ -303,10 +306,11 @@ def test_invoice_persen_diskon_di_bawah_labelnya(bahan, tmp_path):
 
 def test_invoice_memuat_blok_rekening(bahan, tmp_path):
     ws = _invoice_jadi(bahan, tmp_path)
-    # Faktur asli menaruh blok rekening di kolom A (0020826 A28:A31).
-    assert _ada_mengandung(ws, 1, "PEMBAYARAN DITRANSFER KE REKENING")
+    # Faktur asli menaruh blok rekening di kolom B (0420826 YULIS B60:C63,
+    # 0110826 BABY WISE B23, 0310726 MAE BEBE B24, 0010726 BABY WISE B75).
+    assert _ada_mengandung(ws, 2, "PEMBAYARAN DITRANSFER KE REKENING")
     # kalimat pengantar tidak boleh muncul dua kali
-    jumlah = sum("PEMBAYARAN DITRANSFER" in str(ws.cell(r, 1).value or "")
+    jumlah = sum("PEMBAYARAN DITRANSFER" in str(ws.cell(r, 2).value or "")
                  for r in range(1, ws.max_row + 1))
     assert jumlah == 1, "baris rekening kembar"
 

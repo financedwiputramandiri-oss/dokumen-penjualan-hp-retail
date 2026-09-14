@@ -148,11 +148,25 @@ def _persen_tertulis(order: Order, keputusan: KeputusanNett, pengaturan) -> tupl
     efektif = persen_diskon_efektif(kotor, keputusan.nett_total)
     tambahan = tarif_tambahan_tertulis(keputusan.kolom_sumber)
     if tambahan:
-        dasar = max(0.0, efektif - tambahan)
-        teks = (f"{dasar * 100:.0f}% + "
-                f"{tambahan * 100:.1f}%".replace(".", ","))
+        # Diskon dasar dipulihkan dengan membagi, bukan mengurangi: kedua
+        # potongan itu BERUNTUN (kotor x (1-dasar) x (1-tambahan)), bukan
+        # dijumlahkan. Contoh Katamama 0220826: efektif 23,17%, tambahan
+        # 1,5% -> dasar 22% persis. Kalau dikurangi, hasilnya 21,67%.
+        dasar = 1.0 - (1.0 - efektif) / (1.0 - tambahan) if tambahan < 1 else 0.0
+        teks = f"{_persen_ringkas(dasar)} + {_persen_ringkas(tambahan)}"
         return teks, None
     return None, efektif
+
+
+def _persen_ringkas(pecahan: float) -> str:
+    """Tulis persen tanpa nol di belakang koma, memakai TITIK desimal.
+
+    Faktur asli menulisnya "22% + 1.5%" (0220826 KATAMAMA TAPOS, F14) —
+    titik, bukan koma, dan tanpa angka nol yang tidak perlu.
+    """
+    angka = round(pecahan * 100, 2)
+    utuh = f"{angka:.2f}".rstrip("0").rstrip(".")
+    return f"{utuh}%"
 
 
 def buat_invoice(
@@ -183,6 +197,9 @@ def buat_invoice(
         kolom_kanan=6,
     )
     gaya.judul_faktur(ws, 9, nomor)
+    # Baris BRAND ADA di faktur asli (A10). Sempat dihapus karena satu
+    # berkas menyendiri — lihat gaya.baris_merek().
+    gaya.baris_merek(ws, 10)
 
     # ---- isi tabel disusun dulu: bentuk judulnya ikut ada/tidaknya diskon
     baris = susun_baris(
@@ -292,11 +309,15 @@ def buat_invoice(
         # Uang Muka yang kosong tampil sebagai tanda "-", bukan angka 0.
         gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP)
 
-    # ---- rekening di kolom A, sejajar penutup --------------------------
-    # Faktur asli menaruhnya di kolom A (0020826 A28:A31), bukan kolom B.
+    # ---- rekening di kolom B, sejajar penutup --------------------------
+    # Kolom B, dengan kotak tebal selebar B..C. Diperiksa ulang pada empat
+    # faktur asli: 0010726 BABY WISE (B75), 0310726 MAE BEBE (B24),
+    # 0110826 BABY WISE (B23), 0420826 YULIS (B60:C63 bergaris medium).
+    # Hanya 0020826 CV. BASA MANDIRI yang memakai kolom A, dan berkas itu
+    # memang memakai template lama.
     rekening = perusahaan.baris_rekening()
     for i, teks in enumerate(rekening):
-        gaya.sel_isi(ws, p + 1 + i, 1, teks, tebal=True)
+        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=True)
 
     # Blok penutup bergaris PENUH dan SERAGAM TIPIS — tiap sel punya empat
     # sisi tipis, termasuk bingkai luarnya. Permintaan Yosua 14 September
@@ -308,9 +329,9 @@ def buat_invoice(
     gaya.beri_garis(ws, p, 7, p + len(penutup) - 1, 8)
 
     # Blok rekening TIDAK bergaris penuh — satu kotak saja mengelilingi
-    # keempat barisnya, juga seperti faktur asli (A28:A31 hanya bergaris tepi).
+    # keempat barisnya, seperti B60:C63 pada 0420826 YULIS BABY SHOP.
     if rekening:
-        gaya.kotak(ws, p + 1, 1, p + len(rekening), 3)
+        gaya.kotak(ws, p + 1, 2, p + len(rekening), 3)
 
     baris_hormat = p + len(penutup)
     ws.merge_cells(start_row=baris_hormat, start_column=7, end_row=baris_hormat, end_column=8)
