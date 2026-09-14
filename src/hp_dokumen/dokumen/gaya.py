@@ -22,6 +22,12 @@ ANGKA = "#,##0"
 # 0110826 BABY WISE dan 0420826 YULIS BABY SHOP.
 UKURAN_JUDUL_NOMOR = 18
 
+# Ukuran huruf kop, dari 0110826 BABY WISE (sama di tab FORMAT INVOICE
+# maupun FORMAT SURAT JALAN).
+UKURAN_NAMA_PERUSAHAAN = 18
+UKURAN_NAMA_CUSTOMER = 15
+UKURAN_KOP = 11
+
 # Format angka akuntansi Rupiah, disalin apa adanya dari faktur asli
 # 0020826 CV. BASA MANDIRI. "Rp" menempel di tepi kiri sel — itu FORMAT
 # angka, bukan kolom tersendiri. Bagian ketiga (`_-"Rp"* "-"_-`) adalah
@@ -178,10 +184,19 @@ def siapkan_cetak(ws: Worksheet, kolom_terakhir: int, *, landscape: bool = False
     ws.print_area = f"A1:{get_column_letter(kolom_terakhir)}{max(ws.max_row, 1)}"
 
 
-def blok_tanda_tangan(ws: Worksheet, baris: int, kolom: list[int], label: list[str]) -> int:
+def blok_tanda_tangan(ws: Worksheet, baris: int, kolom: list[int], label: list[str],
+                      *, garis_nama: bool = False, size: int = 10) -> int:
+    """Blok tanda tangan.
+
+    Surat Jalan asli TIDAK memuat baris "(.............)" di bawah labelnya —
+    hanya `Penerima :` / `Pengirim :` / `Mengetahui :` saja. Diperiksa pada
+    0110826 BABY WISE (B31/F31/K31) dan 0420826 YULIS (B180/F180/K180):
+    keempat sel di bawahnya kosong. Karena itu `garis_nama` bawaannya mati.
+    """
     for c, teks in zip(kolom, label):
-        _tulis(ws, baris, c, teks, size=10)
-        _tulis(ws, baris + 4, c, "(................................)", size=9)
+        _tulis(ws, baris, c, teks, size=size)
+        if garis_nama:
+            _tulis(ws, baris + 4, c, "(................................)", size=9)
     return baris + 5
 
 
@@ -210,6 +225,7 @@ def kop_dpm(
     tanggal_dokumen: Optional[date],
     baris_mulai: int,
     kolom_kanan: int,
+    alamat_tebal: bool = False,
 ) -> None:
     """Kop surat persis seperti faktur asli CV Dwi Putra Mandiri.
 
@@ -239,20 +255,26 @@ def kop_dpm(
             pass
 
     # ---- teks perusahaan di kolom C ------------------------------------
-    _tulis(ws, r, 3, perusahaan.nama, bold=True, size=11)
+    # Ukuran huruf diambil dari berkas asli 0110826 BABY WISE: nama
+    # perusahaan 18 tebal, alamat 11, nama customer 15 tebal, sisanya 11.
+    # Versi lama memakai 11/9/10 sehingga kopnya jauh lebih kecil dari
+    # dokumen yang dipakai divisi.
+    _tulis(ws, r, 3, perusahaan.nama, bold=True, size=UKURAN_NAMA_PERUSAHAAN)
     for i, baris_alamat in enumerate(perusahaan.alamat_baris, start=1):
-        _tulis(ws, r + i, 3, baris_alamat, size=9)
+        _tulis(ws, r + i, 3, baris_alamat, size=UKURAN_KOP, bold=alamat_tebal)
 
     # ---- blok kanan: tanggal, Kepada Yth., nama, alamat ----------------
     k = kolom_kanan
-    _tulis(ws, r, k, f"{perusahaan.kota_penerbitan}, {tanggal_indonesia(tanggal_dokumen)}", size=10)
-    _tulis(ws, r + 1, k, "Kepada Yth.", size=10)
-    _tulis(ws, r + 2, k, nama_customer or "(nama customer belum diisi)", bold=True, size=10)
+    _tulis(ws, r, k, f"{perusahaan.kota_penerbitan}, {tanggal_indonesia(tanggal_dokumen)}",
+           size=UKURAN_KOP)
+    _tulis(ws, r + 1, k, "Kepada Yth.", size=UKURAN_KOP)
+    _tulis(ws, r + 2, k, nama_customer or "(nama customer belum diisi)",
+           bold=True, size=UKURAN_NAMA_CUSTOMER)
     baris_alamat_cust = pecah_alamat(alamat_customer)
     if not baris_alamat_cust:
         baris_alamat_cust = ["(alamat belum diisi)"]
     for i, teks in enumerate(baris_alamat_cust, start=3):
-        _tulis(ws, r + i, k, teks, size=9)
+        _tulis(ws, r + i, k, teks, size=UKURAN_KOP)
 
 
 def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3) -> None:
@@ -297,23 +319,25 @@ def huruf(kolom: int) -> str:
     return get_column_letter(kolom)
 
 
-def sel_judul(ws: Worksheet, baris: int, kolom: int, teks):
+def sel_judul(ws: Worksheet, baris: int, kolom: int, teks, *, ukuran: int = 9):
     """Sel judul tabel: tebal, rata tengah, berbingkai."""
     sel = ws.cell(baris, kolom, teks)
-    sel.font = Font(name=FONT, size=9, bold=True)
+    sel.font = Font(name=FONT, size=ukuran, bold=True)
     sel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     sel.border = GARIS
     return sel
 
 
 def sel_isi(ws: Worksheet, baris: int, kolom: int, nilai, *, rata: str = "left",
-            angka: Optional[str] = None, tebal: bool = False):
+            angka: Optional[str] = None, tebal: bool = False,
+            ukuran: int = 9, lipat: bool = False):
     """Sel isi tabel."""
     sel = ws.cell(baris, kolom, nilai)
-    sel.font = Font(name=FONT, size=9, bold=tebal)
-    sel.alignment = Alignment(horizontal=rata, vertical="center")
+    sel.font = Font(name=FONT, size=ukuran, bold=tebal)
+    sel.alignment = Alignment(horizontal=rata, vertical="center", wrap_text=lipat)
     if angka:
         sel.number_format = angka
         if rata == "left":
-            sel.alignment = Alignment(horizontal="right", vertical="center")
+            sel.alignment = Alignment(horizontal="right", vertical="center",
+                                      wrap_text=lipat)
     return sel

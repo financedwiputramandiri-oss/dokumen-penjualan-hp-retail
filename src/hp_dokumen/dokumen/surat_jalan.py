@@ -44,10 +44,32 @@ BARIS_TABEL = 12
 # deskripsi barang selebar +-29 satuan (C+D+E yang digabung) dan kolom
 # ukuran yang sempit. Kolom ukuran disetel 5,6 supaya sembilan kolom pun
 # tetap muat satu halaman A4 tegak.
-LEBAR = {1: 5.0, 2: 15.3, 3: 5.6, 4: 5.6, 5: 18.1, 6: 10.3}
-LEBAR_UKURAN = 5.6      # tiap kolom ukuran (G dan seterusnya)
-LEBAR_QTY = 7.0         # kolom Qty paling kanan
+LEBAR = {1: 5.0, 2: 15.29, 3: 5.57, 4: 5.57, 5: 18.14, 6: 10.29}
+LEBAR_UKURAN = 9.0      # tiap kolom ukuran (G dan seterusnya)
+LEBAR_UKURAN_SEMPIT = 5.6   # dipakai kalau ukurannya banyak, lihat di bawah
+LEBAR_QTY = 6.86        # kolom Qty paling kanan
 LEBAR_GUDANG = 11.0     # kolom JUMLAH DIKIRIM / NO. KOLI pada Packing List
+
+# Jatah lebar A4 tegak. Kolom ukuran 9,0 satuan diambil dari berkas asli
+# 0110826 BABY WISE, tapi berkas itu hanya punya 6 ukuran. Blok dengan 8-9
+# ukuran akan kebablasan kalau dipaksa 9,0, jadi kolom ukurannya menyempit
+# sampai muat. Yang menyempit HANYA kolom ukuran — kolom teks tetap.
+JATAH_A4_SJ = 135.0
+
+# Tinggi baris, juga dari 0110826 BABY WISE. Tanpa ini barisnya rapat dan
+# tidak seperti Surat Jalan yang dipakai divisi.
+TINGGI_JUDUL = 22.5     # baris judul kolom
+TINGGI_SUBJUDUL = 15.0  # baris "PCS" di bawahnya
+TINGGI_DATA = 30.0      # tiap baris barang
+
+# Ukuran huruf, dari berkas asli. Versi lama memakai 9 untuk semuanya,
+# jadi dokumennya jauh lebih rapat dan kecil daripada aslinya.
+HURUF_JUDUL_DOK = 16    # kata "SURAT JALAN"
+HURUF_KALIMAT = 12      # "Diterima dengan baik barang-barang..."
+HURUF_MEREK = 14        # "BRAND : HAPPY PUMPKIN"
+HURUF_JUDUL_KOLOM = 12
+HURUF_TEKS = 11         # No., kode artikel, deskripsi, warna
+HURUF_ANGKA = 12        # qty per ukuran dan kolom Qty
 
 MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 20.0
@@ -102,6 +124,22 @@ def _posisi_terpakai(blok) -> list[int]:
             if i < len(label) and str(label[i] or "").strip()]
 
 
+def _lebar_kolom_ukuran(jumlah_ukuran: int, jumlah_gudang: int) -> float:
+    """Lebar tiap kolom ukuran, dikecilkan kalau ukurannya kebanyakan.
+
+    Berkas asli 0110826 BABY WISE memakai 9,0 satuan, tapi di situ ukurannya
+    cuma enam. Kalau satu blok punya sembilan ukuran, 9,0 x 9 membuat
+    jumlahnya lewat jatah A4 dan hurufnya mengecil drastis. Jadi kolom ukuran
+    boleh menyusut, tapi tidak pernah lebih sempit dari LEBAR_UKURAN_SEMPIT.
+    """
+    if jumlah_ukuran <= 0:
+        return LEBAR_UKURAN
+    tetap = sum(LEBAR.values()) + LEBAR_QTY + jumlah_gudang * LEBAR_GUDANG
+    sisa = JATAH_A4_SJ - tetap
+    muat = sisa / jumlah_ukuran
+    return max(LEBAR_UKURAN_SEMPIT, min(LEBAR_UKURAN, muat))
+
+
 def _label_terpakai(blok) -> list[str]:
     label = list(blok.label_ukuran)
     return [str(label[i]).strip() for i in _posisi_terpakai(blok)]
@@ -118,18 +156,21 @@ def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> in
     # judul dua tingkat
     for kolom, teks in ((KOL_NO, "No."), (KOL_KODE, "ARTICLE CODE"), (KOL_WARNA, "WARNA")):
         ws.merge_cells(start_row=j, start_column=kolom, end_row=j + 1, end_column=kolom)
-        gaya.sel_judul(ws, j, kolom, teks)
+        gaya.sel_judul(ws, j, kolom, teks, ukuran=HURUF_JUDUL_KOLOM)
     ws.merge_cells(start_row=j, start_column=KOL_DESK, end_row=j + 1, end_column=KOL_WARNA - 1)
-    gaya.sel_judul(ws, j, KOL_DESK, "DESKRIPSI BARANG")
+    gaya.sel_judul(ws, j, KOL_DESK, "DESKRIPSI BARANG", ukuran=HURUF_JUDUL_KOLOM)
     for i, teks in enumerate(label):
-        gaya.sel_judul(ws, j, KOL_UKURAN_MULAI + i, teks)
-        gaya.sel_judul(ws, j + 1, KOL_UKURAN_MULAI + i, None)
-    gaya.sel_judul(ws, j, kol_qty, "Qty")
-    gaya.sel_judul(ws, j + 1, kol_qty, "PCS")
+        gaya.sel_judul(ws, j, KOL_UKURAN_MULAI + i, teks, ukuran=HURUF_JUDUL_KOLOM)
+        gaya.sel_judul(ws, j + 1, KOL_UKURAN_MULAI + i, None, ukuran=HURUF_JUDUL_KOLOM)
+    gaya.sel_judul(ws, j, kol_qty, "Qty", ukuran=HURUF_JUDUL_KOLOM)
+    gaya.sel_judul(ws, j + 1, kol_qty, "PCS", ukuran=HURUF_JUDUL_KOLOM)
     for i, teks in enumerate(kolom_gudang):
         ws.merge_cells(start_row=j, start_column=kol_qty + 1 + i,
                        end_row=j + 1, end_column=kol_qty + 1 + i)
-        gaya.sel_judul(ws, j, kol_qty + 1 + i, teks)
+        gaya.sel_judul(ws, j, kol_qty + 1 + i, teks, ukuran=HURUF_JUDUL_KOLOM)
+    # Tinggi baris judul persis seperti 0110826 BABY WISE (22,5 dan 15,0).
+    ws.row_dimensions[j].height = TINGGI_JUDUL
+    ws.row_dimensions[j + 1].height = TINGGI_SUBJUDUL
 
     r = j + 2
     urut = 0
@@ -137,17 +178,23 @@ def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> in
         if b.qty <= 0:
             continue
         urut += 1
-        gaya.sel_isi(ws, r, KOL_NO, urut, rata="center")
-        gaya.sel_isi(ws, r, KOL_KODE, b.kode)
+        gaya.sel_isi(ws, r, KOL_NO, urut, rata="center",
+                     ukuran=HURUF_TEKS, lipat=True)
+        gaya.sel_isi(ws, r, KOL_KODE, b.kode, ukuran=HURUF_TEKS, lipat=True)
         ws.merge_cells(start_row=r, start_column=KOL_DESK, end_row=r, end_column=KOL_WARNA - 1)
-        gaya.sel_isi(ws, r, KOL_DESK, b.nama)
-        gaya.sel_isi(ws, r, KOL_WARNA, b.warna)
+        gaya.sel_isi(ws, r, KOL_DESK, b.nama, ukuran=HURUF_TEKS, lipat=True)
+        # WARNA dilipat: nama seperti "Cloud Cream" memang jadi dua baris di
+        # Surat Jalan asli, bukan terpotong.
+        gaya.sel_isi(ws, r, KOL_WARNA, b.warna, ukuran=HURUF_TEKS, lipat=True)
         for kolom_ke, i in enumerate(posisi):
             q = b.qty_per_ukuran[i] if i < len(b.qty_per_ukuran) else 0
-            gaya.sel_isi(ws, r, KOL_UKURAN_MULAI + kolom_ke, q or None, rata="center")
-        gaya.sel_isi(ws, r, kol_qty, b.qty, rata="center", tebal=True)
+            gaya.sel_isi(ws, r, KOL_UKURAN_MULAI + kolom_ke, q or None,
+                         rata="center", ukuran=HURUF_ANGKA, lipat=True)
+        gaya.sel_isi(ws, r, kol_qty, b.qty, rata="center", tebal=True,
+                     ukuran=HURUF_ANGKA, lipat=True)
         for i in range(len(kolom_gudang)):
-            gaya.sel_isi(ws, r, kol_qty + 1 + i, None)
+            gaya.sel_isi(ws, r, kol_qty + 1 + i, None, ukuran=HURUF_TEKS)
+        ws.row_dimensions[r].height = TINGGI_DATA
         r += 1
 
     gaya.beri_garis(ws, j, KOL_NO, r - 1, kol_qty + len(kolom_gudang))
@@ -164,8 +211,10 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     # Kolom ukuran, Qty, dan kolom gudang tidak bisa ditulis tetap seperti di
     # atas: jumlahnya ikut berapa banyak ukuran yang benar-benar terpakai.
     kolom_qty = kolom_akhir - len(kolom_gudang)
+    jumlah_ukuran = max(0, kolom_qty - KOL_UKURAN_MULAI)
+    lebar_ukuran = _lebar_kolom_ukuran(jumlah_ukuran, len(kolom_gudang))
     for kolom in range(KOL_UKURAN_MULAI, kolom_qty):
-        ws.column_dimensions[gaya.huruf(kolom)].width = LEBAR_UKURAN
+        ws.column_dimensions[gaya.huruf(kolom)].width = lebar_ukuran
     ws.column_dimensions[gaya.huruf(kolom_qty)].width = LEBAR_QTY
     for kolom in range(kolom_qty + 1, kolom_akhir + 1):
         ws.column_dimensions[gaya.huruf(kolom)].width = LEBAR_GUDANG
@@ -176,14 +225,19 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
         alamat_customer=(customer.alamat if customer else ""),
         tanggal_dokumen=tanggal,
         baris_mulai=BARIS_KOP,
-        kolom_kanan=KOL_UKURAN_MULAI,
+        # Blok kanan mulai kolom H, bukan G. Di 0110826 BABY WISE tanggal dan
+        # "Kepada Yth." memang ada di H1..H6. Kalau dimulai di G, alamat
+        # perusahaan di kolom C terpotong ("...Grogol Petambu").
+        kolom_kanan=KOL_UKURAN_MULAI + 1,
+        alamat_tebal=True,   # alamat di kop Surat Jalan asli bercetak tebal
     )
 
     ws.merge_cells(start_row=BARIS_JUDUL_DOK, start_column=1,
                    end_row=BARIS_JUDUL_DOK, end_column=kolom_akhir)
-    gaya.judul(ws, BARIS_JUDUL_DOK, 1, judul, ukuran=14)
+    gaya.judul(ws, BARIS_JUDUL_DOK, 1, judul, ukuran=HURUF_JUDUL_DOK)
 
-    gaya.sel_isi(ws, BARIS_KALIMAT, 1, KALIMAT)
+    gaya.sel_isi(ws, BARIS_KALIMAT, 1, KALIMAT,
+                 ukuran=HURUF_KALIMAT, tebal=True)
 
     # Nomor dokumen: BESAR, tebal, rata tengah di sisi kanan, TANPA awalan
     # "No.". Dibaca dari 0110826 BABY WISE (H9:M9, ukuran huruf 18).
@@ -198,7 +252,10 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     # yang berada DI LUAR print_area (A1:M31), jadi tidak pernah ikut tercetak.
     # Versi lama menaruhnya di dalam area cetak, sehingga muncul di kertas.
 
-    gaya.sel_isi(ws, BARIS_MEREK, 1, "BRAND : HAPPY PUMPKIN", tebal=True)
+    ws.merge_cells(start_row=BARIS_MEREK, start_column=1,
+                   end_row=BARIS_MEREK, end_column=KOL_WARNA - 1)
+    gaya.sel_isi(ws, BARIS_MEREK, 1, "BRAND : HAPPY PUMPKIN",
+                 tebal=True, ukuran=HURUF_MEREK)
 
     r = BARIS_TABEL
     for blok in order.blok:
@@ -209,7 +266,12 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     # Urutan tanda tangan: PENERIMA dulu, baru Pengirim, lalu Mengetahui.
     # Sama di kedua berkas asli terbaru — 0110826 BABY WISE (B31/F31/K31) dan
     # 0020826 CV. BASA MANDIRI (B27/G27/K27). Versi lama terbalik.
-    gaya.blok_tanda_tangan(ws, r, [2, 6, 11], ["Penerima :", "Pengirim :", "Mengetahui :"])
+    # TANPA baris "(...............)" di bawah labelnya. Surat Jalan asli
+    # hanya menulis labelnya saja — diperiksa pada 0110826 BABY WISE
+    # (B31/F31/K31) dan 0420826 YULIS (B180/F180/K180).
+    gaya.blok_tanda_tangan(ws, r, [2, 6, 11],
+                           ["Penerima :", "Pengirim :", "Mengetahui :"],
+                           garis_nama=False, size=11)
     # Surat Jalan asli dicetak TEGAK, bukan mendatar — baik yang DPM
     # (0010726 BABY WISE) maupun yang MTN (FA 030426 TOKO BABY FAME).
     # Versi lama memakai landscape dan hasilnya tidak cocok dengan

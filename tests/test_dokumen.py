@@ -427,3 +427,81 @@ def test_invoice_tanpa_diskon_tidak_mencetak_kolom_diskon(bahan, tmp_path):
     assert "Diskon" not in label, "baris Diskon tidak ada di faktur tanpa diskon"
     judul = {str(ws.cell(12, c).value or "").strip() for c in range(1, 9)}
     assert "Diskon" not in judul, "kolom Diskon tidak dicetak kalau tidak ada diskon"
+
+
+# ---------------------------------------------------------------------------
+# Bentuk Surat Jalan, dikunci dari berkas asli 0110826 BABY WISE
+# (tab FORMAT SURAT JALAN). Yosua memberi berkas itu sendiri sebagai acuan
+# pada 14 September 2026, setelah melaporkan Surat Jalan "masih ada yang
+# salah". Yang salah waktu itu: barisnya rapat, hurufnya kecil, dan ada
+# baris "(...........)" di bawah tanda tangan yang di aslinya tidak ada.
+# ---------------------------------------------------------------------------
+
+def _surat_jalan_jadi(bahan, tmp_path):
+    orders, daftar, perusahaan, pengaturan = bahan
+    o = orders[0]
+    c = daftar.cari(o.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, c, perusahaan, "0110826")
+    berkas = tmp_path / "sj.xlsx"
+    wb.save(berkas)
+    return openpyxl.load_workbook(berkas).active
+
+
+def _baris_judul_sj(ws):
+    for r in range(1, ws.max_row + 1):
+        if ws.cell(r, 1).value == "No.":
+            return r
+    raise AssertionError("baris judul tabel Surat Jalan tidak ketemu")
+
+
+def test_surat_jalan_tinggi_baris_seperti_berkas_asli(bahan, tmp_path):
+    """Baris data setinggi 30, judul 22,5. Tanpa ini tabelnya rapat."""
+    from hp_dokumen.dokumen.surat_jalan import (
+        TINGGI_DATA, TINGGI_JUDUL, TINGGI_SUBJUDUL,
+    )
+
+    ws = _surat_jalan_jadi(bahan, tmp_path)
+    j = _baris_judul_sj(ws)
+    assert ws.row_dimensions[j].height == TINGGI_JUDUL
+    assert ws.row_dimensions[j + 1].height == TINGGI_SUBJUDUL
+    # baris data pertama
+    assert ws.row_dimensions[j + 2].height == TINGGI_DATA, (
+        "baris barang harus setinggi 30 seperti Surat Jalan asli"
+    )
+
+
+def test_surat_jalan_ukuran_huruf_seperti_berkas_asli(bahan, tmp_path):
+    """Huruf kop 18/15 dan isi tabel 11-12, bukan 9 seperti versi lama."""
+    ws = _surat_jalan_jadi(bahan, tmp_path)
+    assert ws.cell(1, 3).font.size == 18, "nama perusahaan di kop harus 18"
+
+    j = _baris_judul_sj(ws)
+    assert ws.cell(j, 1).font.size == 12, "judul kolom harus 12"
+    assert ws.cell(j + 2, 2).font.size == 11, "kode artikel harus 11"
+
+    # nama customer di blok kanan: 15 dan tebal
+    besar = [ws.cell(r, c) for r in range(1, 8) for c in range(7, 10)
+             if ws.cell(r, c).value and ws.cell(r, c).font.size == 15]
+    assert besar and besar[0].font.bold, "nama customer harus 15 dan tebal"
+
+
+def test_surat_jalan_tanda_tangan_tanpa_garis_titik(bahan, tmp_path):
+    """Surat Jalan asli hanya menulis labelnya, tanpa "(..........)"."""
+    ws = _surat_jalan_jadi(bahan, tmp_path)
+    semua = [str(ws.cell(r, c).value or "")
+             for r in range(1, ws.max_row + 1) for c in range(1, 14)]
+    assert any("Penerima" in t for t in semua), "label Penerima hilang"
+    assert not any("..." in t and "(" in t for t in semua), (
+        "Surat Jalan asli tidak memuat baris (............) di bawah tanda tangan"
+    )
+
+
+def test_surat_jalan_warna_dilipat_bukan_terpotong(bahan, tmp_path):
+    """Warna seperti "Cloud Cream" jadi dua baris, bukan terpotong."""
+    ws = _surat_jalan_jadi(bahan, tmp_path)
+    j = _baris_judul_sj(ws)
+    for kolom in (2, 3, 6):          # kode, deskripsi, warna
+        assert ws.cell(j + 2, kolom).alignment.wrap_text, (
+            f"kolom {kolom} harus melipat teks seperti Surat Jalan asli"
+        )

@@ -1698,3 +1698,65 @@ Untuk acuan format pakai berkas AGUSTUS 2026 yang bertab `FORMAT INVOICE` /
 |---|---|
 | Faktur Haritsa dipecah FASHION / BASIC | Sudah pasti terjadi, tapi label kategorinya tidak ada di order sheet. Artikel mana masuk FASHION, mana BASIC? |
 | Nomor kedua berakhiran `.A` | Perlu dipastikan polanya memang begitu untuk seterusnya |
+
+## 23. Surat Jalan disamakan dengan `0110826 BABY WISE` — 14 September 2026
+
+Yosua mengirim tangkapan layar Surat Jalan dan **berkas aslinya sekalian**:
+`0110826 BABY WISE.xlsx` (`1IJa-TbAoUOIAHXWauYdZeg667XtJBlJx`), tab
+`FORMAT SURAT JALAN`. Berkas itu dibongkar sel per sel, LALU diubah sendiri
+jadi PDF lewat LibreOffice supaya hasil program bisa diadu dengan gambar
+yang sebenarnya, bukan dengan tebakan.
+
+### Yang ternyata salah
+
+| Bagian | Versi lama | Berkas asli |
+|---|---:|---:|
+| Tinggi baris barang | bawaan (~15) | **30,0** |
+| Tinggi baris judul kolom | bawaan | **22,5** lalu 15,0 |
+| Huruf nama perusahaan di kop | 11 | **18** |
+| Huruf nama customer | 10 | **15** tebal |
+| Huruf alamat & tanggal | 9-10 | **11** |
+| Huruf `SURAT JALAN` | 14 | **16** |
+| Huruf kalimat pembuka | 9 biasa | **12 tebal** |
+| Huruf `BRAND : HAPPY PUMPKIN` | 9 | **14 tebal** |
+| Huruf judul kolom tabel | 9 | **12** |
+| Huruf isi tabel | 9 | **11** teks, **12** angka |
+| Lebar kolom ukuran | 5,6 | **9,0** |
+| Lebar kolom Qty | 7,0 | **6,86** |
+| Lipat teks di sel barang | tidak | **ya** |
+| Baris `(..............)` di bawah tanda tangan | ada | **TIDAK ADA** |
+| Blok kanan kop mulai kolom | G | **H** |
+
+Gabungan huruf kecil + baris rapat itulah yang membuat Surat Jalan program
+terlihat jauh berbeda dari yang dipakai divisi, walaupun susunan kolomnya
+sudah benar sejak bagian 18.
+
+### Tanda tangan tanpa garis titik-titik
+
+`0110826 BABY WISE` baris 31 hanya berisi `Penerima :` (B), `Pengirim :` (F),
+`Mengetahui :` (K31:M31) — sel di bawahnya KOSONG. Sama di `0420826 YULIS`
+(B180/F180/K180). Karena itu `gaya.blok_tanda_tangan()` sekarang punya
+`garis_nama` yang bawaannya **mati**.
+
+### Kop: blok kanan mulai kolom H
+
+Awalnya blok kanan Surat Jalan ditaruh di kolom G, dan alamat perusahaan di
+kolom C jadi terpotong — tercetak `...Grogol Petambu`. Di berkas asli tanggal
+dan `Kepada Yth.` ada di **H1..H6**, memberi kolom C..G penuh untuk alamat.
+
+### Lebar kolom ukuran menyusut sendiri kalau ukurannya banyak
+
+Berkas asli memakai 9,0 satuan per kolom ukuran, tapi di situ ukurannya hanya
+enam. Blok dengan sembilan ukuran akan lewat jatah A4 kalau dipaksa 9,0, jadi
+`_lebar_kolom_ukuran()` mengecilkannya sampai muat, dengan batas bawah 5,6.
+Yang menyusut HANYA kolom ukuran — kolom teks tetap, supaya deskripsi barang
+tidak ikut terpotong.
+
+### Cara memastikan yang dipakai sekarang
+
+Bandingkan **gambar lawan gambar**, bukan angka lawan angka: ubah berkas asli
+dan hasil program sama-sama ke PDF, lalu lihat keduanya. Perbedaan tinggi
+baris dan ukuran huruf tidak pernah kelihatan dari membaca nilai sel saja.
+
+Empat tes baru mengunci: tinggi baris, ukuran huruf kop dan tabel, tanda
+tangan tanpa garis titik, dan sel barang yang melipat teks. Tes 129 -> 133.

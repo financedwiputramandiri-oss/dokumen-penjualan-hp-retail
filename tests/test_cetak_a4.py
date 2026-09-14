@@ -11,7 +11,7 @@ tidak berkotak. Tiga hal dikunci di sini:
 Batas lebar dihitung dari faktur asli DPM: A4 tegak (8,27 inci) dikurangi
 margin 0,15 + 0,15, dibagi lebar satu satuan kolom Excel (+-0,0959 inci)
 menghasilkan +-83 satuan pada skala 100%. Faktur asli sendiri memakai 107,7
-satuan dengan skala cetak 97%, jadi batasnya diambil 115 — cukup longgar
+satuan dengan skala cetak 97%, jadi batasnya diambil 135 — cukup longgar
 untuk Surat Jalan sembilan ukuran, tapi tetap menangkap kolom yang kebablasan
 seperti versi lama (C selebar 39,4).
 """
