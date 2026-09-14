@@ -23,7 +23,7 @@ perusahaan:
       - Phone. +62 (021) 22561723
       - "Wa:(+62) 0877 7950 0992"
       - "Email : DPMTEX@yahoo.com"
-    logo: ""
+    logo: "logo_dpm.jpeg"
     # NITKU 22 digit, WAJIB untuk faktur pajak Coretax.
     # Lihat di Coretax: menu Profil Wajib Pajak -> Tempat Kegiatan Usaha.
     id_tku: ""

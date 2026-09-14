@@ -73,9 +73,9 @@ def test_invoice_blok_penutup_dan_rekening_berkotak(bahan, tmp_path):
     assert ws.cell(subtotal, 7).border.left.style, "sisi kiri blok penutup tidak bergaris"
 
     rek = next(r for r in range(1, ws.max_row + 1)
-               if "PEMBAYARAN DITRANSFER" in str(ws.cell(r, 2).value or ""))
-    assert ws.cell(rek, 2).border.top.style, "sisi atas blok rekening tidak bergaris"
-    assert ws.cell(rek, 2).border.left.style, "sisi kiri blok rekening tidak bergaris"
+               if "PEMBAYARAN DITRANSFER" in str(ws.cell(r, 1).value or ""))
+    assert ws.cell(rek, 1).border.top.style, "sisi atas blok rekening tidak bergaris"
+    assert ws.cell(rek, 1).border.left.style, "sisi kiri blok rekening tidak bergaris"
 
 
 @pytest.mark.parametrize("dokumen", ["invoice", "surat_jalan", "packing_list"])

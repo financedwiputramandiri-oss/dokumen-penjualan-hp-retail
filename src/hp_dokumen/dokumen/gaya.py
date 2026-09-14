@@ -244,18 +244,27 @@ def kop_dpm(
         _tulis(ws, r + i, k, teks, size=9)
 
 
-def judul_faktur(ws: Worksheet, baris: int, nomor: str, merek: str = "HAPPY PUMPKIN") -> None:
-    """Dua baris penanda di bawah kop: nomor faktur dan merek.
+def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3) -> None:
+    """Baris penanda faktur: "FAKTUR NO." lalu nomornya BERGARIS BAWAH.
 
-    Faktur asli selalu memuat keduanya. Baris BRAND sempat tidak ada di versi
-    sebelumnya dan itu salah satu yang membuat hasilnya terlihat berbeda.
+    Dibaca dari 0020826 CV. BASA MANDIRI: A9 berisi "FAKTUR NO." tebal, dan
+    nomornya ada di sel TERPISAH dengan garis bawah. Bukan satu kalimat
+    "FAKTUR No. 0020826" seperti versi sebelumnya.
+
+    Faktur asli TIDAK memuat baris BRAND — itu hanya ada di Surat Jalan.
     """
-    _tulis(ws, baris, 1, f"FAKTUR No. {nomor}", bold=True, size=11)
-    _tulis(ws, baris + 1, 1, f"BRAND :  {merek}", bold=True, size=10)
+    _tulis(ws, baris, 1, "FAKTUR NO.", bold=True, size=11)
+    sel = _tulis(ws, baris, kolom_nomor, nomor, bold=True, size=11)
+    sel.font = Font(name=FONT, size=11, bold=True, underline="single")
+    return sel
 
 
 # ---------------------------------------------------------------- pembantu
-FORMAT_RP = "#,##0"
+# Format akuntansi Rupiah persis seperti faktur asli DPM: "Rp" menempel di
+# tepi KIRI sel dan angkanya rata kanan. Dibaca dari 0020826 CV. BASA MANDIRI.
+# Inilah sebabnya "Rp" terlihat seperti kolom sendiri padahal bukan.
+FORMAT_RP = r'_-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-'
+FORMAT_ANGKA = "#,##0"
 
 
 def huruf(kolom: int) -> str:

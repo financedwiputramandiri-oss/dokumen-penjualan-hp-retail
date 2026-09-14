@@ -184,6 +184,14 @@ def buat_invoice(
     )
     gaya.judul_faktur(ws, 9, nomor)
 
+    # ---- isi tabel disusun dulu: bentuk judulnya ikut ada/tidaknya diskon
+    baris = susun_baris(
+        order, keputusan,
+        pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
+        akhiran_y=pengaturan.akhiran_y_untuk_angka,
+    )
+    ada_diskon = any(b.diskon > 0.5 for b in baris)
+
     # ---- judul tabel: tiga baris bertingkat ----------------------------
     j = BARIS_JUDUL
     teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
@@ -191,47 +199,63 @@ def buat_invoice(
     for kolom, teks in tegak:
         ws.merge_cells(start_row=j, start_column=kolom, end_row=j + 2, end_column=kolom)
         gaya.sel_judul(ws, j, kolom, teks)
-    bertingkat = [(4, "Qty", "PCS"), (5, "Harga", "Satuan"), (7, "Nilai", "Diskon")]
-    for kolom, atas, bawah in bertingkat:
-        gaya.sel_judul(ws, j, kolom, atas)
-        ws.merge_cells(start_row=j + 1, start_column=kolom, end_row=j + 2, end_column=kolom)
-        gaya.sel_judul(ws, j + 1, kolom, bawah)
-    # Kolom Diskon: label "Diskon " sendirian di baris judul paling atas,
-    # persennya di sel gabungan dua baris di bawahnya. Persis seperti
-    # 0010726 BABY WISE dan 0310726 MAE BEBE: F12 label, F13:F14 persen.
-    gaya.sel_judul(ws, j, 6, "Diskon ")
-    ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
-    if teks_persen:
-        gaya.sel_judul(ws, j + 1, 6, teks_persen)
-    else:
-        sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0)
-        sel.number_format = "0%"
+    gaya.sel_judul(ws, j, 4, "Qty")
+    ws.merge_cells(start_row=j + 1, start_column=4, end_row=j + 2, end_column=4)
+    gaya.sel_judul(ws, j + 1, 4, "PCS")
 
-    # ---- isi tabel ------------------------------------------------------
-    baris = susun_baris(
-        order, keputusan,
-        pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
-        akhiran_y=pengaturan.akhiran_y_untuk_angka,
-    )
+    if ada_diskon:
+        # Bentuk berdiskon, seperti 0010726 BABY WISE dan 0310726 MAE BEBE:
+        # Harga/Satuan, Diskon (persennya di F13:F14), lalu Nilai/Diskon.
+        gaya.sel_judul(ws, j, 5, "Harga")
+        ws.merge_cells(start_row=j + 1, start_column=5, end_row=j + 2, end_column=5)
+        gaya.sel_judul(ws, j + 1, 5, "Satuan")
+        gaya.sel_judul(ws, j, 7, "Nilai")
+        ws.merge_cells(start_row=j + 1, start_column=7, end_row=j + 2, end_column=7)
+        gaya.sel_judul(ws, j + 1, 7, "Diskon")
+        gaya.sel_judul(ws, j, 6, "Diskon ")
+        ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
+        if teks_persen:
+            gaya.sel_judul(ws, j + 1, 6, teks_persen)
+        else:
+            sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0)
+            sel.number_format = "0%"
+    else:
+        # Bentuk tanpa diskon, seperti 0020826 CV. BASA MANDIRI: kolom
+        # Harga melebar menutupi E:G dan kolom Diskon tidak dicetak sama
+        # sekali. Mencetak kolom diskon berisi nol hanya membingungkan.
+        ws.merge_cells(start_row=j, start_column=5, end_row=j + 2, end_column=7)
+        gaya.sel_judul(ws, j, 5, "Harga")
+        for kolom in (6, 7):
+            for baris_judul in range(j, j + 3):
+                gaya.sel_judul(ws, baris_judul, kolom, None)
     # Lebar kolom dipasang di sini, setelah isinya diketahui.
     for kolom, lebar in lebar_menyesuaikan(baris).items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
 
     r = BARIS_DATA
     for i, b in enumerate(baris, start=1):
-        diskon_satuan = (b.diskon / b.qty) if b.qty else 0.0
         gaya.sel_isi(ws, r, 1, i, rata="center")
         gaya.sel_isi(ws, r, 2, b.kode)
         gaya.sel_isi(ws, r, 3, b.deskripsi)
         gaya.sel_isi(ws, r, 4, b.qty, rata="center")
-        gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 6, diskon_satuan, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP)
-        # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada faktur
-        # asli: 0310726 MAE BEBE baris 1 -> 18 x 62.900 = 1.132.200, diskon
-        # 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama dengan
-        # baris "Total", bukan "Subtotal".
-        gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP)
+        if ada_diskon:
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
+            gaya.sel_isi(ws, r, 6, (b.diskon / b.qty) if b.qty else 0.0,
+                         angka=gaya.FORMAT_RP)
+            gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP)
+            # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada
+            # faktur asli 0310726 MAE BEBE baris 1: 18 x 62.900 = 1.132.200,
+            # diskon 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama
+            # dengan baris "Total", bukan "Subtotal".
+            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP)
+        else:
+            # Tanpa diskon, Harga menempati sel gabungan E:G dan
+            # Jumlah = qty x harga, persis 0020826 CV. BASA MANDIRI.
+            ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
+            for kolom in (6, 7):
+                gaya.sel_isi(ws, r, kolom, None)
+            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP)
         r += 1
     akhir = r - 1
     gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
@@ -245,27 +269,35 @@ def buat_invoice(
     ppn = total - dpp
 
     label_ppn = f"PPN {tarif * 100:.0f}%" if tarif else "PPN (tidak dikenakan)"
-    penutup = [
-        ("Subtotal", kotor), ("Diskon", diskon), ("Total", total),
-        ("Uang Muka", 0), ("DPP", dpp), (label_ppn, ppn), ("Total", dpp + ppn),
+    # Faktur asli TANPA diskon (0020826 CV. BASA MANDIRI) tidak memuat baris
+    # Subtotal dan Diskon sama sekali — langsung Total. Baris berisi nol hanya
+    # menimbulkan pertanyaan. Yang berdiskon tetap memuat keduanya, seperti
+    # 0010726 BABY WISE.
+    penutup = []
+    if ada_diskon:
+        penutup += [("Subtotal", kotor), ("Diskon", diskon)]
+    penutup += [
+        ("Total", total), ("Uang Muka", 0),
+        ("DPP", dpp), (label_ppn, ppn), ("Total", dpp + ppn),
     ]
     p = akhir + 1
     for i, (label, nilai) in enumerate(penutup):
-        tebal = label == "Subtotal" or i == len(penutup) - 1
-        gaya.sel_isi(ws, p + i, 7, label, tebal=tebal)
-        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP, tebal=tebal)
+        tebal = i == 0 or i == len(penutup) - 1
+        gaya.sel_isi(ws, p + i, 7, label, tebal=True)
+        # "Uang Muka" nol ditulis polos tanpa "Rp", sama seperti faktur asli.
+        angka = gaya.FORMAT_ANGKA if label == "Uang Muka" else gaya.FORMAT_RP
+        gaya.sel_isi(ws, p + i, 8, nilai, angka=angka, tebal=tebal)
 
-    # ---- rekening di kolom B, sejajar penutup --------------------------
+    # ---- rekening di kolom A, sejajar penutup --------------------------
+    # Faktur asli menaruhnya di kolom A (0020826 A28:A31), bukan kolom B.
     rekening = perusahaan.baris_rekening()
     for i, teks in enumerate(rekening):
-        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=(i == 0))
+        gaya.sel_isi(ws, p + 1 + i, 1, teks, tebal=True)
 
-    # Kedua blok diberi garis kotak, persis seperti faktur asli: satu kotak
-    # mengelilingi blok penutup Subtotal..Total, satu lagi mengelilingi blok
-    # rekening. Tanpa ini keduanya melayang tanpa batas dan sulit dibaca.
+    # Kedua blok diberi garis kotak, persis seperti faktur asli.
     gaya.kotak(ws, p, 7, p + len(penutup) - 1, 8)
     if rekening:
-        gaya.kotak(ws, p + 1, 2, p + len(rekening), 3)
+        gaya.kotak(ws, p + 1, 1, p + len(rekening), 3)
 
     baris_hormat = p + len(penutup)
     ws.merge_cells(start_row=baris_hormat, start_column=7, end_row=baris_hormat, end_column=8)

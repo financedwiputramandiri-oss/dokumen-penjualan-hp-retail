@@ -264,8 +264,15 @@ def test_invoice_kop_seperti_faktur_asli(bahan, tmp_path):
     # ruang logo digabung A2:B6, teks perusahaan di kolom C mulai baris 2
     assert "A2:B6" in [str(m) for m in ws.merged_cells.ranges]
     assert ws.cell(2, 3).value, "nama perusahaan harus di kolom C baris 2"
-    assert str(ws.cell(9, 1).value).startswith("FAKTUR No."), "baris FAKTUR No. wajib ada"
-    assert "BRAND" in str(ws.cell(10, 1).value), "baris BRAND wajib ada"
+    # Faktur asli 0020826 CV. BASA MANDIRI: "FAKTUR NO." di A9 dan NOMORNYA
+    # di sel terpisah dengan garis bawah — bukan satu kalimat "FAKTUR No. 001".
+    assert ws.cell(9, 1).value == "FAKTUR NO.", "baris FAKTUR NO. wajib ada"
+    nomor = ws.cell(9, 3)
+    assert nomor.value, "nomor faktur harus di sel terpisah"
+    assert nomor.font.underline == "single", "nomor faktur harus bergaris bawah"
+    # Baris BRAND hanya ada di Surat Jalan, tidak di faktur.
+    teks_awal = " ".join(str(ws.cell(r, 1).value or "") for r in range(9, 12))
+    assert "BRAND" not in teks_awal, "faktur asli tidak memuat baris BRAND"
 
 
 def test_invoice_judul_tabel_tiga_tingkat(bahan, tmp_path):
@@ -296,9 +303,10 @@ def test_invoice_persen_diskon_di_bawah_labelnya(bahan, tmp_path):
 
 def test_invoice_memuat_blok_rekening(bahan, tmp_path):
     ws = _invoice_jadi(bahan, tmp_path)
-    assert _ada_mengandung(ws, 2, "PEMBAYARAN DITRANSFER KE REKENING")
+    # Faktur asli menaruh blok rekening di kolom A (0020826 A28:A31).
+    assert _ada_mengandung(ws, 1, "PEMBAYARAN DITRANSFER KE REKENING")
     # kalimat pengantar tidak boleh muncul dua kali
-    jumlah = sum("PEMBAYARAN DITRANSFER" in str(ws.cell(r, 2).value or "")
+    jumlah = sum("PEMBAYARAN DITRANSFER" in str(ws.cell(r, 1).value or "")
                  for r in range(1, ws.max_row + 1))
     assert jumlah == 1, "baris rekening kembar"
 
@@ -322,3 +330,96 @@ def test_surat_jalan_tidak_mencetak_kolom_ukuran_yang_kosong(bahan, tmp_path):
                            if isinstance(ws.cell(rr, 1).value, int))
             assert terpakai, f"kolom ukuran '{label}' tercetak tapi kosong"
             kolom += 1
+
+
+def test_surat_jalan_tanpa_total_qty_di_kanan_atas(bahan, tmp_path):
+    """Angka total qty TIDAK boleh tercetak di kanan atas Surat Jalan.
+
+    Permintaan Yosua 14 September 2026. Memang begitu aslinya juga: di
+    0110826 BABY WISE angka itu ada di kolom N, DI LUAR print_area (A1:M31),
+    jadi tidak pernah ikut tercetak. Versi lama menaruhnya di dalam area
+    cetak sehingga muncul di kertas.
+    """
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "0010126")
+    p = tmp_path / "sj_tanpa_total.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    baris_judul = next(r for r in range(1, ws.max_row + 1)
+                       if ws.cell(r, 1).value == "No.")
+    # Di atas baris judul tabel tidak boleh ada angka sebesar total qty.
+    for r in range(1, baris_judul):
+        for c in range(1, ws.max_column + 1):
+            v = ws.cell(r, c).value
+            assert v != o.qty, (
+                f"total qty {o.qty} masih tercetak di {ws.cell(r, c).coordinate}"
+            )
+
+
+def test_surat_jalan_nomor_besar_tanpa_awalan_no(bahan, tmp_path):
+    """Nomor ditulis besar dan polos, seperti 0110826 BABY WISE (huruf 18)."""
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "0010126")
+    p = tmp_path / "sj_nomor.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    sel = next((ws.cell(r, c)
+                for r in range(1, 14) for c in range(1, ws.max_column + 1)
+                if str(ws.cell(r, c).value or "").strip() == "0010126"), None)
+    assert sel is not None, "nomor harus ditulis polos, tanpa awalan 'No. '"
+    assert sel.font.size >= 14, "nomor Surat Jalan harus berukuran besar"
+
+
+def test_surat_jalan_urutan_tanda_tangan(bahan, tmp_path):
+    """Penerima dulu, lalu Pengirim, lalu Mengetahui."""
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "001")
+    p = tmp_path / "sj_ttd.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    urut = [str(ws.cell(r, c).value).strip().rstrip(":").strip()
+            for r in range(1, ws.max_row + 1)
+            for c in range(1, ws.max_column + 1)
+            if str(ws.cell(r, c).value or "").strip().rstrip(":").strip()
+            in {"Penerima", "Pengirim", "Mengetahui"}]
+    assert urut == ["Penerima", "Pengirim", "Mengetahui"], urut
+
+
+def test_invoice_tanpa_diskon_tidak_mencetak_kolom_diskon(bahan, tmp_path):
+    """Order tanpa diskon memakai bentuk 0020826 CV. BASA MANDIRI.
+
+    Kolom Diskon dan baris Subtotal/Diskon tidak dicetak sama sekali —
+    kolom berisi nol hanya menimbulkan pertanyaan dari customer.
+    """
+    orders, daftar, perusahaan, pengaturan = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    c = daftar.cari(o.nama_tab)
+    k = tentukan_nett(o, c)
+    # buat order ini seolah tanpa diskon: nilai bersih = nilai kotor
+    k.nett_total = sum(b.nilai_kotor for blok in o.blok for b in blok.baris)
+    for blok in o.blok:
+        for b in blok.baris:
+            b.nett[k.kolom] = b.nilai_kotor
+
+    wb = Workbook()
+    buat_invoice(wb.active, o, k, c, perusahaan, pengaturan, "0010126")
+    p = tmp_path / "inv_tanpa_diskon.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    label = {str(ws.cell(r, 7).value or "").strip()
+             for r in range(1, ws.max_row + 1)}
+    assert "Total" in label
+    assert "Subtotal" not in label, "baris Subtotal tidak ada di faktur tanpa diskon"
+    assert "Diskon" not in label, "baris Diskon tidak ada di faktur tanpa diskon"
+    judul = {str(ws.cell(12, c).value or "").strip() for c in range(1, 9)}
+    assert "Diskon" not in judul, "kolom Diskon tidak dicetak kalau tidak ada diskon"

@@ -1333,3 +1333,109 @@ Dibuktikan pada PDF: invoice Haritsa 64 baris, teks utuh, satu halaman A4
 tegak, masih terbaca.
 
 Tes 113 -> 119.
+
+## 20. Format final dari dua berkas asli Agustus 2026 — 14 September 2026
+
+Yosua mengirim tiga tangkapan layar: faktur yang benar, Surat Jalan yang benar,
+dan keluaran program dengan satu angka dikotak merah untuk dihapus.
+
+**Tangkapan layar tidak dipakai sebagai acuan.** Berkas aslinya dicari di Drive
+lalu dibongkar sel per sel:
+
+| Gambar | Berkas asli | ID |
+|---|---|---|
+| 1 — faktur | `0020826 - CV. BASA MANDIRI - FAKTUR.xlsx` | `1054vvGytz8NqYML8MGxrofB36DLCg3AW` |
+| 2 — surat jalan | `0110826 BABY WISE.xlsx` | `1IJa-TbAoUOIAHXWauYdZeg667XtJBlJx` |
+
+### LOGO akhirnya ketemu
+
+Bagian 9 mencatat "logo belum ada berkasnya". Ternyata logonya **tertanam di
+dalam berkas faktur** sebagai `xl/media/image1.jpeg` (9,5 KB). Sudah diambil
+dan disimpan sebagai `config/logo_dpm.jpeg`, dan `perusahaan.yaml` sudah
+menunjuk ke sana. Sejak sekarang semua dokumen DPM berlogo.
+
+Kalau nanti butuh logo MTN, cara yang sama berlaku: buka berkas faktur MTN
+sebagai zip, ambil isi folder `xl/media/`.
+
+### "Rp" itu FORMAT ANGKA, bukan kolom sendiri
+
+Di gambar 1 "Rp" terlihat seperti kolom tersendiri. Bukan. Itu format angka
+akuntansi yang menempelkan "Rp" ke tepi kiri sel:
+
+    _-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-
+
+Kalau ini ditiru dengan membuat kolom "Rp" beneran, jumlah kolomnya bertambah
+dan tabelnya tidak akan pernah pas. Disalin apa adanya ke `gaya.FORMAT_RP`.
+
+### Faktur asli TIDAK memuat baris BRAND
+
+Baris `BRAND : HAPPY PUMPKIN` hanya ada di **Surat Jalan**. Bagian 16 mencatat
+"selalu ada" — itu salah, kesimpulan dari berkas Surat Jalan yang dikira
+berlaku untuk keduanya. Sudah dihapus dari invoice.
+
+### Judul faktur: dua sel, bukan satu kalimat
+
+| | Versi lama | Faktur asli |
+|---|---|---|
+| A9 | `FAKTUR No. 0020826` | `FAKTUR NO.` (tebal) |
+| sel terpisah | — | `0020826` tebal **bergaris bawah** |
+
+### Kolom diskon hanya dicetak kalau memang ada diskonnya
+
+Temuan paling menentukan. Faktur asli DPM punya **dua bentuk**:
+
+| | Tanpa diskon (0020826 BASA) | Berdiskon (0010726 BABY WISE) |
+|---|---|---|
+| Kolom | No, Kode, Deskripsi, Qty, **Harga**, Jumlah | + Diskon %, Nilai Diskon |
+| Penutup | Total, Uang Muka, DPP, PPN, Total | + Subtotal, Diskon di atasnya |
+| Jumlah | qty x harga | nilai SETELAH diskon |
+
+Program sekarang memilih sendiri berdasarkan ada tidaknya diskon di order itu.
+Mencetak kolom diskon berisi nol hanya mengundang pertanyaan customer; dan
+menghapusnya pada order berdiskon akan menyembunyikan potongan yang sudah
+diberikan. **Perlu dipastikan Yosua** apakah pilihan otomatis ini benar.
+
+Blok rekening juga pindah dari kolom B ke **kolom A** (asli: A28:A31).
+
+### Angka total qty di kanan atas Surat Jalan — DIHAPUS
+
+Yosua mengotak-merahi angka `1381` pada Surat Jalan April dan minta dihapus
+dari seluruh format.
+
+Ternyata angkanya memang tidak pernah dicetak di dokumen asli. Di
+`0110826 BABY WISE` angka itu ada di **N12** (`=SUM(M14:M29)`), sedangkan
+`print_area`-nya `A1:M31` — kolom N berada **di luar area cetak**. Jadi itu
+sel bantu untuk pemeriksaan Sales, bukan bagian dokumen.
+
+Versi lama menaruhnya di dalam area cetak, jadi ikut tercetak. Sudah dihapus
+seluruhnya dan dikunci tes yang memeriksa tidak ada sel apa pun di atas baris
+judul tabel yang nilainya sama dengan total qty PO.
+
+### Nomor Surat Jalan: besar, polos, tanpa "No."
+
+Asli: `H9:M9`, huruf **ukuran 18**, tebal, rata tengah, isinya ` 0110826`
+saja. Versi lama menulis `No. 0010426` dengan ukuran biasa.
+
+### Urutan tanda tangan terbalik
+
+| | Versi lama | Asli |
+|---|---|---|
+| Urutan | Pengirim, Penerima, Mengetahui | **Penerima, Pengirim, Mengetahui** |
+
+Sama di kedua berkas asli terbaru: `0110826 BABY WISE` (B31/F31/K31) dan
+`0020826 CV. BASA MANDIRI` (B27/G27/K27). Bagian 6 yang menulis urutan lama
+sudah tidak berlaku.
+
+### Kop invoice dan kop Surat Jalan BERBEDA
+
+Bukan kesalahan, memang begitu aslinya:
+
+| | Invoice (0020826) | Surat Jalan (0110826) |
+|---|---|---|
+| Telepon & WA | **satu baris**, dipisah `;` | dua baris terpisah |
+| Ruang logo | A2:B6 | A1:B5 |
+
+### Tes
+
+Empat tes baru mengunci: total qty tidak tercetak, nomor SJ besar dan polos,
+urutan tanda tangan, dan bentuk faktur tanpa diskon. Tes 119 -> 123.

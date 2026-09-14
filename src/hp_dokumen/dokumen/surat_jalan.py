@@ -22,6 +22,8 @@ from typing import Optional
 
 from openpyxl.worksheet.worksheet import Worksheet
 
+from openpyxl.styles import Font
+
 from ..model import Order
 from . import gaya
 
@@ -182,8 +184,20 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     gaya.judul(ws, BARIS_JUDUL_DOK, 1, judul, ukuran=14)
 
     gaya.sel_isi(ws, BARIS_KALIMAT, 1, KALIMAT)
-    gaya.sel_isi(ws, BARIS_KALIMAT, KOL_UKURAN_MULAI + 1, f"No. {nomor}", tebal=True)
-    gaya.sel_isi(ws, BARIS_KALIMAT, kolom_akhir, order.qty, rata="center", tebal=True)
+
+    # Nomor dokumen: BESAR, tebal, rata tengah di sisi kanan, TANPA awalan
+    # "No.". Dibaca dari 0110826 BABY WISE (H9:M9, ukuran huruf 18).
+    ws.merge_cells(start_row=BARIS_KALIMAT, start_column=KOL_UKURAN_MULAI + 1,
+                   end_row=BARIS_KALIMAT, end_column=kolom_akhir)
+    sel_nomor = gaya.sel_isi(ws, BARIS_KALIMAT, KOL_UKURAN_MULAI + 1, nomor,
+                             rata="center", tebal=True)
+    sel_nomor.font = Font(name=gaya.FONT, size=18, bold=True)
+
+    # TIDAK ADA total qty di kanan atas. Permintaan Yosua 14 September 2026,
+    # dan memang begitu aslinya: di 0110826 BABY WISE angka itu ada di kolom N
+    # yang berada DI LUAR print_area (A1:M31), jadi tidak pernah ikut tercetak.
+    # Versi lama menaruhnya di dalam area cetak, sehingga muncul di kertas.
+
     gaya.sel_isi(ws, BARIS_MEREK, 1, "BRAND : HAPPY PUMPKIN", tebal=True)
 
     r = BARIS_TABEL
@@ -192,7 +206,10 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
             r = _tulis_tabel(ws, blok, r, kolom_gudang)
 
     r += 1
-    gaya.blok_tanda_tangan(ws, r, [2, 5, 10], ["Pengirim :", "Penerima : ", "Mengetahui :"])
+    # Urutan tanda tangan: PENERIMA dulu, baru Pengirim, lalu Mengetahui.
+    # Sama di kedua berkas asli terbaru — 0110826 BABY WISE (B31/F31/K31) dan
+    # 0020826 CV. BASA MANDIRI (B27/G27/K27). Versi lama terbalik.
+    gaya.blok_tanda_tangan(ws, r, [2, 6, 11], ["Penerima :", "Pengirim :", "Mengetahui :"])
     # Surat Jalan asli dicetak TEGAK, bukan mendatar — baik yang DPM
     # (0010726 BABY WISE) maupun yang MTN (FA 030426 TOKO BABY FAME).
     # Versi lama memakai landscape dan hasilnya tidak cocok dengan
