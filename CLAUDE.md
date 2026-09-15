@@ -1760,3 +1760,98 @@ baris dan ukuran huruf tidak pernah kelihatan dari membaca nilai sel saja.
 
 Empat tes baru mengunci: tinggi baris, ukuran huruf kop dan tabel, tanda
 tangan tanpa garis titik, dan sel barang yang melipat teks. Tes 129 -> 133.
+
+## 24. Tiga berkas contoh dari Yosua — 15 September 2026
+
+Yosua mengunggah tiga berkas asli sebagai acuan format:
+
+| Berkas | Gunanya |
+|---|---|
+| `0110826 BABY WISE.xlsx` | sama persis dengan yang dipakai di bagian 23 |
+| `0130826 BOBO SAMARINDA.xlsx` | customer per ARTIKEL, diskon tunggal 20% |
+| `0400826 KATAMAMA TAPOS - REVISI(31-08-26).xlsx` | customer per UKURAN, diskon gabungan `22% + 1.5%` |
+
+### Yang sudah benar dan tidak perlu diubah
+
+Bobo Samarinda cocok **sel per sel** dengan hasil bagian 22: `FAKTUR No.` +
+nomor di C9, `BRAND :  HAPPY PUMPKIN` di A10, judul tabel 12–14, data mulai
+15, blok rekening di kolom B, penutup Subtotal..Total di G/H.
+
+Ketiga Surat Jalannya juga cocok seluruhnya dengan bagian 23 — judul 16,
+kalimat pembuka 12 tebal, BRAND 14, nama perusahaan 18, judul kolom 12,
+tinggi baris judul 22,5, nomor 18 di H9, tanda tangan di kolom B tanpa
+garis titik-titik.
+
+### Huruf dan tinggi baris INVOICE ternyata masih kecil
+
+Bagian 23 membenahi Surat Jalan tapi invoice-nya terlewat. Diperiksa pada
+ENAM faktur asli:
+
+| | tinggi judul | tinggi data | huruf judul | huruf isi |
+|---|---:|---:|---:|---:|
+| 0010726 BABY WISE | 13,5 | 26,25 | 12 | 11 |
+| 0110826 BABY WISE | 13,5 | 26,25 | 12 | 11 |
+| 0130826 BOBO | 13,5 | 26,25 | 12 | 11 |
+| 0420826 YULIS | 13,5 | 26,25 | 12 | 11 |
+| 0400826 KATAMAMA | 15,75 | 31,5 | 12 | 11 |
+| 0310726 MAE BEBE | 22,5 | 33,75 | 12 | 12 |
+| **dipakai** | **13,5** | **26,25** | **12** | **11** |
+
+Deskripsi barang **melipat** di keenam berkas, bukan terpotong. Program dulu
+memakai huruf 9 dan tinggi baris bawaan.
+
+### Letak sel persen diskon ikut PANJANG tulisannya
+
+Temuan yang menjelaskan kebingungan lama antara F13 dan F14 — ternyata
+keduanya benar, tergantung bentuk diskonnya:
+
+| Bentuk | Label "Diskon " | Persennya |
+|---|---|---|
+| tunggal (`20%`, `22%`) | F12 sendirian | digabung **F13:F14** |
+| gabungan (`22% + 1.5%`) | digabung **F12:F13** | sendirian di **F14** |
+
+Contoh tunggal: 0130826 BOBO, 0420826 YULIS. Contoh gabungan: 0220826 dan
+0400826 KATAMAMA. Tulisan gabungan memang lebih panjang, jadi diberi baris
+sendiri. Program sekarang memilih bentuknya sendiri.
+
+### Kolom Jumlah: NETT menang 6 lawan 2
+
+Katamama menulis kolom H sebagai nilai KOTOR (`qty x harga`), bukan nett.
+Diperiksa ke tujuh faktur asli:
+
+| Kolom H | Berkas |
+|---|---|
+| **NETT** (6) | 0010726 & 0110826 BABY WISE, 0310726 MAE BEBE, 0130826 BOBO, 0420826 YULIS, 0100426 HARITSA |
+| KOTOR (2) | 0220826 & 0400826 KATAMAMA |
+
+Sempat diduga ini aturan untuk customer "per ukuran", tapi **Haritsa yang
+juga per ukuran memakai NETT**. Jadi ini kebiasaan pembuat berkas Katamama,
+bukan aturan. Program tetap memakai NETT sesuai bagian 18.
+
+Angka **Total tidak terpengaruh** — yang berbeda hanya isi kolom Jumlah per
+baris. Tetap perlu dipastikan Yosua mana yang benar untuk Katamama.
+
+### Kode artikel tebal: tidak ada mayoritas
+
+Tebal di 0400826 KATAMAMA dan 0420826 YULIS, tidak tebal di 0130826 BOBO,
+0110826 BABY WISE, dan 0310726 MAE BEBE. Dibiarkan tidak tebal.
+
+### Tab PACKING LIST Katamama bukan dokumen tersendiri
+
+Isinya baris Surat Jalan yang sama persis, ditambah judul
+`PACKING LIST KATAMAMA TAPOS` di A63, dengan `print_area` A63:O114 — jadi
+**tanpa kop sama sekali**, dan **tanpa kolom JUMLAH DIKIRIM / NO. KOLI**.
+
+Kolom gudang itu rancangan sendiri (bagian 6), bukan dari berkas asli.
+Belum diubah — bagian 15 mencatat Yosua hanya menyebut TIGA dokumen dan
+Packing List belum dipastikan masih dipakai. Jangan diubah sebelum dijawab.
+
+### Yang perlu dijawab Yosua
+
+| Hal | Pertanyaan |
+|---|---|
+| Kolom Jumlah pada faktur Katamama | kotor (seperti berkasnya) atau nett (seperti enam berkas lain)? |
+| Packing List | masih dipakai? kalau ya, pakai kolom gudang atau salinan Surat Jalan seperti di berkas Katamama? |
+
+Dua tes baru mengunci bentuk persen gabungan di F14 dan bentuk tunggal di
+F13. Tes 133 -> 134.

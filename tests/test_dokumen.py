@@ -292,16 +292,49 @@ def test_invoice_judul_tabel_tiga_tingkat(bahan, tmp_path):
 
 
 def test_invoice_persen_diskon_di_bawah_labelnya(bahan, tmp_path):
-    """Persen diskon ada di F13, bukan F14.
+    """Persen TUNGGAL ada di F13 (digabung F13:F14), bukan di F14.
 
-    Faktur asli 0010726 BABY WISE dan 0310726 MAE BEBE sama-sama menaruh
-    label "Diskon " sendirian di F12 dan persennya di sel gabungan F13:F14.
-    Versi lama terbalik: label digabung F12:F13 dan persen jatuh ke F14.
+    Faktur asli 0010726 BABY WISE, 0310726 MAE BEBE, 0130826 BOBO SAMARINDA
+    dan 0420826 YULIS sama-sama menaruh label "Diskon " sendirian di F12 dan
+    persennya di sel gabungan F13:F14.
     """
     ws = _invoice_jadi(bahan, tmp_path)
     assert str(ws.cell(12, 6).value).strip() == "Diskon"
     assert ws.cell(13, 6).value not in (None, ""), "persen diskon harus di F13"
     assert "F13:F14" in {str(m) for m in ws.merged_cells.ranges}
+
+
+def test_invoice_persen_gabungan_di_f14(bahan, tmp_path):
+    """Tulisan gabungan "22% + 1.5%" dapat barisnya SENDIRI di F14.
+
+    Bentuknya berbeda dari persen tunggal, dan itu memang begitu di faktur
+    asli: 0220826 dan 0400826 KATAMAMA TAPOS menggabung label "Diskon " di
+    F12:F13 lalu menaruh tulisan panjangnya sendirian di F14. Tulisan
+    gabungan tidak muat kalau dijejalkan bersama label.
+    """
+    orders, daftar, perusahaan, pengaturan = bahan
+    o = orders[0]
+    c = daftar.cari(o.nama_tab)
+    keputusan = tentukan_nett(o, c)
+    # paksa bentuk gabungan tanpa menyentuh data: yang menentukan hanyalah
+    # apakah _persen_tertulis() mengembalikan teks atau angka.
+    import hp_dokumen.dokumen.invoice as modul_invoice
+
+    asli = modul_invoice._persen_tertulis
+    modul_invoice._persen_tertulis = lambda *a, **k: ("22% + 1.5%", None)
+    try:
+        wb = Workbook()
+        buat_invoice(wb.active, o, keputusan, c, perusahaan, pengaturan, "001")
+        berkas = tmp_path / "inv_gabungan.xlsx"
+        wb.save(berkas)
+    finally:
+        modul_invoice._persen_tertulis = asli
+
+    ws = openpyxl.load_workbook(berkas).active
+    gabung = {str(m) for m in ws.merged_cells.ranges}
+    assert str(ws.cell(12, 6).value).strip() == "Diskon"
+    assert "F12:F13" in gabung, "label Diskon digabung F12:F13"
+    assert ws.cell(14, 6).value == "22% + 1.5%", "tulisan gabungan di F14"
 
 
 def test_invoice_memuat_blok_rekening(bahan, tmp_path):

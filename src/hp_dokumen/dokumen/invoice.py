@@ -45,6 +45,17 @@ MAKS_JATAH = 135.0
 MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 22.0
 
+# Ukuran huruf dan tinggi baris, dari ENAM faktur asli yang sepakat:
+# 0010726 & 0110826 BABY WISE, 0130826 BOBO SAMARINDA, 0420826 YULIS
+# (keempatnya 13,5 / 26,25 / huruf 11), lalu 0310726 MAE BEBE dan
+# 0400826 KATAMAMA yang sedikit lebih longgar. Diambil yang mayoritas.
+# Versi lama memakai huruf 9 dan tinggi baris bawaan, jadi fakturnya
+# jauh lebih rapat dan kecil daripada yang dipakai divisi.
+TINGGI_JUDUL_INV = 13.5
+TINGGI_DATA_INV = 26.25
+HURUF_JUDUL_KOLOM_INV = 12
+HURUF_ISI_INV = 11
+
 
 def lebar_menyesuaikan(baris) -> dict:
     """Lebarkan kolom ARTICLE CODE dan DESKRIPSI mengikuti isi terpanjang.
@@ -215,64 +226,80 @@ def buat_invoice(
     tegak = [(1, "No."), (2, "ARTICLE CODE"), (3, "DESKRIPSI BARANG"), (8, "Jumlah")]
     for kolom, teks in tegak:
         ws.merge_cells(start_row=j, start_column=kolom, end_row=j + 2, end_column=kolom)
-        gaya.sel_judul(ws, j, kolom, teks)
-    gaya.sel_judul(ws, j, 4, "Qty")
+        gaya.sel_judul(ws, j, kolom, teks, ukuran=HURUF_JUDUL_KOLOM_INV)
+    gaya.sel_judul(ws, j, 4, "Qty", ukuran=HURUF_JUDUL_KOLOM_INV)
     ws.merge_cells(start_row=j + 1, start_column=4, end_row=j + 2, end_column=4)
-    gaya.sel_judul(ws, j + 1, 4, "PCS")
+    gaya.sel_judul(ws, j + 1, 4, "PCS", ukuran=HURUF_JUDUL_KOLOM_INV)
 
     if ada_diskon:
         # Bentuk berdiskon, seperti 0010726 BABY WISE dan 0310726 MAE BEBE:
         # Harga/Satuan, Diskon (persennya di F13:F14), lalu Nilai/Diskon.
-        gaya.sel_judul(ws, j, 5, "Harga")
+        gaya.sel_judul(ws, j, 5, "Harga", ukuran=HURUF_JUDUL_KOLOM_INV)
         ws.merge_cells(start_row=j + 1, start_column=5, end_row=j + 2, end_column=5)
-        gaya.sel_judul(ws, j + 1, 5, "Satuan")
-        gaya.sel_judul(ws, j, 7, "Nilai")
+        gaya.sel_judul(ws, j + 1, 5, "Satuan", ukuran=HURUF_JUDUL_KOLOM_INV)
+        gaya.sel_judul(ws, j, 7, "Nilai", ukuran=HURUF_JUDUL_KOLOM_INV)
         ws.merge_cells(start_row=j + 1, start_column=7, end_row=j + 2, end_column=7)
-        gaya.sel_judul(ws, j + 1, 7, "Diskon")
-        gaya.sel_judul(ws, j, 6, "Diskon ")
-        ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
+        gaya.sel_judul(ws, j + 1, 7, "Diskon", ukuran=HURUF_JUDUL_KOLOM_INV)
+        # Letak sel persen ikut PANJANG tulisannya — begitu di faktur asli:
+        #
+        #   persen tunggal ("20%", "22%")  -> label "Diskon " sendirian di F12,
+        #       angkanya digabung F13:F14   (0130826 BOBO, 0420826 YULIS)
+        #   gabungan ("22% + 1.5%")        -> label digabung F12:F13,
+        #       tulisannya sendirian di F14 (0220826 & 0400826 KATAMAMA)
+        #
+        # Tulisan gabungan memang lebih panjang, jadi diberi barisnya sendiri.
         if teks_persen:
-            gaya.sel_judul(ws, j + 1, 6, teks_persen)
+            ws.merge_cells(start_row=j, start_column=6, end_row=j + 1, end_column=6)
+            gaya.sel_judul(ws, j, 6, "Diskon ", ukuran=HURUF_JUDUL_KOLOM_INV)
+            gaya.sel_judul(ws, j + 2, 6, teks_persen, ukuran=HURUF_JUDUL_KOLOM_INV)
         else:
-            sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0)
+            gaya.sel_judul(ws, j, 6, "Diskon ", ukuran=HURUF_JUDUL_KOLOM_INV)
+            ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
+            sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0, ukuran=HURUF_JUDUL_KOLOM_INV)
             sel.number_format = "0%"
     else:
         # Bentuk tanpa diskon, seperti 0020826 CV. BASA MANDIRI: kolom
         # Harga melebar menutupi E:G dan kolom Diskon tidak dicetak sama
         # sekali. Mencetak kolom diskon berisi nol hanya membingungkan.
         ws.merge_cells(start_row=j, start_column=5, end_row=j + 2, end_column=7)
-        gaya.sel_judul(ws, j, 5, "Harga")
+        gaya.sel_judul(ws, j, 5, "Harga", ukuran=HURUF_JUDUL_KOLOM_INV)
         for kolom in (6, 7):
             for baris_judul in range(j, j + 3):
-                gaya.sel_judul(ws, baris_judul, kolom, None)
+                gaya.sel_judul(ws, baris_judul, kolom, None, ukuran=HURUF_JUDUL_KOLOM_INV)
+    for baris_judul in range(j, j + 3):
+        ws.row_dimensions[baris_judul].height = TINGGI_JUDUL_INV
+
     # Lebar kolom dipasang di sini, setelah isinya diketahui.
     for kolom, lebar in lebar_menyesuaikan(baris).items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
 
     r = BARIS_DATA
     for i, b in enumerate(baris, start=1):
-        gaya.sel_isi(ws, r, 1, i, rata="center")
-        gaya.sel_isi(ws, r, 2, b.kode)
-        gaya.sel_isi(ws, r, 3, b.deskripsi)
-        gaya.sel_isi(ws, r, 4, b.qty, rata="center")
+        gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=HURUF_ISI_INV)
+        gaya.sel_isi(ws, r, 2, b.kode, ukuran=HURUF_ISI_INV, lipat=True)
+        # Deskripsi MELIPAT di keenam faktur asli, bukan terpotong.
+        gaya.sel_isi(ws, r, 3, b.deskripsi, ukuran=HURUF_ISI_INV, lipat=True)
+        gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=HURUF_ISI_INV)
+        ws.row_dimensions[r].height = TINGGI_DATA_INV
         if ada_diskon:
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
             gaya.sel_isi(ws, r, 6, (b.diskon / b.qty) if b.qty else 0.0,
-                         angka=gaya.FORMAT_RP)
-            gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP)
+                         angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+            gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP,
+                         ukuran=HURUF_ISI_INV)
             # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada
             # faktur asli 0310726 MAE BEBE baris 1: 18 x 62.900 = 1.132.200,
             # diskon 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama
             # dengan baris "Total", bukan "Subtotal".
-            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP)
+            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
         else:
             # Tanpa diskon, Harga menempati sel gabungan E:G dan
             # Jumlah = qty x harga, persis 0020826 CV. BASA MANDIRI.
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP)
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
             for kolom in (6, 7):
-                gaya.sel_isi(ws, r, kolom, None)
-            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP)
+                gaya.sel_isi(ws, r, kolom, None, ukuran=HURUF_ISI_INV)
+            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
         r += 1
     akhir = r - 1
     gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
@@ -303,11 +330,12 @@ def buat_invoice(
         # 14 September 2026. Faktur asli menebalkan seluruh blok ini, tapi
         # begitu tiap sel diberi garis, huruf tebalnya jadi terlalu ramai.
         # Garis sudah cukup untuk memisahkan, jadi hurufnya dibiarkan biasa.
-        gaya.sel_isi(ws, p + i, 7, label)
+        gaya.sel_isi(ws, p + i, 7, label, ukuran=HURUF_ISI_INV)
         # Seluruh kolom nilai memakai format akuntansi Rupiah yang sama.
         # Bagian ketiga format itu (`_-"Rp"* "-"_-`) khusus untuk nol, jadi
         # Uang Muka yang kosong tampil sebagai tanda "-", bukan angka 0.
-        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP,
+                     ukuran=HURUF_ISI_INV)
 
     # ---- rekening di kolom B, sejajar penutup --------------------------
     # Kolom B, dengan kotak tebal selebar B..C. Diperiksa ulang pada empat
@@ -317,7 +345,7 @@ def buat_invoice(
     # memang memakai template lama.
     rekening = perusahaan.baris_rekening()
     for i, teks in enumerate(rekening):
-        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=True)
+        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=True, ukuran=HURUF_ISI_INV)
 
     # Blok penutup bergaris PENUH dan SERAGAM TIPIS — tiap sel punya empat
     # sisi tipis, termasuk bingkai luarnya. Permintaan Yosua 14 September
