@@ -1,0 +1,53 @@
+# ============================================================
+# PERUSAHAAN PEMROSES
+# ============================================================
+# Order bisa diproses lewat dua perusahaan. Yang menentukan
+# kop surat di dokumen DAN apakah PPN dikenakan.
+#
+# Aturan dari Yosua (11 September 2026):
+#   diproses lewat CV. Dwi Putra Mandiri      -> PPN 11% BERLAKU
+#   diproses lewat CV. Mutiara Timur Nusantara -> PPN 11% TIDAK berlaku
+#
+# Customer mana memakai perusahaan mana diisi di config/customer.csv,
+# kolom "perusahaan_pemroses". Isi dengan "kode" di bawah (DPM / MTN).
+
+perusahaan:
+  - kode: DPM
+    nama: CV DWI PUTRA MANDIRI
+    nama_resmi: "CV. DWI PUTRA MANDIRI"
+    kenakan_ppn: true
+    npwp: ""                      # BELUM DIISI
+    alamat_baris:
+      - Jl. Jelambar Baru Raya No. 46, Grogol Petamburan
+      - Jakarta Barat - 11460, Indonesia
+      - Phone. +62 (021) 22561723
+      - "Wa:(+62) 0877 7950 0992"
+      - "Email : DPMTEX@yahoo.com"
+    logo: "logo_dpm.jpeg"
+    # NITKU 22 digit, WAJIB untuk faktur pajak Coretax.
+    # Lihat di Coretax: menu Profil Wajib Pajak -> Tempat Kegiatan Usaha.
+    id_tku: ""
+    rekening:
+      - "PEMBAYARAN DITRANSFER KE REKENING :"
+      - "CV. DWI PUTRA MANDIRI"
+      - "BANK BCA"
+      - "A/C NO. : 277 950 8000"
+
+  - kode: MTN
+    nama: CV MUTIARA TIMUR NUSANTARA
+    nama_resmi: "CV. MUTIARA TIMUR NUSANTARA"
+    kenakan_ppn: false
+    npwp: ""                      # BELUM DIISI
+    alamat_baris:
+      - "(alamat belum diisi)"     # BELUM DIISI - mohon dilengkapi Yosua
+    logo: ""
+    id_tku: ""
+    rekening:
+      - "PEMBAYARAN DITRANSFER KE REKENING :"
+      - "CV. MUTIARA TIMUR NUSANTARA"
+      - "(bank dan nomor rekening belum diisi)"
+
+# Perusahaan yang dipakai kalau customer belum ditentukan di customer.csv.
+perusahaan_bawaan: DPM
+
+kota_penerbitan: Jakarta

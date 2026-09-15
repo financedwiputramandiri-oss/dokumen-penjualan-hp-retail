@@ -1,0 +1,81 @@
+# ============================================================
+# PENGATURAN BOT PENYAPU ORDER SHEET
+# ============================================================
+# Bot ini menarik semua order sheet dari folder Drive tiap 12 jam,
+# membuat draf dokumen untuk PO yang ATO-nya sudah terisi, dan
+# memberi tahu kalau ada PO lama yang angkanya atau rumusnya berubah.
+
+# ---- FOLDER ORDER SHEET DI GOOGLE DRIVE --------------------
+# Ambil ID-nya dari alamat folder di browser:
+#   https://drive.google.com/drive/folders/<INI_ID_NYA>
+folder_order_sheet:
+  - nama: "Order Sheet 2026"
+    id: "1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB"
+  - nama: "Order Sheet 2025"
+    id: "1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57"
+
+# ---- KE MANA LAPORAN DITARUH -------------------------------
+# ID folder Drive tempat bot menaruh laporan sapuan.
+# Kosongkan kalau belum ada; laporan tetap tersimpan di komputer.
+# Folder "LAPORAN BOT HAPPY PUMPKIN" dibuat 12 Sep 2026 di My Drive Yosua,
+# dan sudah di-Share ke akun layanan bot sebagai Editor.
+folder_laporan_id: "1BTHfFCgULMJGceqGJ9aPDub-Rf8KgBUI"
+
+# Nama folder laporan yang dibuat bot di dalam folder di atas.
+nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
+
+# ---- SHEET OTOMATISASI -------------------------------------
+# Sheet tempat draf dokumen ditulis (OTOMATISASI_HAPPY_PUMPKIN_SINKRON).
+sheet_otomatisasi_id: "1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw"
+
+# ---- APA YANG DIKERJAKAN BOT -------------------------------
+buat_draf_dokumen: true      # buat Invoice/Surat Jalan/Faktur Pajak/Packing List
+pantau_perubahan: true       # deteksi perubahan pada PO lama
+pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
+
+# ---- DRAF DOKUMEN OTOMATIS ---------------------------------
+# Begitu ATO sebuah PO terisi DAN angkanya cocok dengan order sheet, bot
+# langsung membuat draf dokumennya sendiri. Kalau PO itu kemudian DIREVISI,
+# drafnya dibuat ulang memakai angka terbaru, dan draf lama dipindahkan ke
+# subfolder _KEDALUWARSA supaya tidak terpakai tanpa sengaja.
+#
+# Dokumen TIDAK PERNAH dibuat kalau angkanya belum cocok dengan order sheet.
+folder_draf: "keluaran/draf"
+
+# true -> sekalian dibuatkan PDF-nya. Perlu LibreOffice terpasang, dan
+#         membuat sapuan jauh lebih lama. Bawaannya mati.
+draf_pdf: false
+
+# ---- KE MANA DOKUMENNYA DINAIKKAN DI DRIVE -----------------
+# Folder Drive tempat Invoice, Surat Jalan, Faktur Pajak, dan Packing List
+# ditaruh supaya divisi bisa langsung membukanya. Susunannya:
+#
+#   DOKUMEN OTOMATIS HAPPY PUMPKIN/
+#     Order Sheet Agustus 2026/
+#       PO 20 Agustus - Miniku/
+#         INVOICE_... , SURAT_JALAN_... , FAKTUR_PAJAK_... , PACKING_LIST_...
+#
+# Berkas bernama sama DITIMPA, bukan ditambah, supaya tidak menumpuk banyak
+# "Invoice Miniku" yang tidak jelas mana yang berlaku. Versi lama tetap aman
+# di folder _KEDALUWARSA pada komputer yang menjalankan bot.
+#
+# Kosongkan kalau tidak mau dokumen dinaikkan ke Drive.
+folder_dokumen_id: "1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP"
+
+# ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
+# Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.
+#
+# true  -> spreadsheet yang tidak berubah sejak sapuan terakhir dilewati
+#          sama sekali. Waktu ubahnya dibaca dari Google Drive, jadi order
+#          sheet lama yang sudah selesai tidak ditarik berulang tiap hari.
+# false -> semua spreadsheet dibaca ulang tiap sapuan (lebih lambat,
+#          hanya perlu kalau catatan kondisi rusak atau mau memaksa).
+lewati_yang_tidak_berubah: true
+
+# Hanya order sheet yang diubah dalam sekian hari terakhir yang diperiksa.
+# Isi 0 untuk memeriksa semuanya.
+hanya_yang_berubah_hari: 0
+
+# ---- BERKAS ------------------------------------------------
+berkas_kredensial: "config/kredensial_bot.json"
+berkas_kondisi: "data/kondisi_sapu.json"
