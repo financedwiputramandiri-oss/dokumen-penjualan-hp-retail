@@ -728,10 +728,13 @@ paling terbaru"*.
 | Urutan penerbitan dokumen | Ketiganya dibuat sekaligus |
 | Rumus nomor dokumen | Nomor dikosongkan, diisi manual |
 
-### Packing List tidak disebut Yosua
+### Packing List — SUDAH DIPASTIKAN 15 September 2026
 
-Yosua menyebut **tiga** dokumen. Packing List tetap dibuat program karena sudah
-ada, tapi perlu dipastikan apakah masih dipakai. Jangan dihapus sebelum dijawab.
+Yosua semula menyebut **tiga** dokumen sehingga Packing List sempat ragu.
+Pada 15 September 2026 ia menjawab *"boleh sertakan juga packing list nya"*.
+
+**Packing List MASIH DIPAKAI** dan ikut diterbitkan. Bentuknya tidak berubah:
+Surat Jalan ditambah kolom JUMLAH DIKIRIM dan NO. KOLI. Lihat bagian 24.
 
 ### Draf otomatis — SELESAI 12 September 2026
 
@@ -1846,12 +1849,33 @@ Kolom gudang itu rancangan sendiri (bagian 6), bukan dari berkas asli.
 Belum diubah — bagian 15 mencatat Yosua hanya menyebut TIGA dokumen dan
 Packing List belum dipastikan masih dipakai. Jangan diubah sebelum dijawab.
 
-### Yang perlu dijawab Yosua
+### Dijawab Yosua 15 September 2026 — KEDUANYA SUDAH FINAL
 
-| Hal | Pertanyaan |
+> *"kalau kolom jumlah biarkan rumus yang sudah ada dan boleh sertakan juga
+> packing list nya"*
+
+| Hal | Keputusan |
 |---|---|
-| Kolom Jumlah pada faktur Katamama | kotor (seperti berkasnya) atau nett (seperti enam berkas lain)? |
-| Packing List | masih dipakai? kalau ya, pakai kolom gudang atau salinan Surat Jalan seperti di berkas Katamama? |
+| Kolom Jumlah faktur | **TETAP NETT**, rumus yang sudah ada tidak diubah |
+| Packing List | **MASIH DIPAKAI**, ikut diterbitkan bersama ketiga dokumen lain |
+
+Jadi kolom Jumlah Katamama yang berisi nilai kotor TIDAK diikuti — itu memang
+kebiasaan pembuat berkasnya, bukan aturan. Enam faktur asli lain memakai nett,
+dan Yosua memilih mempertahankannya. **Pertanyaan ini sudah tertutup, jangan
+diangkat lagi.**
+
+Packing List juga tetap memakai bentuk yang sekarang: sama seperti Surat Jalan
+ditambah kolom **JUMLAH DIKIRIM** dan **NO. KOLI** yang diisi gudang. Bentuk
+"salinan Surat Jalan tanpa kop" di tab PACKING LIST berkas Katamama tidak
+dipakai — Yosua tidak memintanya, dan kolom gudang itu justru gunanya.
+
+Karena `buat_packing_list()` memakai `_bangun()` yang sama dengan Surat Jalan,
+seluruh perbaikan bagian 23 dan 24 ikut berlaku tanpa kode tambahan: tinggi
+baris, ukuran huruf, lipat teks, kolom ukuran digabung, tanda tangan tanpa
+garis titik, dan A4 tegak. Sudah dibuktikan pada berkas sungguhan, 11 dari 11
+pemeriksaan lolos.
+
+Sejak sekarang contoh bulanan berisi **EMPAT** dokumen, bukan tiga.
 
 Dua tes baru mengunci bentuk persen gabungan di F14 dan bentuk tunggal di
 F13. Tes 133 -> 134.
