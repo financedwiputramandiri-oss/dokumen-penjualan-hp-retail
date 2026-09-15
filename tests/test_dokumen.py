@@ -538,3 +538,37 @@ def test_surat_jalan_warna_dilipat_bukan_terpotong(bahan, tmp_path):
         assert ws.cell(j + 2, kolom).alignment.wrap_text, (
             f"kolom {kolom} harus melipat teks seperti Surat Jalan asli"
         )
+
+
+def test_surat_jalan_kolom_ukuran_digabung_ke_bawah(bahan, tmp_path):
+    """Tiap kolom ukuran digabung menutupi KEDUA baris judul.
+
+    Diperiksa pada ketiga berkas contoh dari Yosua — 0110826 BABY WISE,
+    0130826 BOBO SAMARINDA, 0400826 KATAMAMA TAPOS — yang semuanya memakai
+    G12:G13 dan seterusnya. Versi lama meninggalkan sel kosong bergaris di
+    bawah tiap angka ukuran sehingga judulnya terlihat terbelah dua.
+
+    Kolom Qty justru TIDAK boleh digabung: di situ ada "Qty" di atas dan
+    "PCS" di bawahnya.
+    """
+    from hp_dokumen.dokumen.surat_jalan import KOL_UKURAN_MULAI
+
+    ws = _surat_jalan_jadi(bahan, tmp_path)
+    gabung = {str(m) for m in ws.merged_cells.ranges}
+    j = _baris_judul_sj(ws)
+
+    kolom_qty = next(c for c in range(KOL_UKURAN_MULAI, 30)
+                     if ws.cell(j, c).value == "Qty")
+    assert kolom_qty > KOL_UKURAN_MULAI, "tabel harus punya kolom ukuran"
+
+    for c in range(KOL_UKURAN_MULAI, kolom_qty):
+        huruf = openpyxl.utils.get_column_letter(c)
+        assert f"{huruf}{j}:{huruf}{j + 1}" in gabung, (
+            f"kolom ukuran {huruf} harus digabung ke bawah"
+        )
+
+    huruf_qty = openpyxl.utils.get_column_letter(kolom_qty)
+    assert f"{huruf_qty}{j}:{huruf_qty}{j + 1}" not in gabung, (
+        "kolom Qty tidak boleh digabung — 'PCS' ada di barisnya sendiri"
+    )
+    assert ws.cell(j + 1, kolom_qty).value == "PCS"

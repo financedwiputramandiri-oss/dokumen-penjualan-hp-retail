@@ -1855,3 +1855,22 @@ Packing List belum dipastikan masih dipakai. Jangan diubah sebelum dijawab.
 
 Dua tes baru mengunci bentuk persen gabungan di F14 dan bentuk tunggal di
 F13. Tes 133 -> 134.
+
+### Kolom ukuran Surat Jalan digabung ke bawah — 15 September 2026
+
+Yosua mengirim tangkapan layar baris judul ukuran: angka `1 2 3 4 5` dengan
+sel kosong bergaris di bawahnya, dan minta tiap kolomnya digabung.
+
+Memang begitu di ketiga berkas contoh — `0110826 BABY WISE`, `0130826 BOBO`,
+dan `0400826 KATAMAMA` semuanya memakai `G12:G13`, `H12:H13`, dan seterusnya
+untuk SETIAP kolom ukuran, sama seperti No. / ARTICLE CODE / DESKRIPSI /
+WARNA yang sudah digabung sejak awal.
+
+Versi lama hanya menulis angkanya di baris judul lalu meninggalkan sel kosong
+bergaris di bawahnya, jadi judul ukurannya terlihat terbelah dua.
+
+**Kolom Qty TIDAK ikut digabung** — di situ memang ada `Qty` di atas dan
+`PCS` di bawahnya. Tesnya memeriksa keduanya sekaligus: tiap kolom ukuran
+wajib digabung, dan kolom Qty wajib TIDAK digabung.
+
+Tes 134 -> 135.

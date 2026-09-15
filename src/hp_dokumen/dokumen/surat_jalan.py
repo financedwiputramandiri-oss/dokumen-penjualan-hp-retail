@@ -159,9 +159,18 @@ def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> in
         gaya.sel_judul(ws, j, kolom, teks, ukuran=HURUF_JUDUL_KOLOM)
     ws.merge_cells(start_row=j, start_column=KOL_DESK, end_row=j + 1, end_column=KOL_WARNA - 1)
     gaya.sel_judul(ws, j, KOL_DESK, "DESKRIPSI BARANG", ukuran=HURUF_JUDUL_KOLOM)
+    # Tiap kolom ukuran DIGABUNG ke bawah, sama seperti No./ARTICLE CODE/
+    # DESKRIPSI/WARNA. Diperiksa pada ketiga berkas contoh dari Yosua
+    # (0110826 BABY WISE, 0130826 BOBO, 0400826 KATAMAMA): semuanya memakai
+    # G12:G13 dan seterusnya. Versi lama meninggalkan sel kosong bergaris di
+    # bawah tiap angka ukuran, sehingga judulnya terlihat terbelah dua.
+    #
+    # Kolom Qty TIDAK ikut digabung — di situ memang ada "Qty" di atas dan
+    # "PCS" di bawahnya.
     for i, teks in enumerate(label):
+        ws.merge_cells(start_row=j, start_column=KOL_UKURAN_MULAI + i,
+                       end_row=j + 1, end_column=KOL_UKURAN_MULAI + i)
         gaya.sel_judul(ws, j, KOL_UKURAN_MULAI + i, teks, ukuran=HURUF_JUDUL_KOLOM)
-        gaya.sel_judul(ws, j + 1, KOL_UKURAN_MULAI + i, None, ukuran=HURUF_JUDUL_KOLOM)
     gaya.sel_judul(ws, j, kol_qty, "Qty", ukuran=HURUF_JUDUL_KOLOM)
     gaya.sel_judul(ws, j + 1, kol_qty, "PCS", ukuran=HURUF_JUDUL_KOLOM)
     for i, teks in enumerate(kolom_gudang):
