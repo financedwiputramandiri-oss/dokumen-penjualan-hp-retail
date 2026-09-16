@@ -1929,3 +1929,63 @@ membuat pemeriksa menyatakan "PERLU DIBERESKAN". Tes 135 -> 136.
 **Aturan umum untuk pemeriksa ini: jangan pernah menandai GAGAL sesuatu yang
 merupakan pilihan pemasangan yang sah.** Bedakan "belum dikerjakan" dari
 "sengaja tidak dipakai".
+
+## 25. Bot BERHASIL jalan penuh — 16 September 2026
+
+Sapuan pertama yang benar-benar tuntas, di device baru Yosua (Windows).
+
+### Hasilnya
+
+| | |
+|---|---|
+| Order sheet dibaca | **22** |
+| Tab PO ditemukan | **427** |
+| Tab ditarik | **893** |
+| Dokumen per PO | 4 berkas (Invoice, Surat Jalan, Packing List, Faktur Pajak) |
+| Perubahan penting pada PO lama | tidak ada |
+| Sheet OTOMATISASI | **diperbarui** — tab `BOT_DAFTAR_PO`, `BOT_PERUBAHAN`, `BOT_STATUS` |
+
+Tab `BOT_` akhirnya muncul. Bagian 14 mencatat tab itu baru ada setelah akun
+layanan jalan — sekarang terbukti.
+
+### Jalur Drive for Desktop TERBUKTI jalan
+
+`folder_draf` diarahkan ke `G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN` dan
+`folder_dokumen_id` dikosongkan. Bot menulis langsung ke folder sinkron, tidak
+pernah memanggil unggahan Drive, jadi batasan `storageQuotaExceeded` di bagian
+14 tidak lagi kena sama sekali.
+
+### Pemasangan di device baru — yang memakan waktu
+
+Yosua pindah ke device baru. Urutan yang akhirnya berhasil:
+
+1. Ganti nama folder lama, unduh ZIP branch terbaru, ekstrak
+2. `py -m pip install openpyxl PyYAML google-api-python-client google-auth`
+3. Salin `config/kredensial_bot.json`
+4. Drive for Desktop + sunting dua baris `bot.yaml`
+5. `periksa-bot`, lalu `sapu`
+
+Tiga hambatan yang berulang, semuanya **bukan** soal kode:
+
+| Hambatan | Sebabnya |
+|---|---|
+| `can't open file 'jalankan.py'` berkali-kali | Command Prompt dibuka lewat Start, jadi selalu mulai di `C:\Users\User` |
+| `Could not open requirements file` | Sama — folder salah; lalu ternyata ekstraksi ZIP-nya juga tidak lengkap |
+| Kode masih format lama | Yang terpasang hasil unduhan 12 Sep, 26 commit tertinggal |
+
+**Pelajaran untuk panduan:** orang non-teknis paling sering tersandung pada
+"terminal sedang berada di folder mana", bukan pada perintahnya. Panduan
+berikutnya sebaiknya langsung memberi satu baris `cd /d <alamat>` yang bisa
+disalin-tempel, bukan menyuruh mengetik `cmd` di baris alamat File Explorer.
+
+Penanda versi yang dipakai untuk memastikan kodenya terbaru (lewat `findstr`):
+`config\logo_dpm.jpeg`, `TINGGI_DATA = 30.0`, `TINGGI_DATA_INV = 26.25`,
+`Tiap kolom ukuran DIGABUNG`, `UKURAN_NAMA_PERUSAHAAN = 18`.
+
+### Yang tersisa
+
+| Hal | Keadaan |
+|---|---|
+| Jadwal tiap 12 jam (Task Scheduler) | belum dipasang |
+| Laporan sapuan naik ke Drive | belum dipastikan; kalau ditolak kuota, kosongkan `folder_laporan_id` |
+| Customer belum terdaftar di `customer.csv` | terlihat di laporan sapuan, perlu dilengkapi Yosua |
