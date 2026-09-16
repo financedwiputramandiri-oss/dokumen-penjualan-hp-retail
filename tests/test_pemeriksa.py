@@ -97,10 +97,32 @@ def test_folder_dokumen_belum_dishare_menyebut_EDITOR(kunci):
     assert not h.lulus and "EDITOR" in h.perbaikan
 
 
-def test_folder_tujuan_kosong_diberi_tahu(kunci):
+def test_folder_tujuan_kosong_BUKAN_galat(kunci):
+    """folder_dokumen_id kosong itu pengaturan yang BENAR, bukan kekurangan.
+
+    Akun layanan Google tidak punya jatah penyimpanan Drive, jadi tidak bisa
+    mengunggah berkas sama sekali. Jalan keluarnya Google Drive for Desktop,
+    dan untuk itu id-nya memang harus dikosongkan.
+
+    Versi sebelumnya menandainya BELUM dan menyuruh mengisinya — artinya
+    menyuruh orang membatalkan pengaturan yang sudah tepat, lalu bot kembali
+    ditolak Google. Persis kesalahan yang sama seperti saran "Share ulang"
+    pada galat SERVICE_DISABLED dulu.
+    """
     hasil = periksa(_atur(kunci, folder_dokumen_id=""), buat_sambungan=SambunganPalsu)
     h = next(x for x in hasil if x.nama == "Folder dokumen")
-    assert not h.lulus and "folder_dokumen_id" in h.perbaikan
+    assert h.lulus, "folder_dokumen_id kosong tidak boleh dianggap gagal"
+    assert "dikosongkan" in h.pesan
+    assert "Drive for Desktop" in h.perbaikan
+
+
+def test_folder_tujuan_kosong_tidak_menghalangi_kesiapan(kunci):
+    """Pemeriksa harus tetap menyatakan SIAP walau id itu dikosongkan."""
+    baris = []
+    siap = cetak(periksa(_atur(kunci, folder_dokumen_id=""),
+                         buat_sambungan=SambunganPalsu), tulis=baris.append)
+    assert siap is True
+    assert "PERLU DIBERESKAN" not in "\n".join(baris)
 
 
 def test_cetak_menampilkan_daftar_perbaikan(kunci):

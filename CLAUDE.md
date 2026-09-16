@@ -1898,3 +1898,34 @@ bergaris di bawahnya, jadi judul ukurannya terlihat terbelah dua.
 wajib digabung, dan kolom Qty wajib TIDAK digabung.
 
 Tes 134 -> 135.
+
+### Pemeriksa salah menyebut `folder_dokumen_id` kosong sebagai BELUM — 16 Sep 2026
+
+Saat Yosua menjalankan `periksa-bot` di device barunya, enam dari tujuh lolos.
+Yang gagal cuma:
+
+    [BELUM] Folder dokumen        belum diisi
+    1. Folder dokumen: Isi folder_dokumen_id di config/bot.yaml
+
+**Padahal id itu SENGAJA dikosongkan**, sesuai jalan keluar yang dipilih di
+bagian 14: akun layanan tidak punya jatah penyimpanan Drive
+(`storageQuotaExceeded`), jadi dokumen dikirim lewat Google Drive for Desktop —
+dan untuk itu `folder_dokumen_id` memang harus kosong.
+
+Jadi pemeriksa menyuruh orang **membatalkan pengaturan yang sudah benar**.
+Kalau diikuti, bot kembali ditolak Google.
+
+Ini **kesalahan yang persis sama polanya** dengan saran "Share ulang" pada
+galat `SERVICE_DISABLED` dulu: pemeriksa memberi saran yang salah, orang
+menurutinya, masalahnya tidak selesai, dan kepercayaan pada pemeriksa hilang.
+
+Sekarang id tujuan yang kosong dilaporkan **LULUS** dengan keterangan
+"sengaja dikosongkan", ditambah penjelasan bahwa berkasnya ditulis ke
+`folder_draf` dan Drive for Desktop yang menyalinkannya.
+
+Dikunci dua tes: id kosong tidak boleh dianggap gagal, dan tidak boleh
+membuat pemeriksa menyatakan "PERLU DIBERESKAN". Tes 135 -> 136.
+
+**Aturan umum untuk pemeriksa ini: jangan pernah menandai GAGAL sesuatu yang
+merupakan pilihan pemasangan yang sah.** Bedakan "belum dikerjakan" dari
+"sengaja tidak dipakai".

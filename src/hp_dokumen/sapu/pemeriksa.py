@@ -133,8 +133,22 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
     ]
     for nama, id_folder, kunci in tujuan:
         if not id_folder:
-            hasil.append(Hasil(nama, GAGAL, "belum diisi",
-                               f"Isi {kunci} di config/bot.yaml"))
+            # KOSONG BUKAN GALAT. Akun layanan Google tidak punya jatah
+            # penyimpanan Drive, jadi tidak bisa membuat berkas di My Drive
+            # siapa pun ("storageQuotaExceeded"). Jalan keluar resminya adalah
+            # Google Drive for Desktop: bot menulis ke folder lokal yang
+            # disinkronkan, dan Drive yang menyalinkannya.
+            #
+            # Mengosongkan id-nya justru LANGKAH YANG BENAR untuk cara itu.
+            # Versi sebelumnya menandainya BELUM dan menyuruh mengisinya —
+            # menyuruh orang membatalkan pengaturan yang sudah tepat.
+            hasil.append(Hasil(
+                nama, LULUS, "sengaja dikosongkan",
+                f"{kunci} kosong: bot tidak mengunggah sendiri ke Drive. "
+                "Berkasnya ditulis ke folder_draf, dan kalau folder itu "
+                "berada di dalam Google Drive for Desktop, Drive yang "
+                "menyalinkannya. Ini memang cara yang dianjurkan.",
+            ))
             continue
         try:
             sambung.isi_folder(id_folder)
