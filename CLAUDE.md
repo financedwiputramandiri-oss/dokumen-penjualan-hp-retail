@@ -1989,3 +1989,61 @@ Penanda versi yang dipakai untuk memastikan kodenya terbaru (lewat `findstr`):
 | Jadwal tiap 12 jam (Task Scheduler) | belum dipasang |
 | Laporan sapuan naik ke Drive | belum dipastikan; kalau ditolak kuota, kosongkan `folder_laporan_id` |
 | Customer belum terdaftar di `customer.csv` | terlihat di laporan sapuan, perlu dilengkapi Yosua |
+
+## 26. Pembetulan nama customer & nomor faktur — 16 September 2026
+
+Yosua bertanya apakah nama customer dan nomor faktur bisa dibetulkan, lalu
+minta contohnya. Dibuatkan contoh SEBELUM/SESUDAH dari
+`PO 25 Agustus - Panda & Bear` (12 baris, 120 pcs, Rp5.126.640) — customer
+yang `nama_di_dokumen`-nya memang masih kosong di `config/customer.csv`.
+
+### Jawabannya
+
+| Hal | Bisa? | Caranya |
+|---|---|---|
+| Nama, alamat, NPWP, NITKU customer | ya, sekarang juga | isi `config/customer.csv`, tanpa ubah kode |
+| Nomor faktur diisi tangan | ya, sudah begitu | bot menulis `________` |
+| Nomor faktur otomatis | perlu keputusan Yosua dulu | belum ada polanya |
+
+### Jebakan yang harus selalu diingatkan
+
+`SidikPO` (`sapu/kondisi.py`) hanya memuat data ORDER SHEET — baris, qty,
+kotor, nett, cara bayar, sidik qty, sidik rumus. **Mengubah `customer.csv`
+tidak membuat bot menganggap ada perubahan**, jadi dokumen lama dibiarkan apa
+adanya. Supaya ikut diperbarui: hapus `data/kondisi_sapu.json` lalu `sapu`
+sekali lagi. Ini bukan cacat — sidik jari memang sengaja hanya mengawasi
+order sheet — tapi orang pasti mengira nama akan berubah sendiri.
+
+### `nomor_dokumen: otomatis` BELUM tersambung ke bot
+
+`cli.py:_nomor()` membaca `pengaturan.yaml -> nomor_dokumen`, tapi
+`sapu/draf.py:buat_draf()` memakai `nomor: str = "________"` dan tidak pernah
+dipanggil dengan nomor lain. Jadi menyalakan `otomatis: true` hanya berpengaruh
+pada perintah manual. Kalau nanti diprogramkan, sambungkan di situ.
+
+Tiga hal yang harus dipastikan Yosua sebelum penomoran otomatis dibuat:
+urutan diulang tiap bulan atau berlanjut setahun; DPM dan MTN berbagi satu
+urutan atau masing-masing; dan apakah faktur kedua Haritsa selalu berakhiran
+`.A`.
+
+### Cacat yang ketahuan dari contoh ini: judul faktur terpotong
+
+Kode artikel Panda & Bear pendek (`OB.SS.1.S`, 9 huruf), jadi
+`lebar_menyesuaikan()` menyusutkan kolom B ke batas bawah 11,0. Bersama kolom
+A yang 4,0 itu cuma 15,0 satuan, sedangkan `FAKTUR No.` tebal ukuran 18 butuh
++-16,4 — tercetak `FAKTUR N` lalu langsung nomornya.
+
+Tidak pernah terlihat di faktur asli karena di sana kolom B selebar
+15,6-16,14. Sekarang B dipaksa minimal `LEBAR_JUDUL_FAKTUR - lebar[1]`.
+Jumlah lebar A..H tidak bertambah — kelebihannya memang sedang menganggur di
+kolom deskripsi. Dikunci satu tes. Tes 136 -> 137.
+
+### Berkas isian nama customer
+
+`alat/template_customer.py` menghasilkan
+`keluaran/TEMPLATE_NAMA_CUSTOMER.xlsx`: satu baris per customer, kolom yang
+perlu diisi berwarna kuning, yang sudah terisi hijau, ditambah tab CARA PAKAI.
+Jumlah PO dan periode aktif diambil dari `DATABASE_CUSTOMER.xlsx` kalau ada.
+
+Dibuat karena `customer.csv` gampang rusak kalau nama customer mengandung
+koma (`PT. ABC, Tbk`). Di Excel hal itu ditangani sendiri.

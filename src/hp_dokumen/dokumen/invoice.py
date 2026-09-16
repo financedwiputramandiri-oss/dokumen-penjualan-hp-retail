@@ -45,6 +45,17 @@ MAKS_JATAH = 135.0
 MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 22.0
 
+# Lebar A+B minimal supaya "FAKTUR No." (baris 9, tebal ukuran 18) tidak
+# terpotong oleh sel nomor di kolom C. Sepuluh huruf pada ukuran 18 memakan
+# +-16,4 satuan kolom; 17,5 memberi sedikit kelonggaran.
+#
+# Ketahuan pada PO yang kode artikelnya pendek (`OB.SS.1.S`, 9 huruf): B
+# menyusut ke batas bawah 11,0 sehingga A+B hanya 15,0 dan judulnya tercetak
+# "FAKTUR N". Di faktur asli B selebar 15,6-16,14 jadi masalah ini tidak
+# pernah muncul. Melebarkan B tidak menambah jumlah lebar A..H — sisanya
+# memang sedang menganggur di kolom deskripsi.
+LEBAR_JUDUL_FAKTUR = 17.5
+
 # Ukuran huruf dan tinggi baris, dari ENAM faktur asli yang sepakat:
 # 0010726 & 0110826 BABY WISE, 0130826 BOBO SAMARINDA, 0420826 YULIS
 # (keempatnya 13,5 / 26,25 / huruf 11), lalu 0310726 MAE BEBE dan
@@ -72,7 +83,7 @@ def lebar_menyesuaikan(baris) -> dict:
         return lebar
     huruf = 1.05  # perkiraan lebar satu huruf Calibri 10 dalam satuan kolom
     kode = max(len(str(b.kode)) for b in baris) * huruf + 1.5
-    lebar[2] = min(max(kode, MIN_KODE), MAKS_KODE)
+    lebar[2] = min(max(kode, MIN_KODE, LEBAR_JUDUL_FAKTUR - lebar[1]), MAKS_KODE)
 
     deskripsi = max(len(str(b.deskripsi)) for b in baris) * huruf + 1.5
     lain = sum(v for k, v in lebar.items() if k != 3)

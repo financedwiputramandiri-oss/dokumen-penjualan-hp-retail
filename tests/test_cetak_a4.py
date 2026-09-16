@@ -239,3 +239,32 @@ def test_blok_penutup_invoice_tidak_bercetak_tebal(bahan, tmp_path):
             assert not sel.font.bold, (
                 f"{sel.coordinate} ({sel.value!r}) masih bercetak tebal"
             )
+
+
+def test_judul_faktur_tidak_terpotong_walau_kode_artikel_pendek():
+    """Kolom A+B harus cukup lebar untuk "FAKTUR No." ukuran 18.
+
+    Ketahuan pada PO 25 Agustus - Panda & Bear: kode artikelnya pendek
+    (`OB.SS.1.S`, 9 huruf) sehingga kolom B menyusut ke batas bawah 11,0.
+    Bersama kolom A yang 4,0 itu hanya 15,0 satuan, sedangkan judulnya butuh
+    +-16,4 — jadi tercetak "FAKTUR N" lalu langsung nomornya.
+
+    Di faktur asli DPM kolom B selebar 15,6-16,14 jadi masalah ini tidak
+    pernah terlihat di sana.
+    """
+    from hp_dokumen.dokumen.invoice import (
+        LEBAR_JUDUL_FAKTUR, BarisInvoice, lebar_menyesuaikan,
+    )
+
+    pendek = [BarisInvoice("OB.SS.1.S", "SoftAir Short Set - New Baby Size",
+                           12, 41000, 492000, 403440)]
+    lebar = lebar_menyesuaikan(pendek)
+    assert lebar[1] + lebar[2] >= LEBAR_JUDUL_FAKTUR, (
+        f"A+B hanya {lebar[1] + lebar[2]} satuan, judul FAKTUR No. akan terpotong"
+    )
+
+    # Kode panjang tidak boleh ikut melebar melewati batasnya sendiri.
+    panjang = [BarisInvoice("4106500 (Bottom/Celana)", "Nilo Straight Denim Pants",
+                            12, 41000, 492000, 403440)]
+    lebar_panjang = lebar_menyesuaikan(panjang)
+    assert lebar_panjang[2] <= 23.0
