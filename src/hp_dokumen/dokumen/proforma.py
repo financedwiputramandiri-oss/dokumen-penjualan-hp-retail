@@ -83,16 +83,27 @@ def _label_nilai(ws, baris: int, label: str, nilai, *, angka=None, tebal=False):
 
 
 TINGGI_LOGO = 86            # sedikit lebih besar dari dokumen lain (70)
-GESER_LOGO_KANAN = 180000   # EMU, +-0,5 cm; menengahkan logo di blok A:B
 GESER_LOGO_BAWAH = 55000    # EMU, +-0,15 cm
 
 
-def _pasang_logo(ws, perusahaan, baris: int) -> None:
-    """Pasang logo di blok A:B, sedikit lebih besar dan digeser ke tengah.
+def _lebar_kolom_px(kolom: int) -> float:
+    """Lebar satu kolom dalam piksel.
 
-    Permintaan Yosua 17 September 2026. Tanpa pergeseran, openpyxl menempelkan
-    gambar persis di pojok kiri atas sel sehingga logonya menempel ke tepi
-    kertas. Pergeserannya dalam EMU (914.400 EMU = 1 inci).
+    Rumus bakunya untuk huruf bawaan Calibri 11: px = lebar x 7 + 5.
+    """
+    return LEBAR[kolom] * 7 + 5
+
+
+def _pasang_logo(ws, perusahaan, baris: int) -> None:
+    """Pasang logo di blok A:B, RATA TENGAH terhadap tulisan "Kepada".
+
+    Permintaan Yosua 17 September 2026. Tulisan "Kepada" digabung A:B dan rata
+    tengah, jadi logonya harus ditengahkan di blok yang sama supaya keduanya
+    segaris tegak.
+
+    Pergeserannya DIHITUNG, bukan angka tetap: versi sebelumnya memakai 0,5 cm
+    mati dan meleset 5 piksel ke kiri. Kalau lebar kolom atau ukuran logonya
+    berubah, angka tetap akan meleset lagi tanpa ada yang sadar.
     """
     berkas = perusahaan.berkas_logo()
     if not berkas:
@@ -110,8 +121,10 @@ def _pasang_logo(ws, perusahaan, baris: int) -> None:
             return
         img.width = int(TINGGI_LOGO * img.width / img.height)
         img.height = TINGGI_LOGO
+        lebar_blok = _lebar_kolom_px(1) + _lebar_kolom_px(2)
+        geser = max(0.0, (lebar_blok - img.width) / 2)
         img.anchor = OneCellAnchor(
-            _from=AnchorMarker(col=0, colOff=GESER_LOGO_KANAN,
+            _from=AnchorMarker(col=0, colOff=pixels_to_EMU(geser),
                                row=baris - 1, rowOff=GESER_LOGO_BAWAH),
             ext=XDRPositiveSize2D(pixels_to_EMU(img.width),
                                   pixels_to_EMU(img.height)),

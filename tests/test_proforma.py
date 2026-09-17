@@ -265,3 +265,51 @@ def test_penutup_menyambung_tabel_tanpa_pita_kosong(bahan):
         assert ws.row_dimensions[r].height == TINGGI_PENUTUP, (
             f"tinggi baris {r} belum diseragamkan"
         )
+
+
+def test_logo_rata_tengah_dengan_tulisan_kepada(bahan, tmp_path):
+    """Logo ditengahkan di blok A:B, sejajar dengan tulisan "Kepada".
+
+    Permintaan Yosua 17 September 2026. Tulisan "Kepada" digabung A:B dan rata
+    tengah, jadi logonya harus ditengahkan di blok yang sama.
+
+    Versi sebelumnya memakai pergeseran tetap 0,5 cm dan meleset 5 piksel ke
+    kiri. Tesnya menghitung ulang letak yang benar, jadi ikut menangkap kalau
+    lebar kolom atau ukuran logonya berubah.
+    """
+    from openpyxl import Workbook
+    from openpyxl.utils.units import EMU_to_pixels
+
+    from hp_dokumen.dokumen.proforma import _lebar_kolom_px, buat_proforma
+
+    orders, daftar, pt, peng = bahan
+    o = next(x for x in orders if daftar.cari(x.nama_tab)
+             and daftar.cari(x.nama_tab).pecah_per_ukuran)
+
+    logo = tmp_path / "logo.png"
+    try:
+        from PIL import Image as PilImage
+
+        PilImage.new("RGB", (202, 190), "red").save(logo)
+    except ImportError:
+        pytest.skip("Pillow tidak terpasang")
+
+    class PerusahaanBerlogo:
+        def __getattr__(self, nama):
+            return getattr(pt, nama)
+
+        @staticmethod
+        def berkas_logo():
+            return logo
+
+    ws = Workbook().active
+    buat_proforma(ws, o, tentukan_nett(o, daftar.cari(o.nama_tab)),
+                  daftar.cari(o.nama_tab), PerusahaanBerlogo(), peng, "0010826")
+
+    assert ws._images, "logo tidak terpasang"
+    gambar = ws._images[0]
+    geser = EMU_to_pixels(gambar.anchor._from.colOff)
+    benar = (_lebar_kolom_px(1) + _lebar_kolom_px(2) - gambar.width) / 2
+    assert abs(geser - benar) <= 1, (
+        f"logo digeser {geser} px, rata tengah seharusnya {benar:.1f} px"
+    )
