@@ -164,3 +164,51 @@ def test_alamat_perusahaan_dilipat_tanpa_menelan_baris_kontak():
     assert all(len(x) <= 44 for x in hasil[:-3])
     # tanpa batas, tidak ada yang diubah
     assert _alamat_perusahaan(baris, None) == baris
+
+
+def test_disk_persen_ditulis_seperti_invoice(bahan):
+    """DISK% memakai tulisan yang sama dengan invoice, bukan persen efektif.
+
+    Permintaan Yosua 17 September 2026: *"untuk disk% pakai 22% + 1.5% saja"*.
+    Sebelumnya kolom ini berisi 23,17 — benar secara aritmetika (22% lalu 1,5%
+    beruntun) tapi tidak dikenali customer.
+    """
+    ws, _, _ = _proforma(bahan)
+    judul = next(r for r in range(1, ws.max_row + 1) if ws.cell(r, 1).value == "NO")
+    nilai = ws.cell(judul + 1, 7).value
+    assert isinstance(nilai, str) and nilai.endswith("%"), (
+        f"DISK% harus tulisan persen, bukan {nilai!r}"
+    )
+
+
+def test_kolom_disk_cukup_lebar_untuk_tulisannya():
+    """Kolom DISK% harus muat "22% + 1.5%" — 10 huruf.
+
+    Pada 8,5 satuan tulisannya terpotong jadi "2% + 1.5%" dan terbaca 2%
+    bukan 22%. Di dokumen penagihan itu kesalahan yang mahal.
+    """
+    from hp_dokumen.dokumen.proforma import LEBAR
+
+    assert LEBAR[7] >= len("22% + 1.5%") + 1.5
+
+
+def test_total_qty_berkotak_dan_sekolom_dengan_qty(bahan):
+    """Angka Total Qty duduk di kolom QTY, tepat di bawah deretan angkanya.
+
+    Permintaan Yosua: sebelumnya label dan angkanya menumpuk di kolom
+    KETERANGAN, jauh dari kolom yang dijumlahkan.
+    """
+    ws, ringkas, _ = _proforma(bahan)
+    baris = next(r for r in range(1, ws.max_row + 1)
+                 if str(ws.cell(r, 2).value or "").startswith("Total Qty"))
+    sel = ws.cell(baris, 4)          # kolom QTY
+    assert sel.value == ringkas["qty"]
+    for sisi in ("left", "right", "top", "bottom"):
+        assert getattr(sel.border, sisi).style, f"sel Total Qty tidak bergaris di {sisi}"
+
+
+def test_lebar_proforma_masih_muat_a4(bahan):
+    """Jumlah lebar A..I tidak boleh melewati batas yang terbukti muat A4."""
+    from hp_dokumen.dokumen.proforma import LEBAR
+
+    assert sum(LEBAR.values()) <= 135.0

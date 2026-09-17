@@ -31,14 +31,16 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from ..model import KeputusanNett, Order
 from . import gaya
-from .invoice import susun_baris
+from .invoice import _persen_ringkas, _persen_tertulis, susun_baris
 
 KOLOM_TERAKHIR = 9          # A..I
 BARIS_KOP = 1
 
 # Lebar kolom A..I. Jumlahnya 117 satuan, masih di bawah batas 135 yang sudah
 # terbukti muat A4 tegak (CLAUDE.md bagian 19).
-LEBAR = {1: 4.5, 2: 14.0, 3: 40.0, 4: 6.5, 5: 7.5, 6: 13.0, 7: 8.5, 8: 8.5, 9: 14.5}
+# Kolom DISK% (7) harus muat tulisan gabungan "22% + 1.5%" — 10 huruf.
+# Pada 8,5 satuan angkanya terpotong jadi "2% + 1.5%", terbaca 2% bukan 22%.
+LEBAR = {1: 4.5, 2: 14.0, 3: 35.5, 4: 6.5, 5: 7.5, 6: 13.0, 7: 13.0, 8: 8.5, 9: 14.5}
 
 JUDUL_KOLOM = [
     (1, "NO"), (2, "SKU"), (3, "KETERANGAN"), (4, "QTY"), (5, "UNIT"),
@@ -78,6 +80,45 @@ def _label_nilai(ws, baris: int, label: str, nilai, *, angka=None, tebal=False):
                         ukuran=HURUF_ISI, tebal=tebal)
 
 
+TINGGI_LOGO = 86            # sedikit lebih besar dari dokumen lain (70)
+GESER_LOGO_KANAN = 180000   # EMU, +-0,5 cm; menengahkan logo di blok A:B
+GESER_LOGO_BAWAH = 55000    # EMU, +-0,15 cm
+
+
+def _pasang_logo(ws, perusahaan, baris: int) -> None:
+    """Pasang logo di blok A:B, sedikit lebih besar dan digeser ke tengah.
+
+    Permintaan Yosua 17 September 2026. Tanpa pergeseran, openpyxl menempelkan
+    gambar persis di pojok kiri atas sel sehingga logonya menempel ke tepi
+    kertas. Pergeserannya dalam EMU (914.400 EMU = 1 inci).
+    """
+    berkas = perusahaan.berkas_logo()
+    if not berkas:
+        return
+    try:
+        from openpyxl.drawing.image import Image as XlImage
+        from openpyxl.drawing.spreadsheet_drawing import (
+            AnchorMarker, OneCellAnchor,
+        )
+        from openpyxl.drawing.xdr import XDRPositiveSize2D
+        from openpyxl.utils.units import pixels_to_EMU
+
+        img = XlImage(str(berkas))
+        if not img.height:
+            return
+        img.width = int(TINGGI_LOGO * img.width / img.height)
+        img.height = TINGGI_LOGO
+        img.anchor = OneCellAnchor(
+            _from=AnchorMarker(col=0, colOff=GESER_LOGO_KANAN,
+                               row=baris - 1, rowOff=GESER_LOGO_BAWAH),
+            ext=XDRPositiveSize2D(pixels_to_EMU(img.width),
+                                  pixels_to_EMU(img.height)),
+        )
+        ws.add_image(img)
+    except Exception:      # logo rusak tidak boleh menggagalkan dokumen
+        pass
+
+
 def keterangan(b) -> str:
     """Isi kolom KETERANGAN: nama barang, varian, lalu ukurannya.
 
@@ -110,17 +151,7 @@ def buat_proforma(
     # ---- kepala dokumen ------------------------------------------------
     r = BARIS_KOP
     ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=2)
-    logo = perusahaan.berkas_logo()
-    if logo:
-        try:
-            from openpyxl.drawing.image import Image as XlImage
-
-            img = XlImage(str(logo))
-            if img.height:
-                img.height, img.width = 70, int(70 * img.width / img.height)
-            ws.add_image(img, f"A{r}")
-        except Exception:      # logo rusak tidak boleh menggagalkan dokumen
-            pass
+    _pasang_logo(ws, perusahaan, r)
 
     gaya.sel_isi(ws, r, 3, perusahaan.nama, tebal=True, ukuran=14)
     for i, teks in enumerate(perusahaan.alamat_baris, start=1):
@@ -153,7 +184,7 @@ def buat_proforma(
     # blok "Kepada"
     b = r + 7
     ws.merge_cells(start_row=b, start_column=1, end_row=b, end_column=2)
-    gaya.sel_isi(ws, b, 1, "Kepada", ukuran=HURUF_ISI)
+    gaya.sel_isi(ws, b, 1, "Kepada", ukuran=HURUF_ISI, rata="center")
     nama_cust = (customer.nama_di_dokumen if customer else "") or order.customer_kunci
     ws.merge_cells(start_row=b, start_column=3, end_row=b, end_column=6)
     gaya.sel_isi(ws, b, 3, nama_cust, tebal=True, ukuran=14)
@@ -168,6 +199,13 @@ def buat_proforma(
         gaya.sel_judul(ws, j, kolom, teks, ukuran=HURUF_JUDUL_KOLOM)
     ws.row_dimensions[j].height = 22.5
 
+    # DISK% ditulis persis seperti di invoice: "22% + 1.5%" kalau potongannya
+    # beruntun, "25%" kalau tunggal. Permintaan Yosua 17 September 2026 —
+    # sebelumnya kolom ini berisi persen EFEKTIF (23,17) yang secara aritmetika
+    # benar tapi tidak dikenali customer.
+    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
+    tulisan_diskon = teks_persen or _persen_ringkas(angka_persen or 0.0)
+
     baris = susun_baris(
         order, keputusan,
         pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
@@ -177,14 +215,13 @@ def buat_proforma(
 
     r = j + 1
     for i, x in enumerate(baris, start=1):
-        persen = (x.diskon / x.kotor * 100.0) if x.kotor else 0.0
         gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=HURUF_ISI)
         gaya.sel_isi(ws, r, 2, x.kode, ukuran=HURUF_ISI, lipat=True)
         gaya.sel_isi(ws, r, 3, keterangan(x), ukuran=HURUF_ISI, lipat=True)
         gaya.sel_isi(ws, r, 4, x.qty, rata="center", ukuran=HURUF_ISI)
         gaya.sel_isi(ws, r, 5, UNIT_BAWAAN, rata="center", ukuran=HURUF_ISI)
         gaya.sel_isi(ws, r, 6, x.harga, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI)
-        gaya.sel_isi(ws, r, 7, persen, angka="0.00", ukuran=HURUF_ISI, rata="center")
+        gaya.sel_isi(ws, r, 7, tulisan_diskon, ukuran=HURUF_ISI, rata="center")
         gaya.sel_isi(ws, r, 8, 0, angka="0.00", ukuran=HURUF_ISI, rata="center")
         gaya.sel_isi(ws, r, 9, x.nett, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI)
         ws.row_dimensions[r].height = TINGGI_DATA
@@ -198,8 +235,16 @@ def buat_proforma(
     qty = sum(x.qty for x in baris)
 
     p = akhir + 1
-    gaya.sel_isi(ws, p, 3, f"Total Qty          {qty:,}".replace(",", "."),
-                 ukuran=HURUF_ISI, tebal=True)
+    # Total Qty diberi kotak sendiri, dan ANGKANYA ditaruh di kolom QTY —
+    # tepat di bawah deretan angka qty. Permintaan Yosua 17 September 2026:
+    # sebelumnya label dan angkanya menumpuk di kolom KETERANGAN, jauh dari
+    # kolom yang dijumlahkan, jadi tidak terbaca sebagai total.
+    ws.merge_cells(start_row=p, start_column=2, end_row=p, end_column=3)
+    gaya.sel_isi(ws, p, 2, "Total Qty", ukuran=HURUF_ISI, tebal=True, rata="right")
+    gaya.sel_isi(ws, p, 3, None, ukuran=HURUF_ISI)
+    gaya.sel_isi(ws, p, 4, qty, ukuran=HURUF_ISI, tebal=True, rata="center",
+                 angka="#,##0")
+    gaya.beri_garis(ws, p, 2, p, 4)
     _label_nilai(ws, p, "Sub Total", kotor)
     _label_nilai(ws, p + 1, "Diskon", kotor - nett)
     for i, label in enumerate(PENUTUP_NOL, start=2):
