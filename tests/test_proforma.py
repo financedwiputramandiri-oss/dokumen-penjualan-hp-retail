@@ -193,16 +193,15 @@ def test_kolom_disk_cukup_lebar_untuk_tulisannya():
 
 
 def test_total_qty_baris_penutup_tabel_yang_penuh(bahan):
-    """Baris Total Qty menutup tabel: bergaris dari NO sampai JUMLAH.
+    """Baris Total Qty berkotak dari NO sampai kolom QTY, lalu BERHENTI.
 
-    Permintaan Yosua 17 September 2026 (*"buatkan tabel penuh"*). Sebelumnya
-    hanya B..D yang bergaris sehingga baris terakhir tabel terlihat robek —
-    kolom NO dan kolom HARGA sampai JUMLAH tidak berbingkai sama sekali.
-
-    Angkanya tetap di kolom QTY, tepat di bawah deretan angka yang
-    dijumlahkan, dan labelnya rata tengah.
+    Dua permintaan Yosua 17 September 2026 yang berurutan: pertama tabelnya
+    dibuat penuh, lalu bagian kanannya dicoret. Hasil akhirnya kotak berhenti
+    di kolom QTY — yang dijumlahkan memang cuma qty, dan kolom UNIT sampai
+    JUMLAH kalau ikut digariskan hanya jadi kotak kosong yang terlihat seperti
+    baris yang lupa diisi.
     """
-    from hp_dokumen.dokumen.proforma import KOLOM_TERAKHIR
+    from hp_dokumen.dokumen.proforma import KOL_QTY, KOLOM_TERAKHIR
 
     ws, ringkas, _ = _proforma(bahan)
     baris = next(r for r in range(1, ws.max_row + 1)
@@ -211,13 +210,22 @@ def test_total_qty_baris_penutup_tabel_yang_penuh(bahan):
     assert ws.cell(baris, 1).alignment.horizontal == "center"
     assert ws.cell(baris, 4).value == ringkas["qty"]
 
-    # SELURUH lebar tabel bergaris, bukan cuma kolom yang ada isinya.
-    for kolom in range(1, KOLOM_TERAKHIR + 1):
+    # Bergaris sampai kolom QTY...
+    for kolom in range(1, KOL_QTY + 1):
         sel = ws.cell(baris, kolom)
         for sisi in ("left", "right", "top", "bottom"):
             assert getattr(sel.border, sisi).style, (
                 f"baris Total Qty tidak bergaris di kolom {kolom} sisi {sisi}"
             )
+
+    # ...dan BERHENTI di situ. Kolom UNIT sampai JUMLAH tidak boleh jadi
+    # deretan kotak kosong — Yosua mencoretnya 17 September 2026.
+    for kolom in range(KOL_QTY + 1, KOLOM_TERAKHIR + 1):
+        sel = ws.cell(baris, kolom)
+        assert not any(getattr(sel.border, s).style
+                       for s in ("left", "right", "top", "bottom")), (
+            f"kolom {kolom} di baris Total Qty masih berkotak kosong"
+        )
 
 
 def test_lebar_proforma_masih_muat_a4(bahan):

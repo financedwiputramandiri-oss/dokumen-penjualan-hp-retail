@@ -34,6 +34,7 @@ from . import gaya
 from .invoice import _persen_ringkas, _persen_tertulis, susun_baris
 
 KOLOM_TERAKHIR = 9          # A..I
+KOL_QTY = 4                 # kolom QTY, tempat angka Total Qty
 BARIS_KOP = 1
 
 # Lebar kolom A..I. Jumlahnya 117 satuan, masih di bawah batas 135 yang sudah
@@ -234,22 +235,19 @@ def buat_proforma(
     nett = sum(x.nett for x in baris)
     qty = sum(x.qty for x in baris)
 
-    # ---- baris Total Qty: baris PENUTUP tabel, selebar tabelnya ---------
-    # Permintaan Yosua 17 September 2026: tabelnya dibuat PENUH. Sebelumnya
-    # hanya B..D yang bergaris, jadi baris terakhir tabel terlihat robek —
-    # kolom NO dan kolom HARGA sampai JUMLAH tidak berbingkai sama sekali.
+    # ---- baris Total Qty: menutup tabel SAMPAI KOLOM QTY saja -----------
+    # Kotaknya BERHENTI di kolom QTY. Sempat digariskan sampai kolom JUMLAH
+    # supaya tabelnya "penuh", tapi Yosua mencoret bagian itu (17 Sep 2026):
+    # kolom UNIT sampai JUMLAH jadi deretan kotak kosong yang tidak menampung
+    # apa pun, dan justru terlihat seperti baris yang lupa diisi.
     #
-    # Sekarang barisnya bergaris dari NO sampai JUMLAH dan menutup tabel,
-    # lalu blok Sub Total..Grand Total mulai di bawahnya. Bedanya dengan foto
-    # (di sana Total Qty sebaris dengan Sub Total) memang disengaja.
+    # Yang dijumlahkan memang cuma qty, jadi kotaknya berhenti di situ.
     tq = akhir + 1
     ws.merge_cells(start_row=tq, start_column=1, end_row=tq, end_column=3)
     gaya.sel_isi(ws, tq, 1, "Total Qty", ukuran=HURUF_ISI, tebal=True, rata="center")
     gaya.sel_isi(ws, tq, 4, qty, ukuran=HURUF_ISI, tebal=True, rata="center",
                  angka="#,##0")
-    for kolom in range(5, KOLOM_TERAKHIR + 1):
-        gaya.sel_isi(ws, tq, kolom, None, ukuran=HURUF_ISI)
-    gaya.beri_garis(ws, tq, 1, tq, KOLOM_TERAKHIR)
+    gaya.beri_garis(ws, tq, 1, tq, KOL_QTY)
     ws.row_dimensions[tq].height = 22.5
 
     # ---- blok nilai, mulai satu baris di bawah tabel --------------------
