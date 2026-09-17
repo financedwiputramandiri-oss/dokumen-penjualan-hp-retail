@@ -40,6 +40,15 @@ pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
 # subfolder _KEDALUWARSA supaya tidak terpakai tanpa sengaja.
 #
 # Dokumen TIDAK PERNAH dibuat kalau angkanya belum cocok dengan order sheet.
+#
+# PENGATURAN INI BEDA DI TIAP KOMPUTER. Kalau memakai Google Drive for Desktop
+# (cara yang dipakai sekarang), arahkan ke folder sinkronnya, contoh:
+#   folder_draf: "G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN"
+# Drive for Desktop yang menyalinkannya ke Drive, jadi berkasnya dimiliki
+# Yosua dan lepas dari batasan kuota akun layanan.
+#
+# Sesudah mengunduh ulang proyek ini, PERIKSA baris di bawah — isian bawaan
+# menimpa alamat folder sinkron Bapak.
 folder_draf: "keluaran/draf"
 
 # true -> sekalian dibuatkan PDF-nya. Perlu LibreOffice terpasang, dan
@@ -59,8 +68,21 @@ draf_pdf: false
 # "Invoice Miniku" yang tidak jelas mana yang berlaku. Versi lama tetap aman
 # di folder _KEDALUWARSA pada komputer yang menjalankan bot.
 #
-# Kosongkan kalau tidak mau dokumen dinaikkan ke Drive.
-folder_dokumen_id: "1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP"
+# SENGAJA DIKOSONGKAN, jangan diisi tanpa alasan kuat.
+#
+# Akun layanan Google TIDAK punya jatah penyimpanan Drive, jadi setiap
+# unggahan ditolak dengan `storageQuotaExceeded`. Menambah izin tidak
+# menolong — dua jalan keluar resmi Google (Shared Drive dan OAuth
+# delegation) sama-sama butuh Google Workspace, sedangkan akun Happy
+# Pumpkin memakai @gmail.com.
+#
+# Karena itu dokumen dikirim lewat Google Drive for Desktop: bot menulis ke
+# `folder_draf` di atas, dan Drive yang menyalinkannya. Sudah terbukti jalan
+# 16 September 2026.
+#
+# Id folder DOKUMEN OTOMATIS HAPPY PUMPKIN, kalau suatu saat dibutuhkan
+# lagi: 1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP
+folder_dokumen_id: ""
 
 # ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
 # Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.

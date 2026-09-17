@@ -2099,3 +2099,52 @@ jaga-jaga kalau `pasang-jadwal.bat` ditolak, lengkap dengan dua centang yang
 paling gampang terlewat: **Run only when user is logged on**, dan mematikan
 **Start the task only if the computer is on AC power** supaya laptop tetap
 menyapu walau tidak dicolok.
+
+### `bot.yaml` bawaan repo masih memuat pengaturan yang SUDAH terbukti gagal — 17 Sep 2026
+
+Ketahuan saat menjawab pertanyaan Yosua "kalau jadwal sudah terpasang, apakah
+format masih bisa diperbaiki". Jawabannya ya, tapi jalur pembaruannya berbahaya.
+
+Prosedur pembaruan di bagian 25 adalah **mengunduh ulang ZIP lalu ekstrak**.
+Masalahnya `config/bot.yaml` DILACAK git, jadi ikut di ZIP dan menimpa suntingan
+Yosua. Padahal isi repo waktu itu masih:
+
+    folder_draf: "keluaran/draf"                          <- bukan folder G: miliknya
+    folder_dokumen_id: "1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP" <- SUDAH TERBUKTI GAGAL
+
+Artinya tiap kali Yosua memperbarui kode untuk memperbaiki format, bot kembali
+mencoba mengunggah sendiri ke Drive dan ditolak `storageQuotaExceeded` lagi —
+persis masalah yang sudah dituntaskan di bagian 14 dan 25.
+
+Sudah diperbaiki: `folder_dokumen_id` dikosongkan di repo (pemeriksa memang
+sudah menganggap kosong itu LULUS sejak bagian 24), dan `folder_draf` diberi
+peringatan bahwa isinya beda di tiap komputer serta wajib diperiksa ulang
+sesudah mengunduh ulang.
+
+**Aturan umum: berkas config yang dilacak git jangan menyimpan nilai yang
+sudah diketahui salah.** Nilai bawaan itu akan kembali sendiri tiap kali orang
+memperbarui, dan tidak ada yang menyangka pembaruan bisa membatalkan pengaturan.
+
+Dua berkas lain yang juga ikut di ZIP dan menimpa suntingan: `config/customer.csv`
+(nama & alamat customer) dan `config/pengaturan.yaml`. `config/kredensial_bot.json`
+dan `data/kondisi_sapu.json` TIDAK ikut karena di-gitignore.
+
+### Memperbaiki format setelah jadwal terpasang
+
+Jadwal dan format tidak saling terikat. Task Scheduler hanya menyimpan
+"jalankan `sapu.bat` jam 06:00 dan 18:00"; kode apa pun yang ada di folder itu
+saat jamnya tiba, itulah yang dipakai. Jadi format boleh diperbaiki kapan saja
+tanpa menyentuh Task Scheduler.
+
+Dua hal yang HARUS diingatkan tiap kali:
+
+1. **Dokumen lama tidak ikut berubah sendiri.** Sama persis dengan jebakan di
+   bagian 26 — `SidikPO` hanya mengawasi order sheet, bukan kode. Perbaikan
+   format tidak membuat bot menganggap ada perubahan. Supaya seluruh dokumen
+   dibuat ulang: hapus `data/kondisi_sapu.json` lalu `sapu` sekali.
+2. **Alamat folder proyek jangan berubah.** Jadwalnya menunjuk ke alamat
+   `sapu.bat` yang tercatat saat dipasang. Kalau folder proyek dipindah atau
+   diganti nama (prosedur bagian 25 menyuruh "ganti nama folder lama"), jadwal
+   lama menunjuk ke tempat yang salah dan diam-diam gagal. Obatnya: jalankan
+   `pasang-jadwal.bat` sekali lagi dari folder yang baru — `/F` menimpa jadwal
+   lama, jadi tidak pernah ada dua jadwal.
