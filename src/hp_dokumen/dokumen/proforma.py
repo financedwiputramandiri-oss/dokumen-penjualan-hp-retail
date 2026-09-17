@@ -234,17 +234,26 @@ def buat_proforma(
     nett = sum(x.nett for x in baris)
     qty = sum(x.qty for x in baris)
 
-    p = akhir + 1
-    # Total Qty diberi kotak sendiri, dan ANGKANYA ditaruh di kolom QTY —
-    # tepat di bawah deretan angka qty. Permintaan Yosua 17 September 2026:
-    # sebelumnya label dan angkanya menumpuk di kolom KETERANGAN, jauh dari
-    # kolom yang dijumlahkan, jadi tidak terbaca sebagai total.
-    ws.merge_cells(start_row=p, start_column=2, end_row=p, end_column=3)
-    gaya.sel_isi(ws, p, 2, "Total Qty", ukuran=HURUF_ISI, tebal=True, rata="right")
-    gaya.sel_isi(ws, p, 3, None, ukuran=HURUF_ISI)
-    gaya.sel_isi(ws, p, 4, qty, ukuran=HURUF_ISI, tebal=True, rata="center",
+    # ---- baris Total Qty: baris PENUTUP tabel, selebar tabelnya ---------
+    # Permintaan Yosua 17 September 2026: tabelnya dibuat PENUH. Sebelumnya
+    # hanya B..D yang bergaris, jadi baris terakhir tabel terlihat robek —
+    # kolom NO dan kolom HARGA sampai JUMLAH tidak berbingkai sama sekali.
+    #
+    # Sekarang barisnya bergaris dari NO sampai JUMLAH dan menutup tabel,
+    # lalu blok Sub Total..Grand Total mulai di bawahnya. Bedanya dengan foto
+    # (di sana Total Qty sebaris dengan Sub Total) memang disengaja.
+    tq = akhir + 1
+    ws.merge_cells(start_row=tq, start_column=1, end_row=tq, end_column=3)
+    gaya.sel_isi(ws, tq, 1, "Total Qty", ukuran=HURUF_ISI, tebal=True, rata="center")
+    gaya.sel_isi(ws, tq, 4, qty, ukuran=HURUF_ISI, tebal=True, rata="center",
                  angka="#,##0")
-    gaya.beri_garis(ws, p, 2, p, 4)
+    for kolom in range(5, KOLOM_TERAKHIR + 1):
+        gaya.sel_isi(ws, tq, kolom, None, ukuran=HURUF_ISI)
+    gaya.beri_garis(ws, tq, 1, tq, KOLOM_TERAKHIR)
+    ws.row_dimensions[tq].height = 22.5
+
+    # ---- blok nilai, mulai satu baris di bawah tabel --------------------
+    p = tq + 1
     _label_nilai(ws, p, "Sub Total", kotor)
     _label_nilai(ws, p + 1, "Diskon", kotor - nett)
     for i, label in enumerate(PENUTUP_NOL, start=2):
@@ -253,7 +262,7 @@ def buat_proforma(
     _label_nilai(ws, baris_total, "Grand Total", nett, tebal=True)
     gaya.beri_garis(ws, p, KOL_LABEL_PENUTUP, baris_total, KOLOM_TERAKHIR)
 
-    gaya.sel_isi(ws, p + 2, 1, "Catatan :", ukuran=HURUF_ISI)
+    gaya.sel_isi(ws, p + 1, 1, "Catatan :", ukuran=HURUF_ISI)
 
     for kolom, lebar in LEBAR.items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar

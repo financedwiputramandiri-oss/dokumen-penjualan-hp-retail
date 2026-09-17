@@ -192,19 +192,32 @@ def test_kolom_disk_cukup_lebar_untuk_tulisannya():
     assert LEBAR[7] >= len("22% + 1.5%") + 1.5
 
 
-def test_total_qty_berkotak_dan_sekolom_dengan_qty(bahan):
-    """Angka Total Qty duduk di kolom QTY, tepat di bawah deretan angkanya.
+def test_total_qty_baris_penutup_tabel_yang_penuh(bahan):
+    """Baris Total Qty menutup tabel: bergaris dari NO sampai JUMLAH.
 
-    Permintaan Yosua: sebelumnya label dan angkanya menumpuk di kolom
-    KETERANGAN, jauh dari kolom yang dijumlahkan.
+    Permintaan Yosua 17 September 2026 (*"buatkan tabel penuh"*). Sebelumnya
+    hanya B..D yang bergaris sehingga baris terakhir tabel terlihat robek —
+    kolom NO dan kolom HARGA sampai JUMLAH tidak berbingkai sama sekali.
+
+    Angkanya tetap di kolom QTY, tepat di bawah deretan angka yang
+    dijumlahkan, dan labelnya rata tengah.
     """
+    from hp_dokumen.dokumen.proforma import KOLOM_TERAKHIR
+
     ws, ringkas, _ = _proforma(bahan)
     baris = next(r for r in range(1, ws.max_row + 1)
-                 if str(ws.cell(r, 2).value or "").startswith("Total Qty"))
-    sel = ws.cell(baris, 4)          # kolom QTY
-    assert sel.value == ringkas["qty"]
-    for sisi in ("left", "right", "top", "bottom"):
-        assert getattr(sel.border, sisi).style, f"sel Total Qty tidak bergaris di {sisi}"
+                 if str(ws.cell(r, 1).value or "").startswith("Total Qty"))
+
+    assert ws.cell(baris, 1).alignment.horizontal == "center"
+    assert ws.cell(baris, 4).value == ringkas["qty"]
+
+    # SELURUH lebar tabel bergaris, bukan cuma kolom yang ada isinya.
+    for kolom in range(1, KOLOM_TERAKHIR + 1):
+        sel = ws.cell(baris, kolom)
+        for sisi in ("left", "right", "top", "bottom"):
+            assert getattr(sel.border, sisi).style, (
+                f"baris Total Qty tidak bergaris di kolom {kolom} sisi {sisi}"
+            )
 
 
 def test_lebar_proforma_masih_muat_a4(bahan):
