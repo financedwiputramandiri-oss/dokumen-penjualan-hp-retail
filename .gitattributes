@@ -1,0 +1,2 @@
+# Berkas .bat WAJIB berakhiran CRLF, kalau tidak Windows bisa salah membacanya.
+*.bat text eol=crlf

@@ -230,6 +230,73 @@ letak laporannya.
 
 ## Menjalankan otomatis tiap 12 jam
 
+### Kalau memakai Windows
+
+Tidak perlu mengetik apa pun di Task Scheduler. Di folder `jadwal/` sudah ada
+berkas siap pakai:
+
+| Berkas | Gunanya |
+|---|---|
+| `sapu.bat` | yang benar-benar menjalankan sapuan. Boleh juga diklik dua kali kalau mau menyapu sekarang |
+| `pasang-jadwal.bat` | memasang jadwalnya di Task Scheduler |
+| `hapus-jadwal.bat` | menghapus jadwalnya lagi |
+
+**Langkahnya:**
+
+1. Buka folder proyek, masuk ke folder `jadwal`
+2. **Klik KANAN** `pasang-jadwal.bat`
+3. Pilih **Run as administrator**
+4. Kalau muncul peringatan Windows, pilih **Yes**
+5. Tunggu sampai tertulis `JADWAL BERHASIL DIPASANG`, lalu tekan sembarang
+   tombol untuk menutup
+
+Selesai. Bot jalan sendiri jam **06:00** dan **18:00** setiap hari.
+
+**Mencoba tanpa menunggu jamnya.** Klik dua kali `sapu.bat`. Kalau selesai
+tanpa galat, jadwalnya pasti jalan juga.
+
+**Melihat bot pernah jalan atau tidak.** Buka
+`keluaran\sapuan\log-sapuan.txt`. Tiap sapuan menulis baris `MULAI` dan
+`SELESAI` beserta jam dan hasilnya.
+
+#### Dua hal yang perlu dipahami
+
+**1. Komputer harus menyala DAN Bapak harus sudah login.**
+Jadwalnya sengaja dipasang dengan `/IT` — hanya jalan saat Bapak login.
+Itu bukan kekurangan, itu keharusan: `folder_draf` menunjuk ke
+`G:\My Drive\...` milik Google Drive for Desktop, dan drive `G:` itu belum
+ada sebelum Bapak login. Kalau bot dipaksa jalan saat belum login, semua
+dokumennya gagal ditulis.
+
+Kalau jam 06:00 komputernya mati, Windows menjalankan sapuan yang terlewat
+begitu komputer menyala. Tidak ada sapuan yang hilang.
+
+**2. Kalau bot dipindahkan ke komputer lain, hapus jadwal di komputer lama.**
+Klik kanan `hapus-jadwal.bat` → Run as administrator. Dua bot yang menyapu
+bersamaan akan saling menimpa `data/kondisi_sapu.json` dan laporannya jadi
+kacau.
+
+#### Kalau `pasang-jadwal.bat` gagal
+
+Pasang manual lewat Task Scheduler:
+
+1. Tekan tombol Windows, ketik `Task Scheduler`, buka
+2. Menu kanan: **Create Task** (bukan *Create Basic Task*)
+3. Tab **General**
+   - Name: `Sapu Order Sheet Happy Pumpkin`
+   - Pilih **Run only when user is logged on** ← penting, jangan yang satunya
+4. Tab **Triggers** → **New**
+   - Begin the task: **On a schedule**, **Daily**, mulai jam `06:00`
+   - Centang **Repeat task every** → ketik `12 hours`
+   - For a duration of: **Indefinitely**
+5. Tab **Actions** → **New**
+   - Action: **Start a program**
+   - Program/script: tekan **Browse**, pilih `jadwal\sapu.bat` di folder proyek
+6. Tab **Conditions** → hilangkan centang
+   **Start the task only if the computer is on AC power**, supaya laptop tetap
+   menyapu walau sedang tidak dicolok
+7. **OK**
+
 ### Kalau memakai Linux atau Mac
 
 ```
@@ -244,19 +311,8 @@ Tambahkan satu baris (jam 06:00 dan 18:00 setiap hari):
 
 Ganti `/path/ke/` dengan lokasi folder proyek yang sebenarnya.
 
-### Kalau memakai Windows
-
-1. Buka **Task Scheduler** → **Create Basic Task**
-2. Nama: `Sapu Order Sheet Happy Pumpkin`
-3. Trigger: **Daily**, jam 06:00
-4. Action: **Start a program**
-   - Program: `python`
-   - Arguments: `jalankan.py sapu`
-   - Start in: folder proyek
-5. Setelah selesai, buka **Properties** → tab **Triggers** → **Edit** →
-   centang **Repeat task every** → isi **12 hours**
-
-Berkas `jadwal/` di proyek ini berisi contoh siap pakai untuk keduanya.
+Berkas contoh siap pakai ada di `jadwal/crontab-contoh.txt` dan
+`jadwal/systemd-contoh.md`.
 
 ---
 

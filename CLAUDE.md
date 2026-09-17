@@ -2047,3 +2047,55 @@ Jumlah PO dan periode aktif diambil dari `DATABASE_CUSTOMER.xlsx` kalau ada.
 
 Dibuat karena `customer.csv` gampang rusak kalau nama customer mengandung
 koma (`PT. ABC, Tbk`). Di Excel hal itu ditangani sendiri.
+
+## 27. Jadwal bot tiap 12 jam di Windows — 17 September 2026
+
+Sisa terakhir dari bagian 25 ("Jadwal tiap 12 jam belum dipasang") ditutup.
+
+Cara lama di PANDUAN_BOT.md menyuruh mengeklik sendiri di Task Scheduler
+lewat *Create Basic Task*, lalu masuk **Properties -> Triggers -> Edit** untuk
+menambahkan pengulangan 12 jam. Itu tujuh langkah di empat jendela berbeda,
+dan tidak satu pun yang memberi tahu kalau hasilnya salah.
+
+Diganti tiga berkas `.bat` di `jadwal/`:
+
+| Berkas | Isi |
+|---|---|
+| `sapu.bat` | `cd /d "%~dp0.."`, jalankan `py jalankan.py sapu`, catat ke `keluaran/sapuan/log-sapuan.txt` beserta kode keluarnya |
+| `pasang-jadwal.bat` | satu panggilan `schtasks /Create ... /SC HOURLY /MO 12 /ST 06:00 /RU "%USERNAME%" /IT /F` |
+| `hapus-jadwal.bat` | `schtasks /Delete`, untuk dijalankan di komputer LAMA saat bot pindah |
+
+### Tiga hal yang jangan diubah tanpa alasan
+
+1. **`/IT` wajib ada.** Tugas hanya boleh jalan saat Yosua login. `folder_draf`
+   menunjuk ke `G:\My Drive\...` milik Google Drive for Desktop, dan drive `G:`
+   belum ada sebelum orangnya login. Tanpa `/IT` bot jalan di ruang hampa dan
+   SEMUA dokumennya gagal ditulis — diam-diam, dua kali sehari.
+2. **`cd /d "%~dp0.."` wajib ada.** Task Scheduler menjalankan perintah dari
+   `C:\Windows\System32`. Ini persis hambatan yang paling sering menyandung
+   pemasangan di bagian 25, cuma kali ini tidak ada orang yang menontonnya.
+3. **Keluaran dicatat ke berkas.** Sapuan terjadwal tidak ada yang melihat
+   layarnya; tanpa log, kegagalan tidak meninggalkan jejak apa pun.
+
+### Berkas .bat: ASCII dan CRLF
+
+Windows membaca `.bat` memakai codepage lama, bukan UTF-8 — satu huruf di luar
+ASCII bisa membuat barisnya salah terbaca. Repo ini dikerjakan di Linux, jadi
+`.gitattributes` menambahkan `*.bat text eol=crlf` supaya akhiran barisnya
+tidak berubah saat di-checkout.
+
+Tujuh tes mengunci semuanya: ketiga berkas ada, `cd /d` ada, log ada, `/IT`
+ada, `/SC HOURLY /MO 12` ada, nama jadwal SAMA di pasang dan hapus (kalau beda,
+`hapus-jadwal.bat` tidak menghapus apa pun dan dua bot bisa menyapu bersamaan
+lalu saling menimpa `kondisi_sapu.json`), dan ketiganya ASCII + CRLF.
+
+Tes 137 -> 146.
+
+### Bagian Windows di PANDUAN_BOT.md didahulukan
+
+Yosua memakai Windows, jadi urutannya dibalik: Windows dulu, baru Linux/Mac.
+Ditambah langkah manual lewat **Create Task** (bukan *Create Basic Task*) untuk
+jaga-jaga kalau `pasang-jadwal.bat` ditolak, lengkap dengan dua centang yang
+paling gampang terlewat: **Run only when user is logged on**, dan mematikan
+**Start the task only if the computer is on AC power** supaya laptop tetap
+menyapu walau tidak dicolok.
