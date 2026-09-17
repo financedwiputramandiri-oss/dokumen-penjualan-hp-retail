@@ -14,6 +14,7 @@ from openpyxl import Workbook
 
 from .dokumen.faktur_pajak import buat_faktur_pajak
 from .dokumen.invoice import buat_invoice
+from .dokumen.proforma import buat_proforma
 from .dokumen.surat_jalan import buat_packing_list, buat_surat_jalan
 from .pdf import ke_pdf, libreoffice_ada
 
@@ -60,6 +61,16 @@ def buat_berkas(
     if sertakan_packing_list:
         tugas.append(
             ("PACKING_LIST", lambda ws: buat_packing_list(ws, order, cust, pt, nomor))
+        )
+
+    # Proforma HANYA untuk customer yang fakturnya dipecah per ukuran
+    # (Haritsa & Katamama). Permintaan Yosua 17 September 2026; customer lain
+    # tidak pernah memintanya, jadi jangan diterbitkan untuk semua.
+    if cust and cust.pecah_per_ukuran:
+        tugas.append(
+            ("PROFORMA",
+             lambda ws: buat_proforma(ws, order, keputusan, cust, pt,
+                                      cfg.pengaturan, nomor))
         )
 
     dibuat: list[Path] = []

@@ -45,16 +45,6 @@ MAKS_JATAH = 135.0
 MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 22.0
 
-# Lebar A+B minimal supaya "FAKTUR No." (baris 9, tebal ukuran 18) tidak
-# terpotong oleh sel nomor di kolom C. Sepuluh huruf pada ukuran 18 memakan
-# +-16,4 satuan kolom; 17,5 memberi sedikit kelonggaran.
-#
-# Ketahuan pada PO yang kode artikelnya pendek (`OB.SS.1.S`, 9 huruf): B
-# menyusut ke batas bawah 11,0 sehingga A+B hanya 15,0 dan judulnya tercetak
-# "FAKTUR N". Di faktur asli B selebar 15,6-16,14 jadi masalah ini tidak
-# pernah muncul. Melebarkan B tidak menambah jumlah lebar A..H — sisanya
-# memang sedang menganggur di kolom deskripsi.
-LEBAR_JUDUL_FAKTUR = 17.5
 
 # Ukuran huruf dan tinggi baris, dari ENAM faktur asli yang sepakat:
 # 0010726 & 0110826 BABY WISE, 0130826 BOBO SAMARINDA, 0420826 YULIS
@@ -68,7 +58,75 @@ HURUF_JUDUL_KOLOM_INV = 12
 HURUF_ISI_INV = 11
 
 
-def lebar_menyesuaikan(baris) -> dict:
+@dataclass(frozen=True)
+class GayaFaktur:
+    """Satu tata letak faktur. ADA DUA, dan bedanya nyata.
+
+    Ditemukan 17 September 2026 setelah Yosua melaporkan faktur Katamama masih
+    salah dan menyuruh membandingkannya dengan Haritsa. Dibongkar sel per sel
+    dari TIGA faktur asli:
+
+        0110826 BABY WISE   (per artikel) -> kop 18/11/15, baris 13,5 & 26,25
+        0160826 HARITSA     (per ukuran)  -> kop 16/12/16, baris 15,75 & 30,75
+        0400826 KATAMAMA    (per ukuran)  -> kop 16/12/16, baris 15,75 & 31,5
+
+    Haritsa dan Katamama SEPAKAT melawan Baby Wise di setiap ukuran huruf dan
+    tinggi baris. Jadi ini bukan kebiasaan satu pembuat berkas: customer yang
+    fakturnya dipecah per ukuran memakai template yang berbeda.
+
+    Versi sebelumnya memakai angka Baby Wise untuk SEMUA customer, karena
+    ukuran kop dulu diambil dari Surat Jalan (CLAUDE.md bagian 23) dan dikira
+    berlaku untuk faktur juga. Kop faktur tidak pernah diperiksa terpisah.
+    """
+
+    ukuran_nama_perusahaan: int
+    ukuran_kop: int
+    alamat_tebal: bool
+    ukuran_nama_customer: int
+    ukuran_judul: int
+    tinggi_judul: tuple           # tinggi baris 12, 13, 14
+    tinggi_data: float
+    huruf_teks: int               # kode artikel & deskripsi
+    huruf_angka: int              # qty, harga, nilai, jumlah
+    maks_jatah: float             # batas jumlah lebar A..H
+    maks_huruf_alamat: int = 0    # 0 = alamat perusahaan tidak dilipat ulang
+
+
+# Baby Wise / Bobo / Yulis / Mae Bebe — faktur per artikel.
+GAYA_PER_ARTIKEL = GayaFaktur(
+    ukuran_nama_perusahaan=18, ukuran_kop=11, alamat_tebal=False,
+    ukuran_nama_customer=15, ukuran_judul=18,
+    tinggi_judul=(13.5, 13.5, 13.5), tinggi_data=26.25,
+    huruf_teks=11, huruf_angka=11, maks_jatah=135.0,
+)
+
+# Haritsa & Katamama — faktur dipecah per ukuran.
+#
+# `maks_jatah` sengaja jauh lebih kecil. Kedua faktur aslinya berjumlah 110,6
+# dan 113,3 satuan, dan deskripsi yang panjang dibiarkan MELIPAT di baris
+# setinggi +-31 — bukan dilebarkan kolomnya. Versi lama melebarkan kolom
+# sampai 135 satuan, sehingga `fitToWidth` menyusutkan seluruh isinya dan
+# hasil cetaknya terlihat jauh lebih kecil daripada faktur yang dipakai divisi.
+GAYA_PER_UKURAN = GayaFaktur(
+    ukuran_nama_perusahaan=16, ukuran_kop=12, alamat_tebal=True,
+    ukuran_nama_customer=16, ukuran_judul=16,
+    tinggi_judul=(15.75, 7.5, 12.75), tinggi_data=31.5,
+    huruf_teks=11, huruf_angka=12, maks_jatah=115.0,
+    maks_huruf_alamat=44,
+)
+
+
+def lebar_judul_faktur(ukuran: int) -> float:
+    """Lebar A+B minimal agar "FAKTUR No." tidak terpotong sel nomor di C.
+
+    Ikut ukuran hurufnya: sepuluh huruf pada ukuran 18 memakan +-16,4 satuan
+    kolom, pada ukuran 16 hanya +-14,5. Memakai angka tetap membuat kolom B
+    per-ukuran jadi lebih lebar daripada perlunya.
+    """
+    return 10 * (ukuran / 11.0) + 1.0
+
+
+def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL) -> dict:
     """Lebarkan kolom ARTICLE CODE dan DESKRIPSI mengikuti isi terpanjang.
 
     Lebar tetap seperti faktur asli memotong kode panjang macam
@@ -83,15 +141,18 @@ def lebar_menyesuaikan(baris) -> dict:
         return lebar
     huruf = 1.05  # perkiraan lebar satu huruf Calibri 10 dalam satuan kolom
     kode = max(len(str(b.kode)) for b in baris) * huruf + 1.5
-    lebar[2] = min(max(kode, MIN_KODE, LEBAR_JUDUL_FAKTUR - lebar[1]), MAKS_KODE)
+    lebar[2] = min(
+        max(kode, MIN_KODE, lebar_judul_faktur(gaya_faktur.ukuran_judul) - lebar[1]),
+        MAKS_KODE,
+    )
 
     deskripsi = max(len(str(b.deskripsi)) for b in baris) * huruf + 1.5
     lain = sum(v for k, v in lebar.items() if k != 3)
     # Pakai lebar seperlunya. Kalau totalnya masih di bawah jatah faktur asli,
     # sisanya diberikan ke deskripsi supaya bentuknya tetap seperti aslinya.
     lebar[3] = max(deskripsi, JATAH_A4 - lain, MIN_DESKRIPSI)
-    if lain + lebar[3] > MAKS_JATAH:
-        lebar[3] = max(MAKS_JATAH - lain, MIN_DESKRIPSI)
+    if lain + lebar[3] > gaya_faktur.maks_jatah:
+        lebar[3] = max(gaya_faktur.maks_jatah - lain, MIN_DESKRIPSI)
     return lebar
 
 
@@ -103,6 +164,7 @@ class BarisInvoice:
     harga: float
     kotor: float
     nett: float
+    warna: str = ""          # hanya diisi kalau dipecah per varian (proforma)
 
     @property
     def diskon(self) -> float:
@@ -110,7 +172,7 @@ class BarisInvoice:
 
 
 def susun_baris(order: Order, keputusan: KeputusanNett, *, pecah_per_ukuran: bool,
-                akhiran_y: bool) -> list[BarisInvoice]:
+                akhiran_y: bool, pecah_per_warna: bool = False) -> list[BarisInvoice]:
     """Ubah baris order sheet jadi baris invoice.
 
     Nilai bersih diambil per baris dari kolom sumbernya, lalu dijumlahkan.
@@ -124,9 +186,12 @@ def susun_baris(order: Order, keputusan: KeputusanNett, *, pecah_per_ukuran: boo
         for b in blok.baris:
             n = nett_baris(b, keputusan.kolom)
             if not pecah_per_ukuran:
-                kunci = (b.kode, b.nama)
+                kunci = (b.kode, b.nama, b.warna if pecah_per_warna else "")
                 if kunci not in kumpul:
-                    kumpul[kunci] = BarisInvoice(b.kode, b.nama, 0, b.harga, 0.0, 0.0)
+                    kumpul[kunci] = BarisInvoice(
+                        b.kode, b.nama, 0, b.harga, 0.0, 0.0,
+                        warna=b.warna if pecah_per_warna else "",
+                    )
                     urutan.append(kunci)
                 x = kumpul[kunci]
                 x.qty += b.qty
@@ -142,9 +207,12 @@ def susun_baris(order: Order, keputusan: KeputusanNett, *, pecah_per_ukuran: boo
             for k, i in enumerate(posisi):
                 label = blok.label_ukuran[i] or f"Uk.{i + 1}"
                 desk = deskripsi_dengan_ukuran(b.nama, label, akhiran_y)
-                kunci = (b.kode, desk)
+                warna = b.warna if pecah_per_warna else ""
+                kunci = (b.kode, desk, warna)
                 if kunci not in kumpul:
-                    kumpul[kunci] = BarisInvoice(b.kode, desk, 0, b.harga, 0.0, 0.0)
+                    kumpul[kunci] = BarisInvoice(
+                        b.kode, desk, 0, b.harga, 0.0, 0.0, warna=warna
+                    )
                     urutan.append(kunci)
                 x = kumpul[kunci]
                 x.qty += b.qty_per_ukuran[i]
@@ -210,6 +278,11 @@ def buat_invoice(
     """
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
 
+    # Faktur per ukuran (Haritsa, Katamama) memakai template yang berbeda dari
+    # faktur per artikel. Lihat GayaFaktur — dibuktikan dari tiga faktur asli.
+    per_ukuran = bool(customer and customer.pecah_per_ukuran)
+    gy = GAYA_PER_UKURAN if per_ukuran else GAYA_PER_ARTIKEL
+
     gaya.kop_dpm(
         ws, perusahaan,
         nama_customer=(customer.nama_di_dokumen if customer else "") or order.customer_kunci,
@@ -217,16 +290,21 @@ def buat_invoice(
         tanggal_dokumen=tanggal,
         baris_mulai=BARIS_KOP,
         kolom_kanan=6,
+        alamat_tebal=gy.alamat_tebal,
+        ukuran_nama=gy.ukuran_nama_perusahaan,
+        ukuran_teks=gy.ukuran_kop,
+        ukuran_customer=gy.ukuran_nama_customer,
+        maks_huruf_alamat=gy.maks_huruf_alamat or None,
     )
-    gaya.judul_faktur(ws, 9, nomor)
+    gaya.judul_faktur(ws, 9, nomor, ukuran=gy.ukuran_judul)
     # Baris BRAND ADA di faktur asli (A10). Sempat dihapus karena satu
     # berkas menyendiri — lihat gaya.baris_merek().
-    gaya.baris_merek(ws, 10)
+    gaya.baris_merek(ws, 10, ukuran=gy.ukuran_judul)
 
     # ---- isi tabel disusun dulu: bentuk judulnya ikut ada/tidaknya diskon
     baris = susun_baris(
         order, keputusan,
-        pecah_per_ukuran=bool(customer and customer.pecah_per_ukuran),
+        pecah_per_ukuran=per_ukuran,
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
     ada_diskon = any(b.diskon > 0.5 for b in baris)
@@ -278,39 +356,39 @@ def buat_invoice(
             for baris_judul in range(j, j + 3):
                 gaya.sel_judul(ws, baris_judul, kolom, None, ukuran=HURUF_JUDUL_KOLOM_INV)
     for baris_judul in range(j, j + 3):
-        ws.row_dimensions[baris_judul].height = TINGGI_JUDUL_INV
+        ws.row_dimensions[baris_judul].height = gy.tinggi_judul[baris_judul - j]
 
     # Lebar kolom dipasang di sini, setelah isinya diketahui.
-    for kolom, lebar in lebar_menyesuaikan(baris).items():
+    for kolom, lebar in lebar_menyesuaikan(baris, gy).items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
 
     r = BARIS_DATA
     for i, b in enumerate(baris, start=1):
-        gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=HURUF_ISI_INV)
-        gaya.sel_isi(ws, r, 2, b.kode, ukuran=HURUF_ISI_INV, lipat=True)
+        gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=gy.huruf_angka)
+        gaya.sel_isi(ws, r, 2, b.kode, ukuran=gy.huruf_teks, lipat=True)
         # Deskripsi MELIPAT di keenam faktur asli, bukan terpotong.
-        gaya.sel_isi(ws, r, 3, b.deskripsi, ukuran=HURUF_ISI_INV, lipat=True)
-        gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=HURUF_ISI_INV)
-        ws.row_dimensions[r].height = TINGGI_DATA_INV
+        gaya.sel_isi(ws, r, 3, b.deskripsi, ukuran=gy.huruf_teks, lipat=True)
+        gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=gy.huruf_angka)
+        ws.row_dimensions[r].height = gy.tinggi_data
         if ada_diskon:
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             gaya.sel_isi(ws, r, 6, (b.diskon / b.qty) if b.qty else 0.0,
-                         angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+                         angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP,
-                         ukuran=HURUF_ISI_INV)
+                         ukuran=gy.huruf_angka)
             # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada
             # faktur asli 0310726 MAE BEBE baris 1: 18 x 62.900 = 1.132.200,
             # diskon 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama
             # dengan baris "Total", bukan "Subtotal".
-            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
         else:
             # Tanpa diskon, Harga menempati sel gabungan E:G dan
             # Jumlah = qty x harga, persis 0020826 CV. BASA MANDIRI.
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             for kolom in (6, 7):
-                gaya.sel_isi(ws, r, kolom, None, ukuran=HURUF_ISI_INV)
-            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP, ukuran=HURUF_ISI_INV)
+                gaya.sel_isi(ws, r, kolom, None, ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
         r += 1
     akhir = r - 1
     gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
@@ -341,12 +419,12 @@ def buat_invoice(
         # 14 September 2026. Faktur asli menebalkan seluruh blok ini, tapi
         # begitu tiap sel diberi garis, huruf tebalnya jadi terlalu ramai.
         # Garis sudah cukup untuk memisahkan, jadi hurufnya dibiarkan biasa.
-        gaya.sel_isi(ws, p + i, 7, label, ukuran=HURUF_ISI_INV)
+        gaya.sel_isi(ws, p + i, 7, label, ukuran=gy.huruf_angka)
         # Seluruh kolom nilai memakai format akuntansi Rupiah yang sama.
         # Bagian ketiga format itu (`_-"Rp"* "-"_-`) khusus untuk nol, jadi
         # Uang Muka yang kosong tampil sebagai tanda "-", bukan angka 0.
         gaya.sel_isi(ws, p + i, 8, nilai, angka=gaya.FORMAT_RP,
-                     ukuran=HURUF_ISI_INV)
+                     ukuran=gy.huruf_angka)
 
     # ---- rekening di kolom B, sejajar penutup --------------------------
     # Kolom B, dengan kotak tebal selebar B..C. Diperiksa ulang pada empat
@@ -356,7 +434,7 @@ def buat_invoice(
     # memang memakai template lama.
     rekening = perusahaan.baris_rekening()
     for i, teks in enumerate(rekening):
-        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=True, ukuran=HURUF_ISI_INV)
+        gaya.sel_isi(ws, p + 1 + i, 2, teks, tebal=True, ukuran=gy.huruf_angka)
 
     # Blok penutup bergaris PENUH dan SERAGAM TIPIS — tiap sel punya empat
     # sisi tipis, termasuk bingkai luarnya. Permintaan Yosua 14 September

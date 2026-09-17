@@ -2148,3 +2148,97 @@ Dua hal yang HARUS diingatkan tiap kali:
    lama menunjuk ke tempat yang salah dan diam-diam gagal. Obatnya: jalankan
    `pasang-jadwal.bat` sekali lagi dari folder yang baru — `/F` menimpa jadwal
    lama, jadi tidak pernah ada dua jadwal.
+
+## 28. DUA template faktur, dan Proforma baru — 17 September 2026
+
+Yosua: *"saya masih melihat adanya kesalahan format untuk customer katamama
+coba betulkan lihat file invoice sebelumnya atau melihat contoh haritsa"*,
+ditambah permintaan template proforma untuk Haritsa & Katamama dengan level
+varian di kolom keterangan, disertai foto sebuah Faktur Penjualan.
+
+### Sebabnya: faktur asli ada DUA template, bukan satu
+
+Dibongkar sel per sel dari TIGA faktur asli:
+
+| | 0110826 BABY WISE | 0160826 HARITSA | 0400826 KATAMAMA |
+|---|---|---|---|
+| Jenis | per artikel | per ukuran | per ukuran |
+| Nama perusahaan | 18 | **16** | **16** |
+| Alamat perusahaan | 11 biasa | **12 TEBAL** | **12 TEBAL** |
+| Tanggal / Kepada Yth. | 11 | **12** | **12** |
+| Nama customer | 15 | **16** | **16** |
+| `FAKTUR No.` / `BRAND` | 18 | **16** | **16** |
+| Tinggi baris 12/13/14 | 13,5 / 10,5 / 6 | **15,75 / 7,5 / 12,75** | **15,75 / 7,5 / 12,75** |
+| Tinggi baris data | 26,25 | **30,75** | **31,5** |
+| Jumlah lebar A..H | 102,9 | 113,3 | 110,6 |
+| Blok kanan kop | F | F | E |
+
+**Haritsa dan Katamama sepakat melawan Baby Wise pada SETIAP ukuran huruf dan
+tinggi baris.** Jadi ini bukan kebiasaan satu pembuat berkas — customer yang
+fakturnya dipecah per ukuran memakai template sendiri.
+
+Program dulu memakai angka Baby Wise untuk semua customer. Asalnya: ukuran kop
+diambil dari **Surat Jalan** di bagian 23 dan dikira berlaku untuk faktur juga.
+Kop FAKTUR tidak pernah diperiksa terpisah. Bagian 24 pun hanya mensurvei
+faktur per artikel, lalu menyebut 15,75/31,5 milik Katamama sebagai minoritas
+yang dikalahkan mayoritas — padahal keduanya template berbeda.
+
+Sekarang ada `GayaFaktur` dengan dua isian, dipilih dari `customer.pecah_per_ukuran`:
+`GAYA_PER_ARTIKEL` dan `GAYA_PER_UKURAN`. Blok kanan kop tetap kolom F
+(2 dari 3 berkas).
+
+### Jatah lebar per ukuran diturunkan 135 -> 115
+
+Ini yang paling terasa di hasil cetak. Versi lama MELEBARKAN kolom supaya
+deskripsi panjang muat, sampai 135 satuan; `fitToWidth` lalu menyusutkan
+seluruh isinya sehingga hurufnya jauh lebih kecil daripada faktur divisi.
+
+Kedua faktur asli per ukuran berjumlah 110,6 dan 113,3 satuan dan justru
+**MELIPAT** deskripsinya di baris setinggi +-31. Jadi melipat, bukan melebar.
+
+### Alamat perusahaan dilipat ulang kalau kolomnya sempit
+
+Pada huruf 12 baris alamat menabrak blok "Kepada Yth." dan tercetak terpotong
+di tengah kata. `gaya._alamat_perusahaan()` melipatnya ke maksimal 44 huruf,
+persis seperti kedua faktur asli memecahnya. Baris kontak (Phone/Wa/Email)
+tidak pernah ikut digabung ke alamat — ada tesnya.
+
+### Proforma Invoice — dokumen KELIMA, hanya Haritsa & Katamama
+
+`src/hp_dokumen/dokumen/proforma.py`. Tata letak mengikuti foto Yosua.
+
+Kolom: `NO | SKU | KETERANGAN | QTY | UNIT | HARGA | DISK% | PAJAK% | JUMLAH`
+Penutup: Sub Total, Diskon, Diskon Lainnya, Potongan Biaya, Pajak, Ongkos
+Kirim, Diskon Ongkos Kirim, Biaya Lainnya, Asuransi, Grand Total.
+
+**Level varian masuk kolom KETERANGAN** — itu permintaan intinya. Karena itu
+`susun_baris()` dapat `pecah_per_warna`, dan proforma dipecah sampai WARNA
+sedangkan invoice tetap menjumlahkan semua warna:
+
+| | invoice | proforma |
+|---|---:|---:|
+| Haritsa | 24 baris | 59 baris |
+| Katamama Tapos | 106 baris | 231 baris |
+
+Angkanya tetap cocok: Haritsa 1.053 pcs / Rp42.939.750, Katamama 386 pcs /
+Rp19.046.157 — sama persis dengan order sheet.
+
+**Foto itu faktur dari PT. Hypefast kepada Katamama — perusahaan LAIN.**
+Yang diambil hanya tata letaknya; nama, alamat, dan logo tetap dari
+`config/perusahaan.yaml`. Jangan pernah menerbitkan dokumen atas nama
+perusahaan lain, walau contohnya datang dari sana.
+
+Proforma hanya dibuat kalau `cust.pecah_per_ukuran` — dikunci tes, sebab
+menerbitkannya untuk semua customer berarti mengirim dokumen yang tidak
+pernah diminta.
+
+### Yang menunggu jawaban Yosua
+
+| Hal | Sementara |
+|---|---|
+| DISK% proforma Katamama tertulis `23,17` (gabungan 22% lalu 1,5%) | angkanya benar secara aritmetika; mungkin lebih dikenali sebagai `22% + 1.5%` |
+| Kolom PAJAK% dan baris Pajak diisi 0 mengikuti foto | padahal order DPM kena PPN 11% |
+| `No. Ref.` | dikosongkan — nomor di foto berasal dari sistem pemasok lain |
+| Judul dokumen `PROFORMA INVOICE` | di foto tertulis `Faktur Penjualan` |
+
+Tes 146 -> 153.

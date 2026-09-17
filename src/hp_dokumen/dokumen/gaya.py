@@ -216,6 +216,40 @@ def pecah_alamat(alamat: str, maksimal: int = 4) -> list[str]:
     return kepala + [", ".join(bagian[maksimal - 1:])]
 
 
+_AWALAN_KONTAK = ("phone", "telp", "wa", "email", "fax", "hp")
+
+
+def _alamat_perusahaan(baris: list, maks_huruf: Optional[int]) -> list:
+    """Baris alamat perusahaan, dilipat ulang kalau kolomnya sempit.
+
+    Faktur per ukuran (Haritsa, Katamama) memakai huruf 12 untuk alamat,
+    sedangkan faktur per artikel memakai 11. Pada huruf 12 baris alamat yang
+    panjang menabrak blok "Kepada Yth." di sebelah kanannya dan tercetak
+    terpotong di tengah kata.
+
+    Kedua faktur asli per ukuran memecahnya jadi dua baris yang lebih pendek.
+    Yang dilipat HANYA baris alamat; baris kontak (Phone, Wa, Email) tidak
+    pernah digabung dengan alamat, sebab di faktur asli pun berdiri sendiri.
+    """
+    if not maks_huruf:
+        return list(baris)
+
+    alamat, kontak = [], []
+    for b in baris:
+        teks = str(b).strip()
+        if kontak or teks.lower().startswith(_AWALAN_KONTAK):
+            kontak.append(teks)
+        else:
+            alamat.append(teks)
+    if not alamat:
+        return list(baris)
+
+    import textwrap
+
+    dilipat = textwrap.wrap(" ".join(alamat), width=maks_huruf) or alamat
+    return dilipat + kontak
+
+
 def kop_dpm(
     ws: Worksheet,
     perusahaan,
@@ -226,6 +260,10 @@ def kop_dpm(
     baris_mulai: int,
     kolom_kanan: int,
     alamat_tebal: bool = False,
+    ukuran_nama: int = UKURAN_NAMA_PERUSAHAAN,
+    ukuran_teks: int = UKURAN_KOP,
+    ukuran_customer: int = UKURAN_NAMA_CUSTOMER,
+    maks_huruf_alamat: Optional[int] = None,
 ) -> None:
     """Kop surat persis seperti faktur asli CV Dwi Putra Mandiri.
 
@@ -259,25 +297,28 @@ def kop_dpm(
     # perusahaan 18 tebal, alamat 11, nama customer 15 tebal, sisanya 11.
     # Versi lama memakai 11/9/10 sehingga kopnya jauh lebih kecil dari
     # dokumen yang dipakai divisi.
-    _tulis(ws, r, 3, perusahaan.nama, bold=True, size=UKURAN_NAMA_PERUSAHAAN)
-    for i, baris_alamat in enumerate(perusahaan.alamat_baris, start=1):
-        _tulis(ws, r + i, 3, baris_alamat, size=UKURAN_KOP, bold=alamat_tebal)
+    _tulis(ws, r, 3, perusahaan.nama, bold=True, size=ukuran_nama)
+    for i, baris_alamat in enumerate(
+        _alamat_perusahaan(perusahaan.alamat_baris, maks_huruf_alamat), start=1
+    ):
+        _tulis(ws, r + i, 3, baris_alamat, size=ukuran_teks, bold=alamat_tebal)
 
     # ---- blok kanan: tanggal, Kepada Yth., nama, alamat ----------------
     k = kolom_kanan
     _tulis(ws, r, k, f"{perusahaan.kota_penerbitan}, {tanggal_indonesia(tanggal_dokumen)}",
-           size=UKURAN_KOP)
-    _tulis(ws, r + 1, k, "Kepada Yth.", size=UKURAN_KOP)
+           size=ukuran_teks)
+    _tulis(ws, r + 1, k, "Kepada Yth.", size=ukuran_teks)
     _tulis(ws, r + 2, k, nama_customer or "(nama customer belum diisi)",
-           bold=True, size=UKURAN_NAMA_CUSTOMER)
+           bold=True, size=ukuran_customer)
     baris_alamat_cust = pecah_alamat(alamat_customer)
     if not baris_alamat_cust:
         baris_alamat_cust = ["(alamat belum diisi)"]
     for i, teks in enumerate(baris_alamat_cust, start=3):
-        _tulis(ws, r + i, k, teks, size=UKURAN_KOP)
+        _tulis(ws, r + i, k, teks, size=ukuran_teks)
 
 
-def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3) -> None:
+def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3,
+                 ukuran: int = UKURAN_JUDUL_NOMOR) -> None:
     """Baris penanda faktur: "FAKTUR No." lalu nomornya di sel sebelahnya.
 
     Dibongkar ulang 14 September 2026 dari EMPAT faktur asli yang sepakat:
@@ -292,12 +333,13 @@ def judul_faktur(ws: Worksheet, baris: int, nomor: str, *, kolom_nomor: int = 3)
     menyendiri terhadap keempat berkas di atas. JANGAN dipakai lagi sebagai
     acuan tunggal.
     """
-    _tulis(ws, baris, 1, "FAKTUR No.", bold=True, size=UKURAN_JUDUL_NOMOR)
+    _tulis(ws, baris, 1, "FAKTUR No.", bold=True, size=ukuran)
     return _tulis(ws, baris, kolom_nomor, f" {nomor}" if nomor else "",
-                  bold=True, size=UKURAN_JUDUL_NOMOR)
+                  bold=True, size=ukuran)
 
 
-def baris_merek(ws: Worksheet, baris: int, teks: str = "BRAND :  HAPPY PUMPKIN"):
+def baris_merek(ws: Worksheet, baris: int, teks: str = "BRAND :  HAPPY PUMPKIN",
+                *, ukuran: int = UKURAN_JUDUL_NOMOR):
     """Baris BRAND. ADA di invoice MAUPUN di Surat Jalan.
 
     Bagian 20 CLAUDE.md sempat mencatat "faktur asli TIDAK memuat baris
@@ -311,7 +353,7 @@ def baris_merek(ws: Worksheet, baris: int, teks: str = "BRAND :  HAPPY PUMPKIN")
 
     Perhatikan DUA spasi sesudah titik dua — begitu aslinya.
     """
-    return _tulis(ws, baris, 1, teks, bold=True, size=UKURAN_JUDUL_NOMOR)
+    return _tulis(ws, baris, 1, teks, bold=True, size=ukuran)
 
 
 def huruf(kolom: int) -> str:
