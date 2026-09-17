@@ -2236,9 +2236,37 @@ pernah diminta.
 
 | Hal | Sementara |
 |---|---|
-| DISK% proforma Katamama tertulis `23,17` (gabungan 22% lalu 1,5%) | angkanya benar secara aritmetika; mungkin lebih dikenali sebagai `22% + 1.5%` |
 | Kolom PAJAK% dan baris Pajak diisi 0 mengikuti foto | padahal order DPM kena PPN 11% |
 | `No. Ref.` | dikosongkan — nomor di foto berasal dari sistem pemasok lain |
 | Judul dokumen `PROFORMA INVOICE` | di foto tertulis `Faktur Penjualan` |
 
 Tes 146 -> 153.
+
+### Tiga perapian proforma — dijawab & diminta Yosua 17 September 2026
+
+**1. DISK% memakai tulisan, bukan persen efektif — SUDAH FINAL.**
+Pertanyaan "23,17 atau 22% + 1.5%" dijawab: *"untuk disk% pakai 22% + 1.5%
+saja"*. Proforma sekarang memanggil `_persen_tertulis()` milik invoice, jadi
+kedua dokumen selalu menulis diskon dengan cara yang sama — `22% + 1.5%` untuk
+Katamama (CBD), `25%` untuk Haritsa (TOP).
+
+Kolom DISK% sekalian dilebarkan **8,5 -> 13 satuan**. Pada lebar lama tulisan
+gabungan terpotong jadi `2% + 1.5%` dan **terbaca 2%, bukan 22%** — di dokumen
+penagihan itu kesalahan yang mahal. Ketahuan dari render PDF, tidak kelihatan
+sama sekali dari membaca nilai sel. Ada tes yang memeriksa kolomnya cukup lebar
+untuk tulisan terpanjangnya, bukan sekadar lebar tertentu.
+
+**2. Logo dan "Kepada".** Logo 70 -> 86, dan digeser ke tengah blok A:B lewat
+`OneCellAnchor` (+-0,5 cm kanan, +-0,15 cm bawah). Tanpa itu openpyxl
+menempelkan gambar persis di pojok sel sehingga logonya menyentuh tepi kertas.
+Tulisan `Kepada` dibuat rata tengah.
+
+**3. Kotak Total Qty.** Label digabung B:C rata kanan, **angkanya di kolom D —
+kolom QTY**, tepat di bawah deretan angka yang dijumlahkan, seluruhnya
+bergaris. Sebelumnya label dan angkanya menumpuk jadi satu teks di kolom
+KETERANGAN, jauh dari kolom yang dijumlahkan, jadi tidak terbaca sebagai total.
+
+Angka tidak berubah sedikit pun: Haritsa 1.053 pcs / Rp42.939.750, Katamama
+386 pcs / Rp19.046.157.
+
+Tes 153 -> 157.
