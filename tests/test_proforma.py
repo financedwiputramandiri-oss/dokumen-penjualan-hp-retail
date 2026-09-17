@@ -218,14 +218,20 @@ def test_total_qty_baris_penutup_tabel_yang_penuh(bahan):
                 f"baris Total Qty tidak bergaris di kolom {kolom} sisi {sisi}"
             )
 
-    # ...dan BERHENTI di situ. Kolom UNIT sampai JUMLAH tidak boleh jadi
-    # deretan kotak kosong — Yosua mencoretnya 17 September 2026.
+    # ...dan tidak boleh ada KOTAK KOSONG di baris itu. Yosua mencoret
+    # deretan kotak hampa di kanan angka qty (17 September 2026). Sel yang
+    # bergaris di baris ini wajib ada isinya — entah label, angka, atau
+    # bagian dari sel gabungan yang berisi.
+    digabung = {k for m in ws.merged_cells.ranges for k in m.cells
+                if m.min_row <= baris <= m.max_row}
     for kolom in range(KOL_QTY + 1, KOLOM_TERAKHIR + 1):
         sel = ws.cell(baris, kolom)
-        assert not any(getattr(sel.border, s).style
-                       for s in ("left", "right", "top", "bottom")), (
-            f"kolom {kolom} di baris Total Qty masih berkotak kosong"
-        )
+        bergaris = any(getattr(sel.border, s).style
+                       for s in ("left", "right", "top", "bottom"))
+        if not bergaris:
+            continue
+        berisi = sel.value not in (None, "") or (baris, kolom) in digabung
+        assert berisi, f"kolom {kolom} di baris Total Qty berkotak tapi kosong"
 
 
 def test_lebar_proforma_masih_muat_a4(bahan):
@@ -233,3 +239,29 @@ def test_lebar_proforma_masih_muat_a4(bahan):
     from hp_dokumen.dokumen.proforma import LEBAR
 
     assert sum(LEBAR.values()) <= 135.0
+
+
+def test_penutup_menyambung_tabel_tanpa_pita_kosong(bahan):
+    """Blok Sub Total MULAI di baris Total Qty, bukan di bawahnya.
+
+    Kalau diturunkan satu baris, sisi kanan tabel punya pita kosong setinggi
+    baris Total Qty dan tabelnya terlihat TERPUTUS antara baris barang
+    terakhir dan blok Sub Total. Yosua menandainya 17 September 2026.
+
+    Tinggi barisnya juga dikunci: bawaan Excel +-15 sedangkan baris barang
+    28,5, jadi tanpa ini blok penutup terlihat seperti tabel yang berbeda.
+    """
+    from hp_dokumen.dokumen.proforma import TINGGI_PENUTUP
+
+    ws, _, _ = _proforma(bahan)
+    tq = next(r for r in range(1, ws.max_row + 1)
+              if str(ws.cell(r, 1).value or "").startswith("Total Qty"))
+    assert ws.cell(tq, 6).value == "Sub Total", (
+        "Sub Total tidak sebaris dengan Total Qty — sisi kanan tabel terputus"
+    )
+    akhir = next(r for r in range(tq, ws.max_row + 1)
+                 if ws.cell(r, 6).value == "Grand Total")
+    for r in range(tq, akhir + 1):
+        assert ws.row_dimensions[r].height == TINGGI_PENUTUP, (
+            f"tinggi baris {r} belum diseragamkan"
+        )

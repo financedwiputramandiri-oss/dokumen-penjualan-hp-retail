@@ -60,6 +60,7 @@ HURUF_JUDUL_DOK = 20
 HURUF_JUDUL_KOLOM = 11
 HURUF_ISI = 11
 TINGGI_DATA = 28.5
+TINGGI_PENUTUP = 22.5       # baris Total Qty & blok Sub Total..Grand Total
 
 
 KOL_LABEL_PENUTUP = 6       # label penutup digabung F:H
@@ -248,19 +249,27 @@ def buat_proforma(
     gaya.sel_isi(ws, tq, 4, qty, ukuran=HURUF_ISI, tebal=True, rata="center",
                  angka="#,##0")
     gaya.beri_garis(ws, tq, 1, tq, KOL_QTY)
-    ws.row_dimensions[tq].height = 22.5
 
-    # ---- blok nilai, mulai satu baris di bawah tabel --------------------
-    p = tq + 1
-    _label_nilai(ws, p, "Sub Total", kotor)
-    _label_nilai(ws, p + 1, "Diskon", kotor - nett)
+    # ---- blok nilai, MULAI DI BARIS YANG SAMA ---------------------------
+    # Sub Total sebaris dengan Total Qty, persis seperti di foto. Sempat
+    # diturunkan satu baris, dan akibatnya sisi kanan tabel punya pita kosong
+    # setinggi baris Total Qty — tabelnya terlihat TERPUTUS antara baris
+    # barang terakhir dan blok Sub Total. Yosua menandainya 17 Sep 2026.
+    _label_nilai(ws, tq, "Sub Total", kotor)
+    _label_nilai(ws, tq + 1, "Diskon", kotor - nett)
     for i, label in enumerate(PENUTUP_NOL, start=2):
-        _label_nilai(ws, p + i, label, 0)
-    baris_total = p + 2 + len(PENUTUP_NOL)
+        _label_nilai(ws, tq + i, label, 0)
+    baris_total = tq + 2 + len(PENUTUP_NOL)
     _label_nilai(ws, baris_total, "Grand Total", nett, tebal=True)
-    gaya.beri_garis(ws, p, KOL_LABEL_PENUTUP, baris_total, KOLOM_TERAKHIR)
+    gaya.beri_garis(ws, tq, KOL_LABEL_PENUTUP, baris_total, KOLOM_TERAKHIR)
 
-    gaya.sel_isi(ws, p + 1, 1, "Catatan :", ukuran=HURUF_ISI)
+    # Tinggi baris penutup disamakan supaya sambung dengan tabel di atasnya.
+    # Bawaannya +-15 sedangkan baris barang 28,5, jadi blok penutup terlihat
+    # jauh lebih rapat dan seperti tabel yang lain.
+    for r in range(tq, baris_total + 1):
+        ws.row_dimensions[r].height = TINGGI_PENUTUP
+
+    gaya.sel_isi(ws, tq + 2, 1, "Catatan :", ukuran=HURUF_ISI)
 
     for kolom, lebar in LEBAR.items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
