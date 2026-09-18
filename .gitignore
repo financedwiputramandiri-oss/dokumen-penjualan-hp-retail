@@ -2,6 +2,10 @@
 data/*.xlsx
 data/*.xls
 data/*.csv
+# subfolder juga — pola di atas TIDAK menutup data/semua/xxx.xlsx
+data/**/*.xlsx
+data/**/*.xls
+data/**/*.csv
 !data/CONTOH_*.xlsx
 
 # Hasil dokumen

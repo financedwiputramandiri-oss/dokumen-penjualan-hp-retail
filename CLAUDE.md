@@ -2298,3 +2298,82 @@ cara bayar, nama perusahaan), jadi keduanya tidak pernah bertabrakan.
 membaca nilai sel — hanya muncul saat dokumennya diubah jadi PDF dan dilihat.
 Sudah tiga kali pola yang sama: kolom C Surat Jalan (bagian 19), DISK%
 proforma (bagian 28), dan sekarang label Faktur Pajak.
+
+## 29. Sapuan seluruh order sheet dengan format terbaru — 18 September 2026
+
+Yosua: *"sekarang sapu semua order sheet menggunakan format terbaru"*.
+
+`jalankan.py sapu` TIDAK bisa dijalankan dari sesi ini — kunci bot tidak ada di
+wadah, dan memang tidak boleh dikirim ke sini. Jalur yang dipakai: 21 order
+sheet diunduh lewat konektor Google Drive (bertindak sebagai Yosua), lalu
+`buat-semua` dijalankan untuk tiap berkas dengan `--tahun` sesuai tahunnya.
+
+Order Sheet Juni 2025 (11,4 MB) tetap tidak bisa diekspor Google — sudah
+tercatat di bagian 14, masih berlaku.
+
+### Hasil
+
+| | |
+|---|---|
+| Order sheet terbaca | 21 dari 22 |
+| PO menghasilkan dokumen | **197** |
+| Berkas dibuat | **809** |
+| Bulan terhalang pencocokan | 9 |
+
+### Cacat yang ketahuan: pemeriksa rekonsiliasi masih peka huruf besar-kecil
+
+Bagian 21 membuat `cari_di_master()` di `pemindai.py` mengabaikan besar-kecil
+huruf, karena Sales kadang mengetik `41065 (bottom/Celana)` padahal master
+menulis `41065 (Bottom/Celana)`. Tapi `rekonsiliasi.py` **tertinggal** — masih
+memakai `b.kode not in master_harga`, pencarian dict biasa yang peka huruf.
+
+Akibatnya SELURUH dokumen satu bulan diblokir hanya karena beda satu huruf,
+padahal pemindai sudah mengambil harga yang benar dari master. Januari 2026 dan
+November 2025 terhalang seluruhnya karena ini: 23 PO, 0 dokumen.
+
+Sudah diperbaiki — ketiga pemakaian (`hilang`, `beda_nama`, `beda_harga`)
+sekarang lewat `cari_di_master()`. Sesudahnya Januari 2026 menghasilkan 15 PO
+dan November 2025 8 PO.
+
+**Pelajaran yang berulang:** kalau satu aturan pencocokan diperbaiki di satu
+modul, sisir modul lain yang memakai aturan yang sama. Ini pola yang sama
+dengan "pemeriksa jangan menggagalkan pilihan yang sah" di bagian 24 dan 27.
+
+Dikunci satu tes (`test_kode_beda_huruf_besar_kecil_tidak_dianggap_hilang`)
+yang mengacak besar-kecil huruf SELURUH kode lalu memastikan pemeriksa master
+harga tidak gagal. Tes 159 -> 160.
+
+### Sembilan bulan terhalang — sebabnya di ORDER SHEET, bukan di program
+
+Pada beberapa kasus penyebabnya sudah pasti: **rumus di baris TOTAL order sheet
+tidak menjumlah seluruh datanya.** Dibaca langsung dari berkasnya:
+
+| Order sheet | Tab | Rumus baris TOTAL | Yang terlewat |
+|---|---|---|---|
+| Februari 2026 | DHAWAFEST BAZAAR - MARET 2026 | `=sum(W24:W71,W72:W79)` | data sampai baris 114, hanya 24-79 dijumlah |
+| Februari 2026 | PO 5 Feb - Defara Baby | `=sum(W3:W68,W73:W90)` | baris 69-72 |
+| Agustus 2026 Harga Lama | PO 07 Agustus - Katamama Tapos | `=SUM(W3:W108,W114:W115)` | baris 109-113 |
+| Oktober 2025 | PO 16 Oktober - Erka Kids | `=sum(W3:W49,W54:W59)` | baris 50-53 |
+| September 2025 | Pengiriman Konsinyasi Fany Baby, Sheet5 | `=sum(#REF!)` | rumusnya rusak |
+
+Jadi angka program yang benar; baris TOTAL sheet-nya yang kurang. Program
+BERHENTI dan tidak membuat dokumen — sesuai rancangan. **Jangan ditambal dengan
+`--abaikan-pencocokan`**; yang harus dirapikan rumus di order sheetnya.
+
+Sebab lain yang belum tuntas ditelusuri (perlu dilihat kalau bulan-bulan itu
+mau diterbitkan dokumennya):
+
+| Order sheet | Gejala |
+|---|---|
+| Juli & September 2025 | `qty x harga = nilai kotor` meleset di banyak baris (0 dari 38, 0 dari 39) |
+| Januari - Mei 2025 | selisih qty kecil tapi tidak berpola; tata letak lama (3 dan 6 kolom ukuran) |
+| Oktober 2025, tab Susu Diapers | `=sum(W21:W48)` — mulai dari baris 21, bukan 3 |
+
+Catatan penting saat menelusuri: untuk order sheet 2025 awal, kolom TOTAL ATO
+BUKAN kolom W (lihat tabel tata letak di bagian 14). Memeriksa rumus di kolom W
+untuk berkas Januari 2025 akan selalu "tidak ada rumus" dan itu bukan temuan.
+
+### `.gitignore` tidak menutup subfolder data/
+
+`data/*.xlsx` tidak menutup `data/semua/2026-09.xlsx`. Order sheet asli nyaris
+ikut ter-commit. Ditambahkan `data/**/*.xlsx` (dan .xls/.csv).

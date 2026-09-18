@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from .konfigurasi import Customer, Pengaturan
 from .model import Order
 from .nilai_bersih import nett_baris, persen_diskon_efektif, tarif_tambahan_tertulis
+from .pemindai import cari_di_master
 from .model import KeputusanNett
 
 
@@ -141,8 +142,16 @@ def periksa_order(
     )
 
     # 7. semua kode artikel ada di master harga
+    #
+    # Pencariannya lewat cari_di_master(), yang TIDAK peduli huruf besar-kecil.
+    # Pemindai sudah begitu sejak bagian 21 CLAUDE.md, tapi pemeriksa ini dulu
+    # tertinggal memakai `in master_harga` yang peka huruf — akibatnya
+    # `41065 (bottom/Celana)` dianggap artikel tak terdaftar dan SELURUH
+    # dokumen bulan itu diblokir, padahal barangnya sama dan harganya sudah
+    # benar diambil dari master.
     if master_harga:
-        hilang = sorted({b.kode for b in order.semua_baris if b.kode not in master_harga})
+        cocok = {k: cari_di_master(master_harga, k) for k in {b.kode for b in order.semua_baris}}
+        hilang = sorted({k for k, v in cocok.items() if v is None})
         hasil.periksa.append(
             Pemeriksaan(
                 "Kode artikel ada di master harga",
@@ -156,10 +165,10 @@ def periksa_order(
             {
                 b.kode
                 for b in order.semua_baris
-                if b.kode in master_harga
+                if cocok.get(b.kode)
                 and b.nama
-                and master_harga[b.kode][0]
-                and b.nama != master_harga[b.kode][0]
+                and cocok[b.kode][0]
+                and b.nama != cocok[b.kode][0]
             }
         )
         if beda_nama:
@@ -172,9 +181,9 @@ def periksa_order(
             {
                 b.kode
                 for b in order.semua_baris
-                if b.kode in master_harga
-                and master_harga[b.kode][1] > 0
-                and abs(b.harga - master_harga[b.kode][1]) > tol
+                if cocok.get(b.kode)
+                and cocok[b.kode][1] > 0
+                and abs(b.harga - cocok[b.kode][1]) > tol
             }
         )
         if beda_harga:

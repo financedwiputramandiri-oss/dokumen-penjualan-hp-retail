@@ -180,3 +180,32 @@ def test_peringatan_saat_cbd_terisi_sebagian(orders, daftar):
     c = daftar.cari(top.nama_tab)
     h = periksa_order(top, tentukan_nett(top, c), Pengaturan(), None, c)
     assert any("terisi" in w and "CBD" in w for w in h.peringatan)
+
+
+def test_kode_beda_huruf_besar_kecil_tidak_dianggap_hilang(orders, daftar, contoh):
+    """`41065 (bottom/Celana)` vs `41065 (Bottom/Celana)` itu barang yang SAMA.
+
+    Pemindai sudah tidak peka huruf besar-kecil sejak bagian 21 CLAUDE.md, tapi
+    pemeriksa rekonsiliasi dulu tertinggal memakai pencarian yang peka huruf.
+    Akibatnya seluruh dokumen Januari & Februari 2026 diblokir hanya karena
+    Sales mengetik huruf kecil. Pemeriksa tidak boleh menggagalkan sesuatu yang
+    sebenarnya sah.
+    """
+    master = baca_master_harga(contoh)
+    assert master, "master harga contoh kosong"
+
+    # tiru kesalahan ketik Sales: huruf besar-kecil diacak pada SELURUH baris.
+    # Fixture `orders` dipakai bersama tes lain, jadi kodenya dikembalikan lagi.
+    o = orders[0]
+    asli = [b.kode for b in o.semua_baris]
+    try:
+        for b in o.semua_baris:
+            b.kode = b.kode.swapcase()
+        h = periksa_order(o, tentukan_nett(o, daftar.cari(o.nama_tab)), Pengaturan(),
+                          master, daftar.cari(o.nama_tab))
+    finally:
+        for b, k in zip(o.semua_baris, asli):
+            b.kode = k
+
+    gagal_master = [p for p in h.yang_gagal if "master harga" in p.nama.lower()]
+    assert not gagal_master, f"kode beda huruf dianggap hilang: {gagal_master}"
