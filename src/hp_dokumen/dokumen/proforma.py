@@ -82,8 +82,6 @@ def _label_nilai(ws, baris: int, label: str, nilai, *, angka=None, tebal=False):
                         ukuran=HURUF_ISI, tebal=tebal)
 
 
-TINGGI_LOGO = 86            # sedikit lebih besar dari dokumen lain (70)
-GESER_LOGO_BAWAH = 55000    # EMU, +-0,15 cm
 
 
 def _lebar_kolom_px(kolom: int) -> float:
@@ -92,46 +90,6 @@ def _lebar_kolom_px(kolom: int) -> float:
     Rumus bakunya untuk huruf bawaan Calibri 11: px = lebar x 7 + 5.
     """
     return LEBAR[kolom] * 7 + 5
-
-
-def _pasang_logo(ws, perusahaan, baris: int) -> None:
-    """Pasang logo di blok A:B, RATA TENGAH terhadap tulisan "Kepada".
-
-    Permintaan Yosua 17 September 2026. Tulisan "Kepada" digabung A:B dan rata
-    tengah, jadi logonya harus ditengahkan di blok yang sama supaya keduanya
-    segaris tegak.
-
-    Pergeserannya DIHITUNG, bukan angka tetap: versi sebelumnya memakai 0,5 cm
-    mati dan meleset 5 piksel ke kiri. Kalau lebar kolom atau ukuran logonya
-    berubah, angka tetap akan meleset lagi tanpa ada yang sadar.
-    """
-    berkas = perusahaan.berkas_logo()
-    if not berkas:
-        return
-    try:
-        from openpyxl.drawing.image import Image as XlImage
-        from openpyxl.drawing.spreadsheet_drawing import (
-            AnchorMarker, OneCellAnchor,
-        )
-        from openpyxl.drawing.xdr import XDRPositiveSize2D
-        from openpyxl.utils.units import pixels_to_EMU
-
-        img = XlImage(str(berkas))
-        if not img.height:
-            return
-        img.width = int(TINGGI_LOGO * img.width / img.height)
-        img.height = TINGGI_LOGO
-        lebar_blok = _lebar_kolom_px(1) + _lebar_kolom_px(2)
-        geser = max(0.0, (lebar_blok - img.width) / 2)
-        img.anchor = OneCellAnchor(
-            _from=AnchorMarker(col=0, colOff=pixels_to_EMU(geser),
-                               row=baris - 1, rowOff=GESER_LOGO_BAWAH),
-            ext=XDRPositiveSize2D(pixels_to_EMU(img.width),
-                                  pixels_to_EMU(img.height)),
-        )
-        ws.add_image(img)
-    except Exception:      # logo rusak tidak boleh menggagalkan dokumen
-        pass
 
 
 def keterangan(b) -> str:
@@ -166,7 +124,8 @@ def buat_proforma(
     # ---- kepala dokumen ------------------------------------------------
     r = BARIS_KOP
     ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=2)
-    _pasang_logo(ws, perusahaan, r)
+    gaya.pasang_logo(ws, perusahaan, r,
+                     _lebar_kolom_px(1) + _lebar_kolom_px(2))
 
     gaya.sel_isi(ws, r, 3, perusahaan.nama, tebal=True, ukuran=14)
     for i, teks in enumerate(perusahaan.alamat_baris, start=1):

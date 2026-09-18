@@ -2471,3 +2471,52 @@ boleh di mana saja. Kalau folder proyek ditaruh di Drive, kunci bot ikut naik
 ke Drive — folder proyek karena itu tidak boleh di-Share ke siapa pun.
 
 Tes 160 -> 165.
+
+### Logo diperbesar & ditengahkan di semua dokumen — 18 September 2026
+
+Yosua mengirim tangkapan layar invoice dan minta logo DPM "diubah seperti di
+SS". Logonya sendiri ternyata SUDAH sama persis — berkas `config/logo_dpm.jpeg`
+yang sama. Setelah ditanyakan, yang dimaksud: **diperbesar dan ditengahkan.**
+
+Ini alasan menanyakan, bukan menebak: dari tangkapan layar saja, "ubah logo"
+bisa berarti ganti berkas, perbesar, atau samakan antar dokumen — tiga
+pekerjaan yang sama sekali berbeda.
+
+Pemasangan logo yang dulu tersebar di dua tempat (70 px menempel pojok di
+`gaya.kop_dpm`, 86 px ditengahkan di `proforma._pasang_logo`) sekarang jadi
+SATU fungsi `gaya.pasang_logo()`. Semua dokumen memakai 86 px dan ditengahkan.
+
+**Padding kolom dihitung PER KOLOM.** `lebar_kolom_px(A + B)` salah — tiap
+kolom punya padding 5 piksel sendiri, jadi menjumlahkan lebarnya dulu membuat
+logo meleset 5 piksel dari tengah. Yang benar
+`lebar_kolom_px(A) + lebar_kolom_px(B)`. Ketahuan dari mengukur berkas hasil,
+bukan dari membaca kode.
+
+Invoice perlu satu perubahan urutan: `susun_baris()` dan `lebar_menyesuaikan()`
+dipindah ke ATAS `kop_dpm()`, sebab lebar kolom A:B baru diketahui setelah kode
+artikel terpanjang dihitung. Lebarnya juga tidak lagi dihitung dua kali.
+
+Diverifikasi pada berkas hasil (bukan pada kode): keempat dokumen 91x86 px
+dengan sisa kiri dan kanan sama, lalu dilihat sebagai gambar hasil render PDF.
+
+### Jadwal jadi tiap 6 jam pada jam kerja + sapuan segera — 18 September 2026
+
+Yosua mengganti jadwal 10 menit: *"pada jam kerja jalankan 6 jam sekali"*,
+Senin-Sabtu, *"namun pada saat dibutuhkan cepat pastikan dapat langsung
+menyapu ordersheet kembali"*.
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 360 /ET 17:00 /K
+
+`/RI 360` dengan `/ET 17:00` berarti sapuan jam **08:00 dan 14:00** saja.
+
+Untuk kebutuhan mendadak: `jadwal/sapu-sekarang.bat`, tinggal diklik dua kali.
+Bedanya dengan `sapu.bat` — hasilnya tampil DI LAYAR, bukan hanya masuk log,
+dan ada `pause` supaya jendelanya tidak menutup sebelum dibaca. **Kuncinya
+sama** dengan sapuan terjadwal, jadi sapuan manual dan terjadwal tidak pernah
+berjalan bersamaan lalu saling menimpa `kondisi_sapu.json`.
+
+Satu tes sempat gagal karena alasan yang salah: pemeriksaan "hari Minggu tidak
+boleh ikut" mencari `SUN` di SELURUH berkas, dan kata "lang**sun**g" ikut
+tertangkap. Sekarang yang diperiksa hanya argumen `/D`-nya.
+
+Tes 165 -> 167.

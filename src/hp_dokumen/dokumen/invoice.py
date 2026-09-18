@@ -283,6 +283,17 @@ def buat_invoice(
     per_ukuran = bool(customer and customer.pecah_per_ukuran)
     gy = GAYA_PER_UKURAN if per_ukuran else GAYA_PER_ARTIKEL
 
+    # Isi tabel disusun DULU: bentuk judulnya ikut ada/tidaknya diskon, dan
+    # lebar kolom A:B (yang dipakai untuk menengahkan logo) baru bisa dihitung
+    # setelah kode artikel terpanjang diketahui.
+    baris = susun_baris(
+        order, keputusan,
+        pecah_per_ukuran=per_ukuran,
+        akhiran_y=pengaturan.akhiran_y_untuk_angka,
+    )
+    ada_diskon = any(b.diskon > 0.5 for b in baris)
+    lebar_kolom = lebar_menyesuaikan(baris, gy)
+
     gaya.kop_dpm(
         ws, perusahaan,
         nama_customer=(customer.nama_di_dokumen if customer else "") or order.customer_kunci,
@@ -295,19 +306,15 @@ def buat_invoice(
         ukuran_teks=gy.ukuran_kop,
         ukuran_customer=gy.ukuran_nama_customer,
         maks_huruf_alamat=gy.maks_huruf_alamat or None,
+        # per kolom, bukan lebar_kolom_px(A + B): tiap kolom punya
+        # padding 5 piksel sendiri, jadi menjumlah dulu meleset 5 px.
+        lebar_blok_logo=(gaya.lebar_kolom_px(lebar_kolom[1])
+                         + gaya.lebar_kolom_px(lebar_kolom[2])),
     )
     gaya.judul_faktur(ws, 9, nomor, ukuran=gy.ukuran_judul)
     # Baris BRAND ADA di faktur asli (A10). Sempat dihapus karena satu
     # berkas menyendiri — lihat gaya.baris_merek().
     gaya.baris_merek(ws, 10, ukuran=gy.ukuran_judul)
-
-    # ---- isi tabel disusun dulu: bentuk judulnya ikut ada/tidaknya diskon
-    baris = susun_baris(
-        order, keputusan,
-        pecah_per_ukuran=per_ukuran,
-        akhiran_y=pengaturan.akhiran_y_untuk_angka,
-    )
-    ada_diskon = any(b.diskon > 0.5 for b in baris)
 
     # ---- judul tabel: tiga baris bertingkat ----------------------------
     j = BARIS_JUDUL
@@ -359,7 +366,7 @@ def buat_invoice(
         ws.row_dimensions[baris_judul].height = gy.tinggi_judul[baris_judul - j]
 
     # Lebar kolom dipasang di sini, setelah isinya diketahui.
-    for kolom, lebar in lebar_menyesuaikan(baris, gy).items():
+    for kolom, lebar in lebar_kolom.items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
 
     r = BARIS_DATA

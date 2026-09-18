@@ -239,6 +239,12 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
         # perusahaan di kolom C terpotong ("...Grogol Petambu").
         kolom_kanan=KOL_UKURAN_MULAI + 1,
         alamat_tebal=True,   # alamat di kop Surat Jalan asli bercetak tebal
+        # Lebar kolom sudah dipasang di atas, jadi blok logo A:B bisa diukur
+        # langsung dari worksheet-nya.
+        lebar_blok_logo=(
+            gaya.lebar_kolom_px(ws.column_dimensions[gaya.huruf(1)].width or 0)
+            + gaya.lebar_kolom_px(ws.column_dimensions[gaya.huruf(2)].width or 0)
+        ),
     )
 
     ws.merge_cells(start_row=BARIS_JUDUL_DOK, start_column=1,

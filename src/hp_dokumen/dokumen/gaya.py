@@ -250,6 +250,60 @@ def _alamat_perusahaan(baris: list, maks_huruf: Optional[int]) -> list:
     return dilipat + kontak
 
 
+# ---------------------------------------------------------------- logo
+TINGGI_LOGO = 86            # permintaan Yosua 18 Sep 2026 (dulu 70)
+GESER_LOGO_BAWAH = 55000    # EMU, +-0,15 cm
+
+
+def lebar_kolom_px(lebar: float) -> float:
+    """Lebar kolom Excel dalam piksel, untuk huruf bawaan Calibri 11."""
+    return lebar * 7 + 5
+
+
+def pasang_logo(ws, perusahaan, baris: int, lebar_blok_px: Optional[float] = None,
+                tinggi: int = TINGGI_LOGO) -> None:
+    """Pasang logo perusahaan di blok kolom A:B.
+
+    Kalau `lebar_blok_px` diberikan, logonya DITENGAHKAN di blok itu; kalau
+    tidak, ditempel di pojok sel. Pergeserannya dihitung dari lebar kolom yang
+    sebenarnya, bukan angka tetap: versi lama memakai 0,5 cm mati dan meleset
+    5 piksel begitu lebar kolomnya berubah, tanpa ada yang sadar.
+
+    Logo yang rusak TIDAK BOLEH menggagalkan pembuatan dokumen — lebih baik
+    dokumennya terbit tanpa logo daripada tidak terbit sama sekali.
+    """
+    berkas = perusahaan.berkas_logo()
+    if not berkas:
+        return
+    try:
+        from openpyxl.drawing.image import Image as XlImage
+
+        img = XlImage(str(berkas))
+        if not img.height:
+            return
+        img.width = int(tinggi * img.width / img.height)
+        img.height = tinggi
+
+        if lebar_blok_px is None:
+            ws.add_image(img, f"A{baris}")
+            return
+
+        from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
+        from openpyxl.drawing.xdr import XDRPositiveSize2D
+        from openpyxl.utils.units import pixels_to_EMU
+
+        geser = max(0.0, (lebar_blok_px - img.width) / 2)
+        img.anchor = OneCellAnchor(
+            _from=AnchorMarker(col=0, colOff=pixels_to_EMU(geser),
+                               row=baris - 1, rowOff=GESER_LOGO_BAWAH),
+            ext=XDRPositiveSize2D(pixels_to_EMU(img.width),
+                                  pixels_to_EMU(img.height)),
+        )
+        ws.add_image(img)
+    except Exception:      # logo rusak tidak boleh menggagalkan dokumen
+        pass
+
+
 def kop_dpm(
     ws: Worksheet,
     perusahaan,
@@ -264,6 +318,7 @@ def kop_dpm(
     ukuran_teks: int = UKURAN_KOP,
     ukuran_customer: int = UKURAN_NAMA_CUSTOMER,
     maks_huruf_alamat: Optional[int] = None,
+    lebar_blok_logo: Optional[float] = None,
 ) -> None:
     """Kop surat persis seperti faktur asli CV Dwi Putra Mandiri.
 
@@ -278,19 +333,7 @@ def kop_dpm(
 
     # ---- ruang logo: A..B digabung setinggi blok teks -------------------
     ws.merge_cells(start_row=r, start_column=1, end_row=r + 4, end_column=2)
-    logo = perusahaan.berkas_logo()
-    if logo:
-        try:
-            from openpyxl.drawing.image import Image as XlImage
-
-            img = XlImage(str(logo))
-            if img.height:
-                rasio = img.width / img.height
-                img.height = 70
-                img.width = int(70 * rasio)
-            ws.add_image(img, f"A{r}")
-        except Exception:  # logo rusak tidak boleh menggagalkan dokumen
-            pass
+    pasang_logo(ws, perusahaan, r, lebar_blok_logo)
 
     # ---- teks perusahaan di kolom C ------------------------------------
     # Ukuran huruf diambil dari berkas asli 0110826 BABY WISE: nama

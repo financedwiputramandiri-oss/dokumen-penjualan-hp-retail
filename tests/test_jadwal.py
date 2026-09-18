@@ -5,6 +5,7 @@ hal-hal yang kalau salah membuat bot diam-diam tidak jalan — dan
 kegagalannya baru ketahuan berminggu-minggu kemudian, saat orang sadar
 dokumennya tidak pernah muncul.
 """
+import re
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,8 @@ JADWAL = Path(__file__).resolve().parent.parent / "jadwal"
 SAPU = JADWAL / "sapu.bat"
 PASANG = JADWAL / "pasang-jadwal.bat"
 HAPUS = JADWAL / "hapus-jadwal.bat"
-SEMUA_BAT = [SAPU, PASANG, HAPUS]
+SEKARANG = JADWAL / "sapu-sekarang.bat"
+SEMUA_BAT = [SAPU, PASANG, HAPUS, SEKARANG]
 
 
 def test_ketiga_berkas_bat_ada():
@@ -55,20 +57,41 @@ def test_pasang_jadwal_memakai_IT():
     assert " /IT " in isi or isi.rstrip().endswith("/IT")
 
 
-def test_pasang_jadwal_hari_kerja_tiap_10_menit():
-    """Senin-Sabtu, 08:00-17:00, tiap 10 menit (permintaan Yosua 18 Sep 2026).
+def test_pasang_jadwal_hari_kerja_tiap_6_jam():
+    """Senin-Sabtu, tiap 6 jam pada jam kerja (permintaan Yosua 18 Sep 2026).
 
-    Kelima bagiannya harus lengkap. Kalau `/ET` atau `/K` hilang, bot terus
-    menyapu sepanjang malam; kalau `/D` hilang, ikut jalan hari Minggu.
+    /RI 360 dengan /ET 17:00 berarti sapuan jam 08:00 dan 14:00 saja.
+    Kalau `/ET` atau `/K` hilang, bot terus menyapu sepanjang malam; kalau
+    `/D` hilang, ikut jalan hari Minggu.
     """
     isi = PASANG.read_text(encoding="ascii")
     assert "/SC WEEKLY" in isi
     assert "/D MON,TUE,WED,THU,FRI,SAT" in isi, "Minggu harus libur"
     assert "/ST 08:00" in isi
-    assert "/RI 10" in isi
+    assert "/RI 360" in isi, "6 jam = 360 menit"
     assert "/ET 17:00" in isi
     assert " /K " in isi, "tanpa /K sapuan yang tersangkut tidak dihentikan"
-    assert "SUN" not in isi.upper().replace("SUNDAY", ""), "hari Minggu tidak boleh ikut"
+    # Diperiksa pada argumen /D saja, bukan seluruh berkas: kata biasa
+    # seperti "langsung" mengandung "sun" dan dulu membuat tes ini gagal
+    # karena alasan yang salah.
+    hari = re.search(r"/D\s+(\S+)", isi)
+    assert hari, "argumen /D tidak ketemu"
+    assert "SUN" not in hari.group(1).upper(), "hari Minggu tidak boleh ikut"
+
+
+def test_ada_cara_menyapu_di_luar_jadwal():
+    """Yosua minta bisa menyapu segera saat dibutuhkan cepat.
+
+    Sapuan manual WAJIB memakai kunci yang sama dengan sapuan terjadwal;
+    kalau tidak, keduanya bisa berjalan bersamaan lalu saling menimpa
+    data/kondisi_sapu.json.
+    """
+    isi = SEKARANG.read_text(encoding="ascii")
+    assert 'cd /d "%~dp0.."' in isi
+    assert "jalankan.py sapu" in isi
+    assert '9>"%KUNCI%"' in isi, "sapuan manual harus memakai kunci yang sama"
+    assert "sapu-sedang-jalan.lock" in isi
+    assert "pause" in isi, "jendelanya jangan langsung tertutup sebelum dibaca"
 
 
 def test_sapu_bat_menolak_sapuan_bertabrakan():
