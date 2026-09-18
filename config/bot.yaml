@@ -41,11 +41,25 @@ pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
 #
 # Dokumen TIDAK PERNAH dibuat kalau angkanya belum cocok dengan order sheet.
 #
-# PENGATURAN INI BEDA DI TIAP KOMPUTER. Kalau memakai Google Drive for Desktop
-# (cara yang dipakai sekarang), arahkan ke folder sinkronnya, contoh:
-#   folder_draf: "G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN"
-# Drive for Desktop yang menyalinkannya ke Drive, jadi berkasnya dimiliki
-# Yosua dan lepas dari batasan kuota akun layanan.
+# Kalau memakai Google Drive for Desktop (cara yang dipakai sekarang),
+# arahkan ke folder sinkronnya. Drive for Desktop yang menyalinkannya ke
+# Drive, jadi berkasnya dimiliki Yosua dan lepas dari batasan kuota akun
+# layanan.
+#
+# ADA DUA CARA MENULISNYA:
+#
+# 1. ALAMAT PENUH — hanya benar di SATU komputer:
+#      folder_draf: "G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN"
+#    Huruf drive Drive for Desktop bisa beda di komputer lain (G:, H:, ...),
+#    jadi config ini harus disunting ulang di tiap komputer.
+#
+# 2. ALAMAT RELATIF — sama di SEMUA komputer (dianjurkan):
+#      folder_draf: "../DOKUMEN OTOMATIS HAPPY PUMPKIN"
+#    Alamat relatif dihitung dari folder proyek ini. Jadi kalau folder
+#    proyek ditaruh DI DALAM folder Drive yang disinkronkan, satu config
+#    yang sama langsung benar di laptop maupun komputer kantor, berapa pun
+#    huruf drive-nya. Langkahnya ada di PANDUAN_BOT.md bagian
+#    "Bot dipakai dari beberapa perangkat".
 #
 # Sesudah mengunduh ulang proyek ini, PERIKSA baris di bawah — isian bawaan
 # menimpa alamat folder sinkron Bapak.

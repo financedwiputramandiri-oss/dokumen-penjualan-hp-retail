@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,6 +47,7 @@ class Kondisi:
 
     versi: int = 2
     disapu_terakhir: str = ""
+    disapu_oleh: str = ""                      # nama komputer yang menyapu terakhir
     po: dict = field(default_factory=dict)     # kunci -> dict SidikPO
     sheet: dict = field(default_factory=dict)  # id_sheet -> {"diubah", "nama", "tab"}
 
@@ -59,12 +61,14 @@ class Kondisi:
             return cls()
         return cls(versi=d.get("versi", 1),
                    disapu_terakhir=d.get("disapu_terakhir", ""),
+                   disapu_oleh=d.get("disapu_oleh", ""),
                    po=d.get("po", {}),
                    sheet=d.get("sheet", {}))
 
     def simpan(self, berkas: Path) -> None:
         berkas.parent.mkdir(parents=True, exist_ok=True)
         self.disapu_terakhir = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.disapu_oleh = nama_komputer()
         berkas.write_text(
             json.dumps(asdict(self), indent=1, ensure_ascii=False), encoding="utf-8"
         )
@@ -122,4 +126,37 @@ def sidik_dari_order(id_sheet: str, nama_sheet: str, tab: str, order, keputusan,
         cara_bayar=keputusan.cara_bayar,
         sidik_qty=_sidik(angka_qty),
         sidik_rumus=_sidik(rumus) if rumus else "",
+    )
+
+
+def nama_komputer() -> str:
+    """Nama komputer yang menjalankan sapuan.
+
+    Dipakai untuk mengenali kalau bot dijalankan bergantian dari dua
+    komputer. Kalau itu terjadi, masing-masing punya kondisi_sapu.json
+    sendiri (atau saling menimpa lewat Drive), dan dokumen dibuat ulang
+    terus-menerus tanpa ada yang sadar.
+    """
+    try:
+        return platform.node() or ""
+    except Exception:
+        return ""
+
+
+def peringatan_pindah_komputer(kondisi: "Kondisi") -> str:
+    """Kalimat peringatan kalau sapuan terakhir dari komputer LAIN.
+
+    Kosong kalau komputernya sama, atau kalau catatan lamanya belum
+    mencantumkan nama komputer (kondisi_sapu.json dari versi lama).
+    """
+    lama = (kondisi.disapu_oleh or "").strip()
+    kini = nama_komputer().strip()
+    if not lama or not kini or lama == kini:
+        return ""
+    return (
+        f"Sapuan terakhir dijalankan dari komputer '{lama}', sekarang dari "
+        f"'{kini}'. Hanya SATU komputer yang boleh memasang jadwal sapuan. "
+        f"Kalau dua komputer menyapu bergantian, data/kondisi_sapu.json saling "
+        f"menimpa dan dokumen dibuat ulang terus-menerus. Hapus jadwalnya di "
+        f"komputer yang tidak dipakai lewat jadwal/hapus-jadwal.bat."
     )

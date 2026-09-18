@@ -29,7 +29,7 @@ from ..rekonsiliasi import periksa_order
 from .draf import HasilDraf, buat_draf, perlu_draf
 from .unggah import PengunggahDokumen
 from .google import Sambungan
-from .kondisi import Kondisi, sidik_dari_order
+from .kondisi import Kondisi, peringatan_pindah_komputer, sidik_dari_order
 from .laporan_sapu import tulis as tulis_laporan
 from .pantau import GENTING, Perubahan, bandingkan
 from .tulis_sheet import PenulisSheet
@@ -117,6 +117,9 @@ def sapu(
     diperiksa: list[tuple[str, str, int]] = []
     draf: list[HasilDraf] = []
     masalah: list[str] = []
+    pindah = peringatan_pindah_komputer(kondisi)
+    if pindah:
+        masalah.append(pindah)
     rekaman: list[dict] = []   # untuk tab BOT_DAFTAR_PO di sheet OTOMATISASI
     dilewati: list[str] = []   # spreadsheet yang tidak berubah sejak sapuan lalu
     dibaca_tab = 0             # berapa tab yang benar-benar ditarik isinya

@@ -474,3 +474,84 @@ Laporan sapuan **tetap naik ke Drive** dengan normal — laporan diunggah ke
 folder LAPORAN BOT, dan ukurannya kecil... tapi perlu dicatat: laporan pun
 berkas baru, jadi kemungkinan besar ikut tertolak. Kalau begitu, kosongkan juga
 `folder_laporan_id`; laporannya tetap tersimpan di `keluaran/sapuan/`.
+
+---
+
+# Bot dipakai dari beberapa perangkat
+
+Pertanyaan Yosua 18 September 2026: bagaimana supaya bot bisa dipakai dari
+laptop maupun komputer kantor.
+
+## Yang perlu dipisahkan dulu
+
+| Yang mau dilakukan | Butuh apa |
+|---|---|
+| **Mengambil dokumen hasil bot** | tidak perlu apa-apa — cukup buka folder Drive |
+| **Membuat dokumen manual** | kode + Python. Tidak perlu kunci bot |
+| **Menjalankan sapuan otomatis** | kode + kunci bot + Drive for Desktop |
+
+Yang pertama sudah jalan sekarang di semua perangkat, termasuk HP.
+
+## Susunan yang dianjurkan
+
+Taruh folder proyeknya **DI DALAM** folder Drive yang disinkronkan:
+
+    G:\My Drive\
+      DOKUMEN OTOMATIS HAPPY PUMPKIN\     <- hasil dokumen
+      dokumen-penjualan-hp-retail\        <- folder proyek, ikut disinkronkan
+        config\
+        src\
+        jadwal\
+
+Lalu di `config/bot.yaml` tulis alamat RELATIF:
+
+    folder_draf: "../DOKUMEN OTOMATIS HAPPY PUMPKIN"
+
+Alamat relatif dihitung dari folder proyek, jadi **satu config yang sama
+langsung benar di semua komputer** — tidak peduli drive-nya G:, H:, atau apa
+pun. Kode, config, dan kunci botnya ikut tersinkron sendiri, jadi tidak ada
+lagi "komputer ini kodenya masih lama".
+
+## SATU komputer saja yang memasang jadwal
+
+Ini tidak bisa ditawar. Yang boleh jalan di banyak komputer hanya perintah
+manual (`daftar`, `periksa`, `buat`, `buat-semua`, `rekap`, `faktur-pajak`).
+
+Sebabnya `data/kondisi_sapu.json`: berkas itu mencatat sidik jari tiap PO.
+Kalau dua komputer menyapu bergantian, catatannya saling menimpa, dan seluruh
+dokumen dibuat ulang berkali-kali tanpa ada yang sadar.
+
+Program sekarang **mencatat nama komputer yang menyapu terakhir**. Kalau
+sapuan berikutnya datang dari komputer lain, laporan sapuan memberi
+peringatan dan menyebut cara membereskannya. Peringatan itu bukan larangan
+menjalankan manual — hanya penanda kalau ada dua jadwal hidup bersamaan.
+
+Di komputer yang **tidak** dipakai menjadwal: klik kanan
+`jadwal\hapus-jadwal.bat` -> **Run as administrator**.
+
+## Kunci bot ikut tersinkron — keputusan Bapak
+
+Kalau folder proyek ditaruh di dalam Drive, `config\kredensial_bot.json` ikut
+naik ke Drive Bapak.
+
+| | |
+|---|---|
+| Untungnya | tidak perlu menyalin kunci lewat flash disk tiap ganti komputer |
+| Risikonya | **siapa pun yang diberi akses ke folder itu ikut mendapat kunci botnya** |
+
+Karena itu: **folder proyek jangan pernah di-Share ke siapa pun.** Kalau
+sewaktu-waktu perlu berbagi dokumen, bagikan folder
+`DOKUMEN OTOMATIS HAPPY PUMPKIN` saja, jangan folder proyeknya.
+
+Kalau lebih tenang menyimpan kuncinya di luar Drive, taruh di folder lokal
+lalu arahkan di `config/bot.yaml`:
+
+    berkas_kredensial: "C:/kunci-bot/kredensial_bot.json"
+
+Konsekuensinya alamat itu harus ada di tiap komputer.
+
+## Order sheet tetap hanya bisa DIBACA
+
+Tidak ada yang berubah di sini. Akun layanan bot punya izin **Viewer** pada
+folder order sheet, jadi bot tidak akan pernah bisa mengubahnya, dari
+komputer mana pun. Jangan pernah menaikkannya menjadi Editor.

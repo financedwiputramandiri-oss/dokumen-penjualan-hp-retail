@@ -1,9 +1,11 @@
 @echo off
 REM ============================================================
-REM  Memasang jadwal bot tiap 12 jam di Windows Task Scheduler.
+REM  Memasang jadwal bot Happy Pumpkin di Windows Task Scheduler.
 REM
 REM  CARA PAKAI: klik KANAN berkas ini, pilih "Run as administrator".
-REM  Jadwalnya: jam 06:00 dan 18:00 setiap hari.
+REM
+REM  Jadwalnya: Senin sampai Sabtu, jam 08:00 sampai 17:00,
+REM             menyapu setiap 10 menit. Minggu libur.
 REM ============================================================
 
 set "NAMA=Sapu Order Sheet Happy Pumpkin"
@@ -16,7 +18,9 @@ echo ============================================================
 echo.
 echo  Nama jadwal : %NAMA%
 echo  Menjalankan : %SKRIP%
-echo  Setiap      : 12 jam, mulai jam 06:00
+echo  Hari        : Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
+echo  Jam         : 08:00 sampai 17:00
+echo  Setiap      : 10 menit
 echo.
 
 if not exist "%SKRIP%" (
@@ -27,11 +31,16 @@ if not exist "%SKRIP%" (
     exit /b 1
 )
 
+REM /SC WEEKLY /D MON..SAT = hanya hari kerja, Minggu dilewati.
+REM /ST 08:00              = sapuan pertama tiap harinya.
+REM /RI 10                 = diulang tiap 10 menit.
+REM /ET 17:00 /K           = berhenti mengulang jam 17:00, dan sapuan yang
+REM                          masih berjalan saat itu dihentikan.
 REM /IT = jalan HANYA kalau Bapak sedang login.
 REM      Ini WAJIB. Kalau bot jalan saat belum login, drive G: dari Google
 REM      Drive for Desktop belum ada, dan dokumennya gagal ditulis.
 REM /F  = timpa jadwal lama kalau sudah pernah dipasang.
-schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC HOURLY /MO 12 /ST 06:00 /RU "%USERNAME%" /IT /F
+schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 10 /ET 17:00 /K /RU "%USERNAME%" /IT /F
 
 if errorlevel 1 goto :gagal
 
@@ -40,8 +49,11 @@ echo ============================================================
 echo  JADWAL BERHASIL DIPASANG
 echo ============================================================
 echo.
-echo  Bot jalan sendiri jam 06:00 dan 18:00 setiap hari, selama
-echo  komputer menyala dan Bapak sedang login.
+echo  Bot menyapu tiap 10 menit, Senin sampai Sabtu jam 08:00-17:00,
+echo  selama komputer menyala dan Bapak sedang login.
+echo.
+echo  Sapuan yang belum selesai saat sapuan berikutnya tiba akan
+echo  DILEWATI, bukan dijalankan bersamaan - jadi catatannya aman.
 echo.
 echo  Mau mencoba sekarang tanpa menunggu jamnya? Jalankan:
 echo      schtasks /Run /TN "%NAMA%"

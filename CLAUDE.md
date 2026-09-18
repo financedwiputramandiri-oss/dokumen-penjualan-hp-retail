@@ -2377,3 +2377,97 @@ untuk berkas Januari 2025 akan selalu "tidak ada rumus" dan itu bukan temuan.
 
 `data/*.xlsx` tidak menutup `data/semua/2026-09.xlsx`. Order sheet asli nyaris
 ikut ter-commit. Ditambahkan `data/**/*.xlsx` (dan .xls/.csv).
+
+## 30. Jadwal 10 menit, bot multi-perangkat, cacat penghitungan hasil sapuan — 18 September 2026
+
+Empat permintaan Yosua sekaligus.
+
+### Cacat: folder hasil sapuan yang namanya bukan `PO_` tertinggal
+
+Sapuan pertama di bagian 29 melaporkan 197 PO / 809 berkas. **Salah.** Hasil
+dipindahkan dengan `mv keluaran/PO_*`, padahal nama folder dokumen mengikuti
+nama TAB, dan tab tidak selalu diawali "PO ":
+
+    (Delivery_1)PO_13_Jan_-_Input_B     Order_Jastip_Ci_Ratna
+    Copy_of_MAXMURAH_BERINGIN_OUTLE     Sheet3 ... Sheet9
+    14_Maret_-_Baby_Fame_Lampung_(D     05_Desember_-_Balonku_(Sanur)
+
+33 PO tidak ikut terhitung, dan yang tertinggal bercampur ke bulan berikutnya.
+
+Angka yang benar: **230 PO, 943 berkas** (230 Invoice, 230 Surat Jalan,
+230 Packing List, 230 Faktur Pajak, 23 Proforma).
+
+Cara yang benar: bandingkan isi `keluaran/` SEBELUM dan SESUDAH tiap bulan,
+jangan menebak dari pola nama. Pola nama tab ditentukan Sales, bukan program.
+
+### Rumus order sheet yang harus diperbaiki Yosua
+
+Tidak bisa dikerjakan dari sesi ini — konektor Drive hanya bisa mengganti
+SELURUH isi berkas (`update_file` cuma judul & parent), tidak ada alat tulis
+per sel. Mengganti seluruh isi akan merusak tab dan formatnya.
+
+Dua jenis kesalahan yang berbeda, jangan tertukar:
+
+| Jenis | Tab | Akibatnya |
+|---|---|---|
+| **Rumus qty per baris terlalu pendek** — `=SUM(N:S)` padahal ukurannya sampai kolom U | DHAWAFEST BAZAAR, PO 5 Feb - Defara Baby | qty di kolom T/U tidak pernah ikut terhitung |
+| **Rentang baris TOTAL kurang** | DHAWAFEST BAZAAR, PO 07 Agustus - Katamama Tapos | baris data di luar rentang terlewat |
+
+Rinciannya:
+
+| Order sheet | Tab | Sel | Rumus sekarang | Seharusnya |
+|---|---|---|---|---|
+| Februari 2026 | PO 5 Feb - Defara Baby | W3:W90 | `=SUM(N3:S3)` | `=SUM(N3:V3)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W4:W157 | `=SUM(N4:S4)` | `=SUM(N4:V4)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W160 | `=sum(W24:W71,W72:W79)` | `=SUM(W4:W157)` |
+| Agustus 2026 Harga Lama | PO 07 Agu - Katamama Tapos | W116 | `=SUM(W3:W108,W114:W115)` | `=SUM(W3:W115)` |
+
+Selisih yang terbukti: Defara 161 -> 165 pcs (4 pcs di kolom T, baris 33, 34,
+39, 40); Katamama 385 -> 389 pcs (baris 113 yang terlewat, 4 pcs Rp820.000);
+DHAWAFEST 307 -> 629 pcs.
+
+**Kolom Z (nilai) ikut salah** kalau W salah, sebab Z dihitung dari W.
+
+### Jadwal baru: Senin-Sabtu, 08:00-17:00, tiap 10 menit
+
+Menggantikan jadwal 12 jam di bagian 27.
+
+    schtasks /Create ... /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT
+             /ST 08:00 /RI 10 /ET 17:00 /K /RU "%USERNAME%" /IT /F
+
+`/RI` tidak berlaku untuk `/SC MINUTE` dan `/SC HOURLY`, jadi WEEKLY yang
+dipakai — itu satu-satunya cara menggabungkan "hari tertentu saja" dengan
+"diulang tiap sekian menit sampai jam sekian".
+
+Dua hal baru yang WAJIB ada pada jadwal serapat ini, dan tidak diperlukan
+waktu jadwalnya masih 12 jam:
+
+1. **Kunci antar-sapuan.** Sapuan pertama bisa lebih dari 10 menit, jadi
+   sapuan berikutnya mulai sebelum yang ini selesai, lalu keduanya menulis
+   `data/kondisi_sapu.json` dan saling menimpa. Kuncinya dipegang lewat
+   handle 9 (`9>"%KUNCI%"`), BUKAN lewat `mkdir` atau berkas penanda biasa:
+   handle dilepas Windows sendiri saat prosesnya mati, termasuk saat dibunuh
+   `/K` jam 17:00. Penanda biasa akan tertinggal menyangkut dan memblokir
+   semua sapuan berikutnya, diam-diam.
+2. **Log dipotong di 5 MB.** Sekitar 330 sapuan per minggu; tanpa ini
+   `log-sapuan.txt` tumbuh sampai tidak bisa dibuka.
+
+### Bot dipakai dari beberapa perangkat
+
+`folder_draf` yang RELATIF sudah otomatis dihitung dari folder proyek
+(`AKAR / nilai` — alamat absolut menang, relatif dihitung dari AKAR). Jadi
+kalau folder proyek ditaruh di dalam folder Drive yang disinkronkan dan
+`folder_draf: "../DOKUMEN OTOMATIS HAPPY PUMPKIN"`, satu config yang sama
+benar di semua komputer berapa pun huruf drive-nya. Tidak perlu kode baru.
+
+Yang ditambahkan: `kondisi_sapu.json` sekarang menyimpan `disapu_oleh` (nama
+komputer). Kalau sapuan berikutnya datang dari komputer lain,
+`peringatan_pindah_komputer()` memunculkan peringatan di laporan sapuan.
+Catatan lama yang belum punya kolom itu TIDAK diperingatkan — aturan bagian
+24 (jangan menggagalkan pilihan yang sah) tetap berlaku.
+
+**Tetap hanya SATU komputer yang boleh memasang jadwal.** Perintah manual
+boleh di mana saja. Kalau folder proyek ditaruh di Drive, kunci bot ikut naik
+ke Drive — folder proyek karena itu tidak boleh di-Share ke siapa pun.
+
+Tes 160 -> 165.
