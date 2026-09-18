@@ -23,17 +23,33 @@ from .invoice import susun_baris
 KOLOM_TERAKHIR = 6
 
 
+# Label keterangan digabung A:B, nilainya di C, catatan di E.
+#
+# Dulu label di A dan nilai di B, padahal kolom A hanya 5 satuan — lebarnya
+# memang untuk kolom "No." tabel rincian di bawah. Akibatnya tiap label yang
+# lebih panjang dari lima huruf TERPOTONG oleh nilai di sebelahnya, dan
+# tercetak menyatu: "Nomor030826", "Tangg26 Agustus 2026", "DPP (l Rp5.059.459".
+# Di lembar yang justru dipakai untuk mengetik ke Coretax, label yang tidak
+# terbaca jelas berbahaya.
+#
+# Catatan ditaruh di E, bukan D, supaya nilai yang panjang (alamat) masih
+# punya ruang melimpah ke C dan D. Baris yang punya catatan nilainya selalu
+# pendek (NPWP, cara bayar, nama perusahaan), jadi keduanya tidak bertabrakan.
+KOL_LABEL, KOL_NILAI, KOL_CATATAN = 1, 3, 5
+
+
 def _label(ws, r, teks, nilai, *, bold=False, format_angka=None, catatan=""):
-    a = ws.cell(r, 1, teks)
+    ws.merge_cells(start_row=r, start_column=KOL_LABEL, end_row=r, end_column=2)
+    a = ws.cell(r, KOL_LABEL, teks)
     a.font = Font(name=gaya.FONT, size=10, bold=True)
-    b = ws.cell(r, 2, nilai)
+    b = ws.cell(r, KOL_NILAI, nilai)
     b.font = Font(name=gaya.FONT, size=10, bold=bold)
     if format_angka:
         b.number_format = format_angka
     else:
         b.alignment = Alignment(horizontal="left")
     if catatan:
-        c = ws.cell(r, 4, catatan)
+        c = ws.cell(r, KOL_CATATAN, catatan)
         c.font = Font(name=gaya.FONT, size=8, italic=True)
     return r + 1
 
@@ -161,7 +177,9 @@ def buat_faktur_pajak(
     c.number_format = gaya.RUPIAH
     gaya.beri_garis(ws, awal, 1, r, KOLOM_TERAKHIR)
 
-    gaya.atur_lebar(ws, {1: 5, 2: 20, 3: 48, 4: 10, 5: 15, 6: 17})
+    # Kolom 2 dilebarkan 20 -> 24: bersama kolom 1 harus memuat label
+    # terpanjang, `DPP (Dasar Pengenaan Pajak)` — 27 huruf.
+    gaya.atur_lebar(ws, {1: 5, 2: 24, 3: 48, 4: 10, 5: 15, 6: 17})
     gaya.siapkan_cetak(ws, KOLOM_TERAKHIR, landscape=False)
 
     return {"dpp": dpp, "ppn": ppn, "total": total, "tarif": tarif,

@@ -2270,3 +2270,31 @@ Angka tidak berubah sedikit pun: Haritsa 1.053 pcs / Rp42.939.750, Katamama
 386 pcs / Rp19.046.157.
 
 Tes 153 -> 157.
+
+### Label Faktur Pajak terpotong nilainya — SELESAI 18 September 2026
+
+Ketahuan saat membuat contoh lengkap semua dokumen. Label keterangan ditulis
+di kolom 1 dan nilainya di kolom 2, padahal kolom 1 hanya selebar 5 satuan —
+lebar itu memang untuk kolom `No.` tabel rincian di bawahnya.
+
+Akibatnya tiap label yang lebih dari lima huruf terpotong oleh nilai di
+sebelahnya dan tercetak menyatu:
+
+    Nomor030826          Tangg26 Agustus 2026      Dipros CV DWI PUTRA MANDIRI
+    DPP (l  Rp5.059.459  PPN 1  Rp556.540,54       Alamat Jl. Bintaro Utama...
+
+Di lembar yang justru dipakai untuk MENGETIK KE CORETAX, label yang tidak
+terbaca itu berbahaya.
+
+Sekarang label digabung kolom 1:2, nilainya pindah ke kolom 3, dan catatan
+pindah ke kolom 5. Kolom 2 dilebarkan 20 -> 24 supaya label terpanjang
+(`DPP (Dasar Pengenaan Pajak)`, 27 huruf) muat.
+
+Catatan ditaruh di kolom 5, bukan 4, supaya nilai yang panjang (alamat) masih
+punya ruang melimpah. Baris yang punya catatan nilainya selalu pendek (NPWP,
+cara bayar, nama perusahaan), jadi keduanya tidak pernah bertabrakan.
+
+**Pelajaran yang berulang:** cacat ini tidak kelihatan sama sekali dari
+membaca nilai sel — hanya muncul saat dokumennya diubah jadi PDF dan dilihat.
+Sudah tiga kali pola yang sama: kolom C Surat Jalan (bagian 19), DISK%
+proforma (bagian 28), dan sekarang label Faktur Pajak.
