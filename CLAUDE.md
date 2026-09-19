@@ -2526,13 +2526,17 @@ Tes 165 -> 167.
 Yosua: *"jalankan sapuan dan upload ke drive dan jadwal sapuan 12 jam sekali
 namun pada saat dibutuhkan cepat diharapkan dapat merespon dengan cepat"*.
 
-    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 720 /ET 20:30 /K
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 06:00 /RI 720 /ET 18:30 /K
 
-`/RI 720` dengan `/ET 20:30` berarti sapuan jam **08:00 dan 20:00**. `/ET`
-sengaja 20:30, bukan 20:00 — kalau sama persis dengan jam sapuan kedua,
+**Jamnya diubah Yosua di hari yang sama menjadi 06:00 dan 18:00** (semula
+08:00 dan 20:00). Tetap 12 jam, hanya digeser dua jam lebih awal.
+
+`/ET` sengaja 18:30, bukan 18:00 — kalau sama persis dengan jam sapuan kedua,
 Windows bisa menutup jendela pengulangannya sebelum sapuan itu sempat mulai.
+Aturan ini berlaku untuk jam berapa pun yang dipilih nanti: `/ET` selalu
+setengah jam SETELAH sapuan terakhir.
 
-Sapuan jam 20:00 dilewati kalau Yosua sudah logout — itu memang perilaku `/IT`
+Sapuan jam 06:00 dilewati kalau Yosua belum login — itu memang perilaku `/IT`
 dan disengaja: drive `G:` tidak ada sebelum orangnya login. "Respon cepat"
 tetap dilayani `jadwal/sapu-sekarang.bat`.
 
