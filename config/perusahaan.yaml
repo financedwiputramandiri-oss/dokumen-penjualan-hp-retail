@@ -34,18 +34,26 @@ perusahaan:
       - "A/C NO. : 277 950 8000"
 
   - kode: MTN
-    nama: CV MUTIARA TIMUR NUSANTARA
+    nama: CV. MUTIARA TIMUR NUSANTARA
     nama_resmi: "CV. MUTIARA TIMUR NUSANTARA"
     kenakan_ppn: false
     npwp: ""                      # BELUM DIISI
+    # Alamat, telepon, email, logo, dan rekening di bawah diambil sel per sel
+    # dari berkas asli FA 0010526 BABY FAME (MTN) yang dikirim Yosua
+    # 19 September 2026 - bukan ditebak.
     alamat_baris:
-      - "(alamat belum diisi)"     # BELUM DIISI - mohon dilengkapi Yosua
-    logo: ""
+      - "JL. JATAYU IV P/31"
+      - "JELAMBAR BARU, GROGOL PETAMBURAN"
+      - "JAKARTA BARAT, 11460"
+      - "TEL : +62 21 5662598"
+      - "EMAIL : MTN.MUTIARATIMURNUSANTARA@GMAIL.COM"
+    logo: "logo_mtn.png"
     id_tku: ""
     rekening:
       - "PEMBAYARAN DITRANSFER KE REKENING :"
       - "CV. MUTIARA TIMUR NUSANTARA"
-      - "(bank dan nomor rekening belum diisi)"
+      - "BANK BCA"
+      - "A/C NO. : 865 0813 830"
 
 # Perusahaan yang dipakai kalau customer belum ditentukan di customer.csv.
 perusahaan_bawaan: DPM

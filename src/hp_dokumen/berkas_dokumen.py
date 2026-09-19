@@ -15,6 +15,7 @@ from openpyxl import Workbook
 from .dokumen.faktur_pajak import buat_faktur_pajak
 from .dokumen.invoice import buat_invoice
 from .dokumen.proforma import buat_proforma
+from .dokumen.mtn import buat_invoice_mtn, buat_surat_jalan_mtn
 from .dokumen.surat_jalan import buat_packing_list, buat_surat_jalan
 from .pdf import ke_pdf, libreoffice_ada
 
@@ -50,11 +51,21 @@ def buat_berkas(
     folder.mkdir(parents=True, exist_ok=True)
     aman = nama_aman(order.nama_tab)
 
+    # CV. Mutiara Timur Nusantara memakai TATA LETAK SENDIRI, bukan sekadar
+    # kop yang berbeda - dibuktikan dari berkas asli FA 0010526 BABY FAME (MTN)
+    # yang dikirim Yosua 19 September 2026. Lihat dokumen/mtn.py.
+    pakai_mtn = (pt.kode or "").strip().upper() == "MTN"
+
     tugas = [
         ("INVOICE",
-         lambda ws: buat_invoice(ws, order, keputusan, cust, pt, cfg.pengaturan, nomor)),
+         (lambda ws: buat_invoice_mtn(ws, order, keputusan, cust, pt,
+                                      cfg.pengaturan, nomor)) if pakai_mtn else
+         (lambda ws: buat_invoice(ws, order, keputusan, cust, pt,
+                                  cfg.pengaturan, nomor))),
         ("SURAT_JALAN",
-         lambda ws: buat_surat_jalan(ws, order, cust, pt, nomor)),
+         (lambda ws: buat_surat_jalan_mtn(ws, order, cust, pt, nomor))
+         if pakai_mtn else
+         (lambda ws: buat_surat_jalan(ws, order, cust, pt, nomor))),
         ("FAKTUR_PAJAK",
          lambda ws: buat_faktur_pajak(ws, order, keputusan, cust, pt, cfg.pengaturan, nomor)),
     ]

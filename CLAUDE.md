@@ -2635,3 +2635,98 @@ adalah hasil sapuan terakhir dari komputer Yosua sendiri (16 September).
 Jadi perbaikan format apa pun yang dikerjakan di sini — logo 86 px, dua
 template faktur, proforma — baru muncul di Drive setelah Yosua menjalankan
 `sapu-sekarang.bat` di komputernya dengan kode terbaru.
+
+## 31. Tata letak MTN — pertanyaan bagian 19 akhirnya TERJAWAB — 19 September 2026
+
+Yosua mengirim `FA 0010526 BABY FAME (MTN).xlsx` dan minta invoice & surat
+jalan "dengan format MTN seperti excel yang saya beri".
+
+Bagian 19 dulu menggantungkan pertanyaan: *"apakah dokumen MTN memang memakai
+tata letak sendiri, atau MTN menyusul mengikuti DPM"*. **Jawabannya: MTN
+memakai tata letak SENDIRI.** Berkasnya dibongkar sel per sel — bukan ditebak,
+bukan dari tangkapan layar.
+
+### Beda MTN dengan DPM
+
+| Bagian | DPM | MTN |
+|---|---|---|
+| Blok kanan kop | `Jakarta, <tgl>` + `Kepada Yth.` | **tidak ada** |
+| Customer | "Kepada Yth." di kanan | label **CUSTOMER** di A11, nama A12 |
+| Nomor & tanggal | `FAKTUR No. <nomor>` baris 9 | label **FAKTUR** G11 / **TANGGAL** H11 |
+| Bentuk nomor | `0010526` | **`FA-01/05/2026`** dan **`SJ-01/05/2026`** |
+| Baris BRAND | ada (A10) | **tidak ada** |
+| Judul tabel invoice | 3 tingkat, baris 12-14 | **2 tingkat, baris 17-18** |
+| Data mulai | 15 | **19** |
+| Penutup invoice | Subtotal, Diskon, Total, Uang Muka, DPP, PPN, Total | **Subtotal, Value Disc, Total — SAJA** |
+| Alamat di kop | huruf 11 biasa | huruf 11 **TEBAL** |
+| Deskripsi Surat Jalan | C:E digabung | **kolom C tunggal** |
+| Kolom WARNA SJ | F | **D** |
+| Kolom ukuran SJ | G.. | **E..** |
+| Tinggi baris data | 26,25 (inv) / 30,0 (SJ) | **24,95 / 20,1** |
+| Jumlah lebar A..H | +-107 | **117,84** |
+
+**Penutup tanpa DPP dan PPN itu BENAR, bukan kelalaian.** MTN tidak mengenakan
+PPN (`kenakan_ppn: false`, keputusan Yosua 11 September 2026). Ada tes yang
+menolak kemunculan baris DPP/PPN di faktur MTN — kalau suatu saat ada yang
+"melengkapi", faktur MTN akan menagih pajak yang tidak seharusnya, dan itu
+tidak kelihatan dari angka totalnya.
+
+### LOGO MTN akhirnya ketemu
+
+Bagian 14 mencatat "Logo CV Mutiara Timur Nusantara belum ada". Ternyata
+tertanam di dalam berkas faktur sebagai `xl/media/image1.png` (55 KB, 243x291,
+RGBA) — cara yang sama dengan logo DPM di bagian 20. Sudah disimpan sebagai
+`config/logo_mtn.png`.
+
+### Data MTN di perusahaan.yaml akhirnya terisi
+
+Semuanya dibaca dari berkas aslinya, bukan ditebak:
+
+    JL. JATAYU IV P/31
+    JELAMBAR BARU, GROGOL PETAMBURAN
+    JAKARTA BARAT, 11460
+    TEL : +62 21 5662598
+    EMAIL : MTN.MUTIARATIMURNUSANTARA@GMAIL.COM
+    BANK BCA — A/C NO. : 865 0813 830
+
+Rekeningnya **BEDA** dari DPM (277 950 8000). NPWP dan ID TKU MTN masih kosong.
+
+### Dua cacat yang ketahuan dari render PDF, bukan dari kode
+
+**1. Tanggal terpotong jadi "17 Septe".** Kolom TANGGAL di berkas asli selebar
+15,71 dan berisi "05 Mei 2026" (11 huruf) — muat. "17 September 2026" ada 17
+huruf dan TIDAK muat. Jadi berkas aslinya pun akan terpotong untuk bulan
+berhuruf panjang; ini membetulkan, bukan meniru. Kolom H dilebarkan jadi 18,0.
+
+Pada Surat Jalan lebih parah: tanggal jatuh di kolom Qty yang cuma 8 satuan.
+Berkas asli menggabung `I11:K11` untuk itu — sekarang ditiru, tanggal melebar
+ke tiga kolom terakhir.
+
+**2. Kolom Diskon tercetak KOSONG.** `_persen_tertulis()` mengembalikan `None`
+pada teksnya untuk diskon tunggal dan angkanya terpisah. Dipakai apa adanya,
+kolomnya kosong. Sama persis dengan cacat proforma di bagian 28 — dan sekarang
+dibetulkan dengan cara yang sama: `teks or _persen_ringkas(angka)`.
+
+**Ini keempat kalinya pola yang sama muncul** (kolom C Surat Jalan bagian 19,
+DISK% proforma bagian 28, label Faktur Pajak bagian 28, dan sekarang tanggal
+MTN): cacat lebar kolom TIDAK PERNAH kelihatan dari membaca nilai sel. Render
+ke PDF dan lihat gambarnya.
+
+### Cara memilihnya
+
+`berkas_dokumen.py` memilih tata letak dari `pt.kode == "MTN"`, yang datang
+dari kolom `perusahaan_pemroses` di `config/customer.csv`. Jadi tidak ada
+pengaturan baru — cukup isi kolom itu.
+
+Enam tes baru. Tes 167 -> 173.
+
+### Baby Fame: MTN atau DPM? BELUM diputuskan
+
+Dokumen 17 September dibuat dengan MTN atas permintaan Yosua, memakai
+`perusahaan_pemroses=MTN` **sementara** yang langsung dikembalikan sesudahnya.
+`config/customer.csv` TIDAK diubah permanen.
+
+Alasannya: mengisi kolom itu berarti **semua** dokumen Baby Fame — termasuk
+yang dibuat bot otomatis jam 06:00 dan 18:00 — terbit atas nama MTN, dengan
+rekening MTN. Itu keputusan yang harus dinyatakan Yosua, bukan disimpulkan
+dari satu berkas contoh bulan Mei.
