@@ -2520,3 +2520,70 @@ boleh ikut" mencari `SUN` di SELURUH berkas, dan kata "lang**sun**g" ikut
 tertangkap. Sekarang yang diperiksa hanya argumen `/D`-nya.
 
 Tes 165 -> 167.
+
+### Jadwal jadi 12 jam, dan rekap sapuan naik ke Drive — 19 September 2026
+
+Yosua: *"jalankan sapuan dan upload ke drive dan jadwal sapuan 12 jam sekali
+namun pada saat dibutuhkan cepat diharapkan dapat merespon dengan cepat"*.
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 720 /ET 20:30 /K
+
+`/RI 720` dengan `/ET 20:30` berarti sapuan jam **08:00 dan 20:00**. `/ET`
+sengaja 20:30, bukan 20:00 — kalau sama persis dengan jam sapuan kedua,
+Windows bisa menutup jendela pengulangannya sebelum sapuan itu sempat mulai.
+
+Sapuan jam 20:00 dilewati kalau Yosua sudah logout — itu memang perilaku `/IT`
+dan disengaja: drive `G:` tidak ada sebelum orangnya login. "Respon cepat"
+tetap dilayani `jadwal/sapu-sekarang.bat`.
+
+### Sapuan 19 September: tidak ada order sheet yang berubah
+
+Sebelum menyapu, `modifiedTime` seluruh folder order sheet 2026 diperiksa
+lewat konektor Drive. Hanya September 2026 yang tercatat berubah, dan waktunya
+**18 Sep 03:58** — versi yang sudah ditarik sehari sebelumnya. Sapuan ulang
+memberi angka yang sama persis: **230 PO, 943 berkas**.
+
+Ini sekaligus contoh cara memeriksa sebelum bekerja: kalau `modifiedTime`
+tidak berubah, hasil sapuan pasti sama, dan itu bukan kegagalan.
+
+### Yang BISA dan TIDAK BISA diunggah ke Drive dari sesi ini
+
+Yosua minta folder proyek dan berkas sapuan diunggah ke Drive.
+
+| Yang diminta | Ukuran | Hasil |
+|---|---|---|
+| Folder proyek | 772 KB, 75 berkas | **tidak bisa** — +-1 juta huruf base64 |
+| 943 dokumen sapuan | 15 MB | **tidak bisa** — +-20 juta huruf |
+| Ringkasan per bulan | 2 KB | **BISA**, lewat `textContent` CSV |
+
+Konektor Drive hanya mengirim berkas sebagai teks di dalam satu panggilan.
+Logo 9,5 KB saja menjadi 12.712 huruf base64. Sandbox juga menolak perintah
+yang mengemas repo untuk diunggah (penjaga data perusahaan) — dan itu benar.
+
+Yang dibuat: folder **PROYEK BOT HAPPY PUMPKIN** (`103l_reSAQYicCvQKy64Z0NJsP2RtYoz-`)
+berisi Google Sheet **RINGKASAN SAPUAN BOT HAPPY PUMPKIN**
+(`1qefNkvFZpCAqh4Uz4_Jbawu3g7x3JS2J80ZkubWjGxI`), 21 baris per order sheet.
+Jalur `textContent` + `contentMimeType: text/csv` dari bagian 14 masih berlaku.
+
+**Jalan yang benar untuk memindahkan berkas tetap Drive for Desktop** — bot
+menulis ke `folder_draf`, Drive yang mengunggah. Tidak ada batas ukuran, dan
+berjalan sendiri tiap sapuan.
+
+### Rekap sapuan: angka PO yang terhalang sengaja DIKOSONGKAN
+
+`REKAP_SAPUAN.csv` (454 baris) memuat semua PO dari 21 order sheet. Untuk PO
+yang dokumennya TIDAK terbit, kolom qty, nilai kotor, dan nilai bersih
+**dikosongkan** — hanya diberi keterangan sebabnya.
+
+Alasannya: angka itu justru yang belum terverifikasi terhadap baris TOTAL
+order sheet. Kalau ditampilkan, orang akan memakainya sebagai angka resmi —
+padahal itu persis yang sedang bermasalah. Rekap yang memuat angka tak
+terverifikasi lebih berbahaya daripada rekap yang mengosongkannya.
+
+Penanda "dokumen terbit" memakai `berkas_dokumen.nama_aman()` — fungsi yang
+SAMA dengan pembuat berkasnya. Versi pertama memakai pencocokan nama tebakan
+sendiri dan meleset 5 dari 230. Jangan menebak nama; panggil fungsinya.
+
+Angka yang terbit: **75.118 pcs, nilai bersih Rp3.854.901.550** dari 230 PO.
+Dua di antaranya cocok dengan catatan lama sampai rupiah terakhir — Agustus
+2026 Rp424.156.009 (bagian 11) dan Juli 2026 Rp582.599.09x (bagian 18).

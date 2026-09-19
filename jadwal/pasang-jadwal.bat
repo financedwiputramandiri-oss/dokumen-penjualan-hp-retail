@@ -4,8 +4,8 @@ REM  Memasang jadwal bot Happy Pumpkin di Windows Task Scheduler.
 REM
 REM  CARA PAKAI: klik KANAN berkas ini, pilih "Run as administrator".
 REM
-REM  Jadwalnya: Senin sampai Sabtu, tiap 6 jam pada jam kerja,
-REM             jadi menyapu jam 08:00 dan 14:00. Minggu libur.
+REM  Jadwalnya: Senin sampai Sabtu, tiap 12 jam - menyapu jam
+REM             08:00 dan 20:00. Minggu libur.
 REM
 REM  Perlu menyapu SEKARANG di luar jadwal? Klik dua kali
 REM  sapu-sekarang.bat - tidak perlu menyentuh jadwal ini.
@@ -22,7 +22,7 @@ echo.
 echo  Nama jadwal : %NAMA%
 echo  Menjalankan : %SKRIP%
 echo  Hari        : Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
-echo  Menyapu jam : 08:00 dan 14:00
+echo  Menyapu jam : 08:00 dan 20:00
 echo.
 
 if not exist "%SKRIP%" (
@@ -35,15 +35,18 @@ if not exist "%SKRIP%" (
 
 REM /SC WEEKLY /D MON..SAT = hanya hari kerja, Minggu dilewati.
 REM /ST 08:00              = sapuan pertama tiap harinya.
-REM /RI 360                = diulang tiap 6 jam (360 menit).
-REM /ET 17:00 /K           = berhenti mengulang di akhir jam kerja, dan
+REM /RI 720                = diulang tiap 12 jam (720 menit).
+REM /ET 20:30 /K           = berhenti mengulang setelah sapuan kedua, dan
 REM                          sapuan yang masih berjalan saat itu dihentikan.
-REM                          Jadi yang benar-benar jalan: 08:00 dan 14:00.
+REM                          Jadi yang benar-benar jalan: 08:00 dan 20:00.
+REM                          Kalau jam 20:00 Bapak sudah logout, sapuan itu
+REM                          dilewati - /IT memang begitu, dan itu disengaja:
+REM                          drive G: tidak ada sebelum orangnya login.
 REM /IT = jalan HANYA kalau Bapak sedang login.
 REM      Ini WAJIB. Kalau bot jalan saat belum login, drive G: dari Google
 REM      Drive for Desktop belum ada, dan dokumennya gagal ditulis.
 REM /F  = timpa jadwal lama kalau sudah pernah dipasang.
-schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 360 /ET 17:00 /K /RU "%USERNAME%" /IT /F
+schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 720 /ET 20:30 /K /RU "%USERNAME%" /IT /F
 
 if errorlevel 1 goto :gagal
 
@@ -52,7 +55,7 @@ echo ============================================================
 echo  JADWAL BERHASIL DIPASANG
 echo ============================================================
 echo.
-echo  Bot menyapu jam 08:00 dan 14:00, Senin sampai Sabtu, selama
+echo  Bot menyapu jam 08:00 dan 20:00, Senin sampai Sabtu, selama
 echo  komputer menyala dan Bapak sedang login.
 echo.
 echo  BUTUH CEPAT DI LUAR JADWAL?

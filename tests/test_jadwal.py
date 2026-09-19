@@ -57,10 +57,10 @@ def test_pasang_jadwal_memakai_IT():
     assert " /IT " in isi or isi.rstrip().endswith("/IT")
 
 
-def test_pasang_jadwal_hari_kerja_tiap_6_jam():
-    """Senin-Sabtu, tiap 6 jam pada jam kerja (permintaan Yosua 18 Sep 2026).
+def test_pasang_jadwal_hari_kerja_tiap_12_jam():
+    """Senin-Sabtu, tiap 12 jam (permintaan Yosua 19 Sep 2026).
 
-    /RI 360 dengan /ET 17:00 berarti sapuan jam 08:00 dan 14:00 saja.
+    /RI 720 dengan /ET 20:30 berarti sapuan jam 08:00 dan 20:00 saja.
     Kalau `/ET` atau `/K` hilang, bot terus menyapu sepanjang malam; kalau
     `/D` hilang, ikut jalan hari Minggu.
     """
@@ -68,8 +68,8 @@ def test_pasang_jadwal_hari_kerja_tiap_6_jam():
     assert "/SC WEEKLY" in isi
     assert "/D MON,TUE,WED,THU,FRI,SAT" in isi, "Minggu harus libur"
     assert "/ST 08:00" in isi
-    assert "/RI 360" in isi, "6 jam = 360 menit"
-    assert "/ET 17:00" in isi
+    assert "/RI 720" in isi, "12 jam = 720 menit"
+    assert "/ET 20:30" in isi, "harus lewat 20:00 supaya sapuan kedua sempat jalan"
     assert " /K " in isi, "tanpa /K sapuan yang tersangkut tidak dihentikan"
     # Diperiksa pada argumen /D saja, bukan seluruh berkas: kata biasa
     # seperti "langsung" mengandung "sun" dan dulu membuat tes ini gagal
