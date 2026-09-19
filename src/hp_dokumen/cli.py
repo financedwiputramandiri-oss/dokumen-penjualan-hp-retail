@@ -243,6 +243,7 @@ def perintah_telusuri(args) -> int:
 def perintah_sapu(args) -> int:
     """Satu kali sapuan: tarik order sheet dari Drive, pantau, buat draf."""
     from .sapu.bot import Pengaturan as PengaturanBot, sapu
+    from .sapu.bulan import bulan_sekarang, urai_bulan
 
     cfg = Konfigurasi.muat()
     p = PengaturanBot.muat()
@@ -250,7 +251,24 @@ def perintah_sapu(args) -> int:
         p.buat_draf = False
     if args.tanpa_rumus:
         p.pantau_rumus = False
-    hasil = sapu(p, cfg)
+
+    saring = None
+    if args.bulan:
+        try:
+            saring = urai_bulan(args.bulan)
+        except ValueError as e:
+            print(e)
+            return 2
+    elif args.bulan_ini:
+        saring = bulan_sekarang()
+
+    hasil = sapu(p, cfg, saring_bulan=saring, paksa=args.paksa,
+                 pakai_kunci=not args.tanpa_kunci)
+    # Sapuan yang mengalah karena komputer lain sedang menyapu BUKAN
+    # kegagalan. Kalau dikembalikan sebagai galat, log jadwal penuh berisi
+    # "GAGAL" padahal semuanya berjalan sebagaimana mestinya.
+    if not hasil.dijalankan:
+        return 0
     return 1 if hasil.genting else 0
 
 
@@ -378,6 +396,17 @@ def buat_parser() -> argparse.ArgumentParser:
                    help="Hanya memantau, tidak membuat draf dokumen")
     h.add_argument("--tanpa-rumus", dest="tanpa_rumus", action="store_true",
                    help="Jangan bandingkan rumus (lebih cepat)")
+    h.add_argument("--bulan-ini", dest="bulan_ini", action="store_true",
+                   help="Hanya sapu order sheet BULAN BERJALAN (jauh lebih cepat)")
+    h.add_argument("--bulan", dest="bulan", default="",
+                   help="Hanya sapu satu bulan tertentu, contoh: 2026-09 "
+                        "atau \"September 2026\"")
+    h.add_argument("--paksa", dest="paksa", action="store_true",
+                   help="Baca ulang walau order sheetnya tidak berubah")
+    h.add_argument("--tanpa-kunci", dest="tanpa_kunci", action="store_true",
+                   help="Jangan pakai kunci antar-komputer (hanya untuk "
+                        "keadaan darurat: dua sapuan bersamaan bisa saling "
+                        "menimpa catatan sapuan)")
     h.set_defaults(fungsi=perintah_sapu)
     return p
 

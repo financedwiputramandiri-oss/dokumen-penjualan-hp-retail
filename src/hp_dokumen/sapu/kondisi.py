@@ -143,20 +143,74 @@ def nama_komputer() -> str:
         return ""
 
 
-def peringatan_pindah_komputer(kondisi: "Kondisi") -> str:
+def kondisi_dibagi(berkas_kondisi: Path, folder_draf: Path) -> bool:
+    """True kalau catatan sapuan ikut disinkronkan ke semua komputer.
+
+    Syaratnya berkas kondisi berada DI DALAM folder draf — folder yang
+    disalin Google Drive for Desktop. Kalau begitu, laptop dan komputer
+    kantor membaca catatan yang sama, jadi dokumen yang sudah dibuat di
+    satu komputer tidak dibuat ulang di komputer lain.
+
+    Kalau berkas kondisinya tinggal di dalam folder proyek masing-masing,
+    tiap komputer punya catatan sendiri dan akan mengarsipkan draf komputer
+    lain ke _KEDALUWARSA tanpa alasan.
+    """
+    try:
+        berkas_kondisi.resolve().relative_to(folder_draf.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def salinan_bentrok(berkas_kondisi: Path) -> list[str]:
+    """Salinan bentrok yang dibuat Google Drive di sebelah berkas kondisi.
+
+    Kalau dua komputer menulis berkas yang sama sebelum Drive sempat
+    menyinkronkan, Drive tidak menggabungkannya — ia menyimpan berkas kedua
+    dengan nama lain, misalnya `kondisi_sapu (1).json`. Berkas aslinya
+    tetap terbaca, jadi tidak ada galat apa pun dan kejadian itu lewat
+    tanpa disadari. Justru itu yang berbahaya: separuh catatan sapuan ada
+    di berkas yang tidak pernah dibaca siapa pun.
+    """
+    try:
+        induk = berkas_kondisi.parent
+        if not induk.exists():
+            return []
+        pokok, akhiran = berkas_kondisi.stem, berkas_kondisi.suffix
+        bentrok = []
+        for lain in sorted(induk.iterdir()):
+            if lain.name == berkas_kondisi.name or lain.suffix != akhiran:
+                continue
+            n = lain.stem
+            if n.startswith(pokok) and n != pokok:
+                sisa = n[len(pokok):].strip()
+                # "kondisi_sapu (1)" dan "kondisi_sapu - salinan bentrok ..."
+                if sisa.startswith(("(", "-", "—")) or "bentrok" in sisa.lower() \
+                        or "conflict" in sisa.lower():
+                    bentrok.append(lain.name)
+        return bentrok
+    except OSError:
+        return []
+
+
+def peringatan_pindah_komputer(kondisi: "Kondisi", dibagi: bool = False) -> str:
     """Kalimat peringatan kalau sapuan terakhir dari komputer LAIN.
 
-    Kosong kalau komputernya sama, atau kalau catatan lamanya belum
-    mencantumkan nama komputer (kondisi_sapu.json dari versi lama).
+    Kosong kalau komputernya sama, kalau catatan lamanya belum mencantumkan
+    nama komputer (kondisi_sapu.json versi lama), ATAU kalau catatan
+    sapuannya memang sengaja dibagi lewat Google Drive — pada pemasangan
+    multi-perangkat, berpindah komputer justru yang diharapkan.
     """
     lama = (kondisi.disapu_oleh or "").strip()
     kini = nama_komputer().strip()
-    if not lama or not kini or lama == kini:
+    if not lama or not kini or lama == kini or dibagi:
         return ""
     return (
         f"Sapuan terakhir dijalankan dari komputer '{lama}', sekarang dari "
-        f"'{kini}'. Hanya SATU komputer yang boleh memasang jadwal sapuan. "
-        f"Kalau dua komputer menyapu bergantian, data/kondisi_sapu.json saling "
-        f"menimpa dan dokumen dibuat ulang terus-menerus. Hapus jadwalnya di "
-        f"komputer yang tidak dipakai lewat jadwal/hapus-jadwal.bat."
+        f"'{kini}', padahal catatan sapuan (berkas_kondisi) TIDAK berada di "
+        f"dalam folder yang disinkronkan Google Drive. Akibatnya tiap "
+        f"komputer punya catatan sendiri dan draf komputer lain diarsipkan "
+        f"ke _KEDALUWARSA tanpa alasan. Pindahkan berkas_kondisi di "
+        f"config/bot.yaml ke dalam folder draf — lihat PANDUAN_BOT.md "
+        f"bagian \"Bot dipakai dari beberapa perangkat\"."
     )

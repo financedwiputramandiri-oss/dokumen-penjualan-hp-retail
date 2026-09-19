@@ -512,22 +512,77 @@ langsung benar di semua komputer** — tidak peduli drive-nya G:, H:, atau apa
 pun. Kode, config, dan kunci botnya ikut tersinkron sendiri, jadi tidak ada
 lagi "komputer ini kodenya masih lama".
 
-## SATU komputer saja yang memasang jadwal
+## Dua hal yang harus dibagi, bukan cuma foldernya
 
-Ini tidak bisa ditawar. Yang boleh jalan di banyak komputer hanya perintah
-manual (`daftar`, `periksa`, `buat`, `buat-semua`, `rekap`, `faktur-pajak`).
+Menaruh folder proyek di Drive saja belum cukup. Ada dua hal lagi yang harus
+diatur, dan dua-duanya kalau salah TIDAK memunculkan pesan galat apa pun —
+dokumennya cuma dibuat ulang terus-menerus tanpa ada yang tahu kenapa.
 
-Sebabnya `data/kondisi_sapu.json`: berkas itu mencatat sidik jari tiap PO.
-Kalau dua komputer menyapu bergantian, catatannya saling menimpa, dan seluruh
-dokumen dibuat ulang berkali-kali tanpa ada yang sadar.
+### 1. Catatan sapuan dibagi
 
-Program sekarang **mencatat nama komputer yang menyapu terakhir**. Kalau
-sapuan berikutnya datang dari komputer lain, laporan sapuan memberi
-peringatan dan menyebut cara membereskannya. Peringatan itu bukan larangan
-menjalankan manual — hanya penanda kalau ada dua jadwal hidup bersamaan.
+`kondisi_sapu.json` mencatat sidik jari tiap PO: dari situlah bot tahu PO
+mana yang sudah dibuatkan dokumen. Kalau tiap komputer punya catatannya
+sendiri, komputer kedua menganggap semua dokumen belum pernah dibuat, lalu
+memindahkan dokumen komputer pertama ke `_KEDALUWARSA`.
 
-Di komputer yang **tidak** dipakai menjadwal: klik kanan
+Perbaikannya satu baris di `config/bot.yaml`:
+
+    berkas_kondisi: "../DOKUMEN OTOMATIS HAPPY PUMPKIN/_bot/kondisi_sapu.json"
+
+Sesudah itu semua komputer membaca catatan yang SAMA.
+
+`py jalankan.py periksa-bot` sekarang ikut memeriksanya dan menyebut
+"Beberapa perangkat: siap" kalau sudah benar. Kalau di komputer ini memang
+cuma satu-satunya, keterangannya "hanya komputer ini" — itu **bukan**
+kesalahan, hanya penjelasan.
+
+### 2. Kunci antar-komputer
+
+Kalau jadwalnya dipasang di laptop DAN komputer kantor, keduanya bangun jam
+06:00 dan menyapu pada detik yang sama.
+
+Kunci di `jadwal\sapu.bat` **tidak menolong** untuk ini — kunci itu berupa
+berkas di komputer yang bersangkutan, jadi hanya menahan dua sapuan di satu
+komputer. Kunci berupa berkas di folder Drive juga tidak menolong, sebab
+Drive baru menyinkronkan beberapa detik kemudian dan dalam jeda itu kedua
+komputer sama-sama merasa mendapat kunci.
+
+Karena itu kuncinya ditaruh di tempat yang dilihat semua komputer pada detik
+yang sama: sheet OTOMATISASI, tab **`BOT_KUNCI`**. Bot sudah punya izin
+Editor di sana, jadi tidak ada izin baru yang perlu diberikan.
+
+    pakai_kunci_bersama: true      <- di config/bot.yaml, bawaannya sudah true
+
+Yang kalah cepat akan menulis di layar:
+
+    DILEWATI: komputer 'KOMPUTER-KANTOR' sedang menyapu (mulai 2 menit lalu).
+
+Itu **bukan kegagalan** — sapuan yang satunya sedang mengerjakannya.
+
+Kuncinya kedaluwarsa sendiri sesudah 45 menit, jadi komputer yang mati
+listrik di tengah sapuan tidak memblokir komputer lain.
+
+### Boleh berapa komputer memasang jadwal?
+
+Dengan kedua hal di atas beres, **beberapa komputer boleh memasang jadwal**.
+Manfaatnya nyata: kalau laptop sedang dibawa pulang, komputer kantor yang
+menyapu. Jam 06:00 keduanya bangun, satu menyapu dan satunya mengalah.
+
+Kalau salah satunya saja yang belum beres, **kembali ke satu komputer**:
+di komputer yang tidak dipakai menjadwal, klik kanan
 `jadwal\hapus-jadwal.bat` -> **Run as administrator**.
+
+Bot juga masih mencatat nama komputer yang menyapu terakhir. Kalau
+komputernya berganti PADAHAL catatan sapuannya belum dibagi, laporan sapuan
+memberi peringatan dan menyebut baris mana yang harus dibetulkan.
+
+### Kalau Drive sempat membuat salinan bentrok
+
+Kalau dua komputer terlanjur menulis catatan sapuan bersamaan, Google Drive
+tidak menggabungkannya — ia menyimpan yang kedua dengan nama lain, misalnya
+`kondisi_sapu (1).json`, **tanpa memberi tahu siapa pun**. Bot sekarang
+mencari salinan semacam itu dan melaporkannya. Kalau muncul: buka keduanya,
+pakai yang paling baru, hapus yang lain.
 
 ## Kunci bot ikut tersinkron — keputusan Bapak
 
@@ -555,3 +610,59 @@ Konsekuensinya alamat itu harus ada di tiap komputer.
 Tidak ada yang berubah di sini. Akun layanan bot punya izin **Viewer** pada
 folder order sheet, jadi bot tidak akan pernah bisa mengubahnya, dari
 komputer mana pun. Jangan pernah menaikkannya menjadi Editor.
+
+
+# Sapuan cepat: bulan ini saja
+
+Permintaan Yosua 19 September 2026: kalau dokumen dibutuhkan cepat, sapuan
+jangan membaca seluruh arsip.
+
+## Masalahnya
+
+Sapuan penuh membaca **22 order sheet**, dari Januari 2025 sampai sekarang.
+Padahal PO yang baru masuk pasti ada di order sheet **bulan berjalan**.
+Order sheet bulan-bulan lama sudah selesai dan tidak akan berubah lagi.
+
+## Caranya
+
+Klik dua kali `jadwal\sapu-sekarang.bat`. Sejak sekarang berkas itu hanya
+membaca order sheet bulan berjalan.
+
+| Berkas | Yang dibaca | Kapan dipakai |
+|---|---|---|
+| `sapu-sekarang.bat` | **bulan berjalan saja** | PO baru masuk, dokumen dibutuhkan sekarang |
+| `sapu-semua-bulan.bat` | semua bulan | sesudah order sheet bulan LAMA diperbaiki |
+| jadwal 06:00 & 18:00 | semua bulan | otomatis, tidak perlu disentuh |
+
+Sapuan terjadwal tetap membaca semuanya, jadi **tidak ada yang terlewat** —
+paling lambat 12 jam kemudian order sheet bulan lama ikut diperiksa.
+
+## Dari baris perintah
+
+    py jalankan.py sapu --bulan-ini
+    py jalankan.py sapu --bulan 2026-09
+    py jalankan.py sapu --bulan "September 2026"
+    py jalankan.py sapu --bulan-ini --paksa
+
+`--paksa` membaca ulang walaupun order sheetnya tidak berubah. Perlu dipakai
+kalau yang berubah **bukan order sheetnya melainkan format dokumennya** —
+bot menilai perubahan dari order sheet, bukan dari kode.
+
+## Bulannya dicocokkan dari NAMA order sheet
+
+Bot tidak membuka berkasnya untuk tahu itu bulan apa — kalau begitu, tidak
+ada waktu yang dihemat. Yang dibaca nama berkasnya:
+
+    Order Sheet September 2026            <- ikut
+    Order Sheet Agustus 2026 Harga Lama   <- tidak, bulan lain
+    Order Sheet September 2025            <- tidak, tahun lain
+
+Dua order sheet bulan yang sama (`Harga Lama` dan `Harga Baru`) dua-duanya
+ikut disapu.
+
+**Karena itu nama order sheet harus memuat nama bulannya.** Kalau tidak ada
+satu pun yang cocok, bot berkata keras:
+
+    TIDAK ADA order sheet bernama bulan September 2026 di folder Drive.
+
+Bukan diam-diam melaporkan "0 order sheet dibaca" seperti sapuan yang wajar.

@@ -26,10 +26,13 @@ from ..model import Order
 from ..nilai_bersih import tentukan_nett
 from ..pemindai import baca_buku, master_harga_dari_buku
 from ..rekonsiliasi import periksa_order
+from .bulan import cocok_bulan, folder_bisa_dilewati, nama_bulan
 from .draf import HasilDraf, buat_draf, perlu_draf
 from .unggah import PengunggahDokumen
 from .google import Sambungan
-from .kondisi import Kondisi, peringatan_pindah_komputer, sidik_dari_order
+from .kondisi import (Kondisi, kondisi_dibagi, peringatan_pindah_komputer,
+                      salinan_bentrok, sidik_dari_order)
+from .kunci_bersama import KunciBersama, kalimat_ditolak
 from .laporan_sapu import tulis as tulis_laporan
 from .pantau import GENTING, Perubahan, bandingkan
 from .tulis_sheet import PenulisSheet
@@ -51,6 +54,7 @@ class Pengaturan:
     folder_draf: Path = AKAR / "keluaran" / "draf"
     draf_pdf: bool = False
     folder_dokumen_id: str = ""
+    pakai_kunci_bersama: bool = True
 
     @classmethod
     def muat(cls, berkas: Path | None = None) -> "Pengaturan":
@@ -71,6 +75,7 @@ class Pengaturan:
             folder_draf=AKAR / d.get("folder_draf", "keluaran/draf"),
             draf_pdf=bool(d.get("draf_pdf", False)),
             folder_dokumen_id=(d.get("folder_dokumen_id") or "").strip(),
+            pakai_kunci_bersama=bool(d.get("pakai_kunci_bersama", True)),
         )
 
 
@@ -84,6 +89,8 @@ class HasilSapuan:
     id_laporan_drive: Optional[str] = None
     dilewati: list[str] = field(default_factory=list)
     tab_ditarik: int = 0
+    dijalankan: bool = True      # False = komputer lain sedang menyapu
+    alasan_batal: str = ""
 
     @property
     def genting(self) -> list[Perubahan]:
@@ -104,11 +111,62 @@ def sapu(
     pengaturan: Pengaturan | None = None,
     konfigurasi: Konfigurasi | None = None,
     cetak=print,
+    saring_bulan: tuple[int, int] | None = None,
+    paksa: bool = False,
+    pakai_kunci: bool | None = None,
 ) -> HasilSapuan:
+    """Satu kali sapuan.
+
+    `saring_bulan` berisi (bulan, tahun). Kalau diisi, HANYA order sheet
+    bulan itu yang dibaca — dipakai untuk sapuan mendadak yang harus cepat.
+    `paksa` mengabaikan pelewatan "tidak berubah sejak sapuan lalu".
+    """
     p = pengaturan or Pengaturan.muat()
     cfg = konfigurasi or Konfigurasi.muat()
     sambung = Sambungan(p.berkas_kredensial)
     cetak(f"Bot: {sambung.email_bot}")
+
+    if saring_bulan:
+        cetak(f"Hanya order sheet {nama_bulan(saring_bulan[0])} {saring_bulan[1]}.")
+
+    # ---- kunci antar-KOMPUTER ------------------------------------------
+    # Kunci di jadwal/sapu.bat hanya menahan dua sapuan di satu komputer.
+    # Begitu bot dipasang di laptop DAN komputer kantor, keduanya bangun
+    # pada jam yang sama. Kunci ini ditaruh di sheet OTOMATISASI supaya
+    # semua komputer melihatnya pada detik yang sama.
+    kunci = None
+    if pakai_kunci is None:
+        pakai_kunci = p.pakai_kunci_bersama
+    if pakai_kunci and p.sheet_otomatisasi_id:
+        kunci = KunciBersama(sambung, p.sheet_otomatisasi_id)
+        ket = (f"sapuan {nama_bulan(saring_bulan[0])} {saring_bulan[1]}"
+               if saring_bulan else "sapuan penuh")
+        try:
+            dapat = kunci.ambil(ket)
+        except Exception as e:
+            # Kunci yang tidak bisa dibaca TIDAK boleh menghentikan sapuan —
+            # lebih baik menyapu tanpa kunci daripada tidak menyapu sama
+            # sekali karena sheetnya sedang tidak bisa dihubungi.
+            cetak(f"Kunci bersama tidak bisa dipakai ({e}); sapuan diteruskan.")
+            kunci = None
+        else:
+            if not dapat:
+                pesan = kalimat_ditolak(kunci.pemegang_lain)
+                cetak(pesan)
+                return HasilSapuan([], [], [], [pesan], dijalankan=False,
+                                   alasan_batal=pesan)
+            cetak(f"Kunci sapuan dipegang komputer ini ({kunci.perangkat}).")
+    try:
+        return _sapu(p, cfg, sambung, cetak, saring_bulan, paksa)
+    finally:
+        if kunci:
+            try:
+                kunci.lepas()
+            except Exception as e:
+                cetak(f"Kunci sapuan gagal dilepas: {e}")
+
+
+def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
     pengunggah = (PengunggahDokumen(sambung, p.folder_dokumen_id)
                   if p.folder_dokumen_id else None)
 
@@ -117,16 +175,34 @@ def sapu(
     diperiksa: list[tuple[str, str, int]] = []
     draf: list[HasilDraf] = []
     masalah: list[str] = []
-    pindah = peringatan_pindah_komputer(kondisi)
+    dibagi = kondisi_dibagi(p.berkas_kondisi, p.folder_draf)
+    pindah = peringatan_pindah_komputer(kondisi, dibagi)
     if pindah:
         masalah.append(pindah)
+        cetak(pindah)
+    for nama_bentrok in salinan_bentrok(p.berkas_kondisi):
+        # Drive menyimpan salinan bentrok diam-diam: tidak ada galat,
+        # berkas aslinya tetap terbaca, dan separuh catatan sapuan ada
+        # di berkas yang tidak pernah dibuka siapa pun.
+        pesan_bentrok = (
+            f"Google Drive membuat salinan bentrok '{nama_bentrok}' di sebelah "
+            f"catatan sapuan. Itu tanda dua komputer menyapu bersamaan. "
+            f"Periksa jadwalnya, lalu hapus salinan itu."
+        )
+        masalah.append(pesan_bentrok)
+        cetak(pesan_bentrok)
     rekaman: list[dict] = []   # untuk tab BOT_DAFTAR_PO di sheet OTOMATISASI
     dilewati: list[str] = []   # spreadsheet yang tidak berubah sejak sapuan lalu
+    cocok_bulan_ini: list[str] = []   # order sheet yang lolos saringan bulan
     dibaca_tab = 0             # berapa tab yang benar-benar ditarik isinya
 
     for f in p.folder:
         id_folder, nama_folder = f.get("id", ""), f.get("nama", f.get("id", ""))
         if not id_folder:
+            continue
+        if saring_bulan and folder_bisa_dilewati(nama_folder, saring_bulan[1]):
+            cetak(f"\nFolder: {nama_folder} — dilewati, bukan tahun "
+                  f"{saring_bulan[1]}")
             continue
         cetak(f"\nFolder: {nama_folder}")
         try:
@@ -137,6 +213,13 @@ def sapu(
             continue
 
         lembar = [x for x in isi if x.mime == "application/vnd.google-apps.spreadsheet"]
+        if saring_bulan:
+            sebelum = len(lembar)
+            lembar = [x for x in lembar
+                      if cocok_bulan(x.nama, saring_bulan[0], saring_bulan[1],
+                                     nama_folder)]
+            cocok_bulan_ini.extend(x.nama for x in lembar)
+            cetak(f"  {len(lembar)} dari {sebelum} order sheet cocok bulannya")
         for berkas in sorted(lembar, key=lambda x: x.nama):
             if not _perlu_ditarik(berkas.diubah, p.hanya_hari):
                 continue
@@ -144,9 +227,9 @@ def sapu(
             # Lewati kalau spreadsheet ini tidak berubah sejak sapuan lalu.
             # Waktu ubah datang dari Drive dan tidak memerlukan pembacaan isi,
             # jadi order sheet lama yang sudah selesai tidak ditarik berulang.
-            if p.lewati_yang_tidak_berubah and not kondisi.berubah_sejak_sapuan_lalu(
-                berkas.id, berkas.diubah
-            ):
+            if (p.lewati_yang_tidak_berubah and not paksa
+                    and not kondisi.berubah_sejak_sapuan_lalu(
+                        berkas.id, berkas.diubah)):
                 dilewati.append(berkas.nama)
                 cetak(f"  lewati (tidak berubah): {berkas.nama[:52]}")
                 continue
@@ -283,6 +366,17 @@ def sapu(
 
             kondisi.catat_sheet(berkas.id, berkas.nama, berkas.diubah, len(judul_po))
 
+    if saring_bulan and not cocok_bulan_ini:
+        pesan = (
+            f"TIDAK ADA order sheet bernama bulan "
+            f"{nama_bulan(saring_bulan[0])} {saring_bulan[1]} di folder Drive. "
+            f"Sapuan bulan ini tidak menghasilkan apa-apa. Periksa nama "
+            f"berkasnya di Drive — bot mencocokkan dari NAMA order sheet, "
+            f"jadi namanya harus memuat nama bulannya."
+        )
+        masalah.append(pesan)
+        cetak("\n" + pesan)
+
     kondisi.simpan(p.berkas_kondisi)
 
     waktu = datetime.now()
@@ -323,9 +417,16 @@ def sapu(
     hasil = HasilSapuan(perubahan, diperiksa, draf, masalah, berkas_laporan, id_drive,
                         dilewati, dibaca_tab)
 
-    cetak(f"\nSelesai. {len(diperiksa)} order sheet dibaca "
+    if saring_bulan:
+        cetak(f"\nSapuan CEPAT: {nama_bulan(saring_bulan[0])} {saring_bulan[1]} saja. "
+              f"Order sheet bulan lain sengaja tidak dibuka.")
+    cetak(f"Selesai. {len(diperiksa)} order sheet dibaca "
           f"({sum(n for _, _, n in diperiksa)} tab PO, {dibaca_tab} tab ditarik), "
           f"{len(dilewati)} order sheet dilewati karena tidak berubah.")
+    if saring_bulan and cocok_bulan_ini and not diperiksa and dilewati:
+        cetak("Order sheet bulan ini TIDAK berubah sejak sapuan terakhir, jadi "
+              "dokumennya sudah yang terbaru. Kalau tetap ingin dibuat ulang, "
+              "jalankan dengan --paksa.")
     if genting:
         cetak(f"ADA {len(genting)} PERUBAHAN PENTING:")
         for x in genting[:15]:

@@ -123,6 +123,41 @@ lewati_yang_tidak_berubah: true
 # Isi 0 untuk memeriksa semuanya.
 hanya_yang_berubah_hari: 0
 
+# ---- BOT DIPAKAI DARI BEBERAPA KOMPUTER ---------------------
+# true -> sebelum menyapu, bot memasang kunci di sheet OTOMATISASI
+#         (tab BOT_KUNCI). Komputer lain yang kebetulan bangun pada jam
+#         yang sama melihat kunci itu SEKETIKA dan mengalah.
+#
+# Kunci di jadwal/sapu.bat TIDAK cukup untuk ini: kunci itu berupa berkas
+# di komputer yang bersangkutan, jadi hanya menahan dua sapuan di satu
+# komputer. Kunci berbasis berkas di folder Drive juga tidak menolong,
+# sebab Drive baru menyinkronkan beberapa detik kemudian dan dalam jeda
+# itu kedua komputer sama-sama merasa mendapat kunci.
+#
+# Kunci ini kedaluwarsa sendiri sesudah 45 menit, jadi komputer yang mati
+# di tengah sapuan tidak memblokir komputer lain.
+#
+# Hanya matikan kalau memang cuma ada SATU komputer dan sheet
+# OTOMATISASI sedang tidak bisa dihubungi.
+pakai_kunci_bersama: true
+
 # ---- BERKAS ------------------------------------------------
 berkas_kredensial: "config/kredensial_bot.json"
+
+# Catatan sapuan: sidik jari tiap PO, dipakai untuk tahu apa yang berubah
+# dan dokumen mana yang perlu dibuat ulang.
+#
+# SATU KOMPUTER SAJA -> biarkan seperti di bawah ini.
+#
+# BEBERAPA KOMPUTER -> pindahkan ke dalam folder yang disinkronkan Google
+# Drive, supaya semua komputer membaca catatan yang SAMA:
+#
+#     berkas_kondisi: "../DOKUMEN OTOMATIS HAPPY PUMPKIN/_bot/kondisi_sapu.json"
+#
+# (alamat relatif dihitung dari folder proyek ini, sama seperti folder_draf)
+#
+# Kalau tiap komputer punya catatannya sendiri, komputer kedua menganggap
+# semua dokumen belum pernah dibuat, lalu mengarsipkan dokumen komputer
+# pertama ke _KEDALUWARSA tanpa alasan. Bot memperingatkan kalau
+# mendeteksi keadaan itu.
 berkas_kondisi: "data/kondisi_sapu.json"

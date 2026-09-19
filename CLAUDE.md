@@ -2730,3 +2730,134 @@ Alasannya: mengisi kolom itu berarti **semua** dokumen Baby Fame — termasuk
 yang dibuat bot otomatis jam 06:00 dan 18:00 — terbit atas nama MTN, dengan
 rekening MTN. Itu keputusan yang harus dinyatakan Yosua, bukan disimpulkan
 dari satu berkas contoh bulan Mei.
+
+## 32. Bot untuk beberapa perangkat & sapuan cepat per bulan — 19 September 2026
+
+Tiga permintaan Yosua sekaligus: pelajari lagi berkas MTN, buat bot yang bisa
+dipakai dari beberapa perangkat yang tersambung ke Drive
+`finance.dwiputramandiri@gmail.com`, dan kalau sapuan diminta cepat, sapu
+**hanya order sheet bulan berjalan**.
+
+### Berkas MTN yang dikirim ulang SAMA PERSIS dengan yang sudah dibongkar
+
+`FA_0010526_BABY_FAME_MTN.xlsx` yang diunggah kali ini `md5` -nya identik
+dengan yang dipakai bagian 31 (`6330c31cbef4d6f6dc11970fc54d31d8`). Jadi yang
+dikerjakan bukan membongkar ulang, melainkan **memverifikasi** bahwa apa yang
+sudah diterapkan memang cocok. Hasil pembongkaran ulang cocok seluruhnya
+dengan catatan bagian 31 — lebar kolom, tinggi baris, letak label, dan
+penutup tanpa DPP/PPN.
+
+Satu catatan kecil yang belum tercatat di bagian 31: di tab faktur, alamat
+jalan dan kelurahan digabung menjadi SATU baris (`C4`), sedangkan di tab
+Surat Jalan dipecah dua baris (`C3` dan `C4`). Tidak berdampak pada program —
+`gaya._alamat_perusahaan()` melipat sendiri mengikuti lebar kolomnya.
+
+**Sebelum membongkar ulang berkas contoh, periksa `md5sum`-nya dulu.**
+Berkas yang sama tidak perlu dibongkar dua kali.
+
+### Kunci sapuan antar-KOMPUTER — `sapu/kunci_bersama.py`
+
+Ini yang selama ini hilang dari cerita "bot multi-perangkat". Bagian 30
+menutup celahnya separuh (folder draf relatif + peringatan pindah komputer)
+tapi menyimpulkan "tetap hanya SATU komputer yang boleh memasang jadwal".
+Kesimpulan itu sekarang **tidak berlaku lagi**.
+
+Sebabnya kunci di `jadwal/sapu.bat` berupa berkas di komputer yang
+bersangkutan, jadi hanya menahan dua sapuan di SATU komputer. Begitu jadwal
+dipasang di laptop dan komputer kantor, keduanya bangun jam 06:00 dan menyapu
+pada detik yang sama.
+
+**Kunci berupa berkas di folder Drive TIDAK menolong** — dan ini jebakan yang
+paling mudah dimasuki. Drive baru menyinkronkan beberapa detik sampai semenit
+kemudian; dalam jeda itu kedua komputer sama-sama membaca folder kosong dan
+sama-sama merasa mendapat kunci.
+
+Karena itu kuncinya ditaruh di tempat yang dilihat semua komputer pada detik
+yang sama: sheet OTOMATISASI, tab **`BOT_KUNCI`**. Bot sudah punya Editor di
+situ dan aturan bagian 14 (hanya tab berawalan `BOT_`) tetap terjaga.
+
+Cara mengambilnya: tulis token acak, tunggu 3 detik, **baca ulang**. Kalau
+yang terbaca masih token sendiri, kuncinya milik kita. Sheets API tidak punya
+operasi tulis-kalau-masih-sama, dan tulis-tunggu-baca adalah pengganti
+terdekatnya — cukup, sebab yang dilindungi bukan transaksi uang melainkan
+supaya dua sapuan tidak jalan bersamaan.
+
+Tiga keputusan yang jangan diubah tanpa alasan:
+
+1. **Kunci kedaluwarsa sendiri sesudah 45 menit.** Tanpa itu, satu komputer
+   yang mati listrik di tengah sapuan memblokir seluruh armada selamanya.
+2. **`lepas()` hanya menghapus kunci kalau tokennya masih milik sendiri.**
+   Kalau sapuan kelewat lama dan sudah diambil alih, menghapusnya membuat
+   komputer yang sedang menyapu berjalan tanpa kunci sama sekali.
+3. **Kunci yang tidak bisa dibaca TIDAK menghentikan sapuan.** Lebih baik
+   menyapu tanpa kunci daripada tidak menyapu sama sekali karena sheetnya
+   sedang tidak bisa dihubungi.
+
+Sapuan yang mengalah mengembalikan **kode 0**, bukan galat. Kalau dihitung
+gagal, `log-sapuan.txt` penuh berisi "GAGAL" padahal semuanya wajar.
+
+### Catatan sapuan juga harus dibagi, bukan cuma foldernya
+
+Celah kedua yang tidak kalah penting: `kondisi_sapu.json`. Kalau tiap komputer
+punya catatan sendiri, komputer kedua menganggap semua dokumen belum pernah
+dibuat, lalu memindahkan dokumen komputer pertama ke `_KEDALUWARSA` — tanpa
+galat apa pun.
+
+Obatnya satu baris di `config/bot.yaml`:
+
+    berkas_kondisi: "../DOKUMEN OTOMATIS HAPPY PUMPKIN/_bot/kondisi_sapu.json"
+
+`kondisi_dibagi()` memeriksa apakah berkas kondisi berada di dalam
+`folder_draf`. Kalau ya, `peringatan_pindah_komputer()` **diam** — pada
+pemasangan multi-perangkat, berpindah komputer justru yang diharapkan.
+Peringatan lama yang menyuruh menjalankan `hapus-jadwal.bat` sudah diganti:
+yang harus dibetulkan sekarang letak `berkas_kondisi`, bukan jadwalnya.
+
+`salinan_bentrok()` mencari berkas seperti `kondisi_sapu (1).json` di sebelah
+catatan sapuan. Kalau dua komputer terlanjur menulis bersamaan, Drive tidak
+menggabungkan — ia menyimpan salinan kedua dengan nama lain, berkas aslinya
+tetap terbaca, dan **tidak ada galat sama sekali**. Justru itu yang berbahaya:
+separuh catatan sapuan ada di berkas yang tidak pernah dibuka siapa pun.
+
+`periksa-bot` menambah satu baris "Beberapa perangkat". Satu komputer saja
+tetap dilaporkan **LULUS** dengan keterangan "hanya komputer ini" — aturan
+bagian 24 dan 27: jangan pernah menandai GAGAL sesuatu yang merupakan pilihan
+pemasangan yang sah.
+
+### Sapuan cepat: `--bulan-ini`
+
+Sapuan penuh membaca 22 order sheet, padahal PO yang baru masuk pasti ada di
+order sheet bulan berjalan.
+
+    py jalankan.py sapu --bulan-ini
+    py jalankan.py sapu --bulan 2026-09
+    py jalankan.py sapu --bulan-ini --paksa
+
+`jadwal/sapu-sekarang.bat` sekarang memakai `--bulan-ini`. Jadwal 06:00 dan
+18:00 **tetap membaca semua bulan**, jadi tidak ada yang terlewat; order sheet
+bulan lama yang baru diperbaiki paling lambat ikut 12 jam kemudian. Untuk
+menyapu semua bulan sekarang juga ada `jadwal/sapu-semua-bulan.bat`.
+
+Bulannya dicocokkan dari **NAMA berkasnya** (`sapu/bulan.py`), bukan dari
+isinya — kalau berkasnya dibuka dulu untuk tahu itu bulan apa, tidak ada
+waktu yang dihemat sama sekali.
+
+Empat hal yang mudah salah dan sudah dikunci tes:
+
+| Hal | Kenapa |
+|---|---|
+| Nama bulan dicocokkan sebagai **kata utuh** | tanpa batas kata, "Mei" tertangkap di dalam kata lain dan "Jun" di dalam "Januari" |
+| Tahun boleh datang dari **nama folder** | folder order sheet memang bernama "Order Sheet 2026"/"2025" |
+| Tanpa tahun di mana pun, berkas **tetap diikutkan** | lebih baik menyapu satu berkas berlebih daripada melewatkan yang dicari |
+| Bulan tanpa order sheet dilaporkan **keras** | "0 order sheet dibaca" terlihat seperti sapuan yang wajar, padahal artinya tidak akan ada dokumen yang terbit |
+
+`--bulan` yang salah ketik menghentikan perintah dengan kode 2, tidak
+diam-diam menyapu bulan lain — menerbitkan dokumen bulan yang salah jauh
+lebih mahal daripada perintah yang ditolak.
+
+`--paksa` mengabaikan pelewatan "tidak berubah sejak sapuan lalu". Perlu
+dipakai kalau yang berubah bukan order sheetnya melainkan **format
+dokumennya** — jebakan lama bagian 26 dan 27: `SidikPO` hanya mengawasi order
+sheet, tidak pernah kode.
+
+Tes 173 -> 209.

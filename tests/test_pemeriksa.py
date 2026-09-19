@@ -20,6 +20,10 @@ class PengaturanPalsu:
     folder_laporan_id: str = "L"
     folder_dokumen_id: str = "D"
     sheet_otomatisasi_id: str = "S"
+    # Pemeriksaan kesiapan beberapa perangkat ikut membaca dua berkas ini.
+    berkas_kondisi: Path = Path("data/kondisi_sapu.json")
+    folder_draf: Path = Path("keluaran/draf")
+    pakai_kunci_bersama: bool = True
 
 
 class Berkas:

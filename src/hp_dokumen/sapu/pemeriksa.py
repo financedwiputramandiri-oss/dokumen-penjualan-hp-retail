@@ -173,7 +173,51 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
         else:
             hasil.append(Hasil("Sheet OTOMATISASI", LULUS, f"{len(tab)} tab terbaca"))
 
+    hasil.append(_periksa_banyak_perangkat(pengaturan))
     return hasil
+
+
+def _periksa_banyak_perangkat(pengaturan) -> Hasil:
+    """Apakah komputer ini siap dipakai bersama komputer lain.
+
+    SATU komputer saja adalah pemasangan yang SAH, jadi keadaan itu tidak
+    pernah ditandai gagal — hanya dijelaskan. Aturan yang sama dengan
+    folder tujuan yang sengaja dikosongkan: bedakan "belum dikerjakan" dari
+    "sengaja tidak dipakai".
+    """
+    from .kondisi import kondisi_dibagi, salinan_bentrok
+
+    bentrok = salinan_bentrok(pengaturan.berkas_kondisi)
+    if bentrok:
+        return Hasil(
+            "Beberapa perangkat", GAGAL,
+            f"ada salinan bentrok: {', '.join(bentrok)}",
+            "Google Drive membuat salinan itu karena dua komputer menulis "
+            "catatan sapuan bersamaan. Buka keduanya, pakai yang paling baru, "
+            "hapus yang lain, lalu pastikan pakai_kunci_bersama: true di "
+            "config/bot.yaml.",
+        )
+
+    dibagi = kondisi_dibagi(pengaturan.berkas_kondisi, pengaturan.folder_draf)
+    kunci = "hidup" if pengaturan.pakai_kunci_bersama else "MATI"
+    if dibagi:
+        return Hasil(
+            "Beberapa perangkat", LULUS,
+            f"siap - catatan sapuan dibagi lewat Drive, kunci bersama {kunci}",
+            "" if pengaturan.pakai_kunci_bersama else
+            "Catatan sapuan sudah dibagi, tapi pakai_kunci_bersama MATI. "
+            "Nyalakan di config/bot.yaml, kalau tidak dua komputer bisa "
+            "menyapu bersamaan dan saling menimpa catatannya.",
+        )
+    return Hasil(
+        "Beberapa perangkat", LULUS,
+        "hanya komputer ini (catatan sapuan tidak dibagi)",
+        "Ini benar kalau bot memang hanya dipakai di satu komputer. Kalau "
+        "nanti dipakai dari laptop DAN komputer kantor, pindahkan "
+        "berkas_kondisi di config/bot.yaml ke dalam folder draf supaya "
+        "semua komputer membaca catatan yang sama - lihat PANDUAN_BOT.md "
+        "bagian \"Bot dipakai dari beberapa perangkat\".",
+    )
 
 
 def cetak(hasil: list[Hasil], tulis=print) -> bool:

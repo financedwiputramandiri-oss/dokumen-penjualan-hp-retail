@@ -15,7 +15,8 @@ SAPU = JADWAL / "sapu.bat"
 PASANG = JADWAL / "pasang-jadwal.bat"
 HAPUS = JADWAL / "hapus-jadwal.bat"
 SEKARANG = JADWAL / "sapu-sekarang.bat"
-SEMUA_BAT = [SAPU, PASANG, HAPUS, SEKARANG]
+SEMUA_BULAN = JADWAL / "sapu-semua-bulan.bat"
+SEMUA_BAT = [SAPU, PASANG, HAPUS, SEKARANG, SEMUA_BULAN]
 
 
 def test_ketiga_berkas_bat_ada():
@@ -168,9 +169,50 @@ def test_peringatan_muncul_kalau_komputernya_berganti(tmp_path):
     assert peringatan_pindah_komputer(k) == "", "komputer yang sama jangan diperingatkan"
 
     k.disapu_oleh = "LAPTOP-LAMA-YANG-BUKAN-INI"
-    pesan = peringatan_pindah_komputer(k)
+    pesan = peringatan_pindah_komputer(k, dibagi=False)
     assert "LAPTOP-LAMA-YANG-BUKAN-INI" in pesan
-    assert "hapus-jadwal.bat" in pesan, "peringatan harus menyebut cara membereskannya"
+    # Saran lamanya "hapus jadwalnya di komputer yang lain" sudah TIDAK
+    # berlaku: sejak ada kunci bersama, beberapa komputer memang boleh
+    # menyapu bergantian. Yang harus dibereskan sekarang adalah catatan
+    # sapuan yang belum dibagi.
+    assert "berkas_kondisi" in pesan, "peringatan harus menyebut cara membereskannya"
+
+
+def test_pindah_komputer_tidak_diperingatkan_kalau_catatannya_memang_dibagi(tmp_path):
+    """Pada pemasangan beberapa perangkat, berpindah komputer justru diharapkan.
+
+    Aturan CLAUDE.md bagian 24: jangan pernah menandai salah sesuatu yang
+    merupakan pilihan pemasangan yang sah.
+    """
+    from hp_dokumen.sapu.kondisi import Kondisi, peringatan_pindah_komputer
+
+    k = Kondisi(disapu_oleh="KOMPUTER-KANTOR")
+    assert peringatan_pindah_komputer(k, dibagi=True) == ""
+
+
+def test_catatan_sapuan_dianggap_dibagi_hanya_kalau_ada_di_folder_draf(tmp_path):
+    from hp_dokumen.sapu.kondisi import kondisi_dibagi
+
+    draf = tmp_path / "DOKUMEN OTOMATIS"
+    assert kondisi_dibagi(draf / "_bot" / "kondisi_sapu.json", draf)
+    assert not kondisi_dibagi(tmp_path / "proyek" / "data" / "kondisi_sapu.json", draf)
+
+
+def test_salinan_bentrok_drive_ketahuan(tmp_path):
+    """Drive tidak menggabungkan berkas yang ditulis dua komputer sekaligus.
+
+    Ia menyimpan yang kedua dengan nama lain dan TIDAK memberi galat apa
+    pun, jadi separuh catatan sapuan berakhir di berkas yang tidak pernah
+    dibuka siapa pun.
+    """
+    from hp_dokumen.sapu.kondisi import salinan_bentrok
+
+    asli = tmp_path / "kondisi_sapu.json"
+    asli.write_text("{}", encoding="utf-8")
+    assert salinan_bentrok(asli) == []
+
+    (tmp_path / "kondisi_sapu (1).json").write_text("{}", encoding="utf-8")
+    assert salinan_bentrok(asli) == ["kondisi_sapu (1).json"]
 
 
 def test_catatan_lama_tanpa_nama_komputer_tidak_diperingatkan():
@@ -182,3 +224,36 @@ def test_catatan_lama_tanpa_nama_komputer_tidak_diperingatkan():
     from hp_dokumen.sapu.kondisi import Kondisi, peringatan_pindah_komputer
 
     assert peringatan_pindah_komputer(Kondisi(disapu_oleh="")) == ""
+
+
+# ------------------------------------------------- sapuan cepat = bulan ini
+def test_sapu_sekarang_hanya_menyapu_bulan_berjalan():
+    """Itulah gunanya: dokumen mendadak harus jadi cepat.
+
+    Sapuan penuh membaca 22 order sheet; bulan berjalan biasanya satu-dua.
+    """
+    assert "sapu --bulan-ini" in SEKARANG.read_text(encoding="ascii")
+
+
+def test_sapuan_terjadwal_tetap_membaca_semua_bulan():
+    """Kalau yang terjadwal ikut disaring bulan, order sheet lama yang
+    baru diperbaiki tidak akan pernah disapu lagi — dan tidak ada yang
+    tahu, sebab tidak ada galat apa pun.
+    """
+    isi = SAPU.read_text(encoding="ascii")
+    assert "--bulan-ini" not in isi
+    assert "--bulan" not in isi
+
+
+def test_ada_jalan_menyapu_semua_bulan_atas_permintaan():
+    """Dipakai sesudah rumus order sheet bulan LAMA diperbaiki."""
+    isi = SEMUA_BULAN.read_text(encoding="ascii")
+    assert "py jalankan.py sapu " not in isi.replace("py jalankan.py sapu 2>&1", "")
+    assert "py jalankan.py sapu 2>&1" in isi
+
+
+def test_kedua_bat_manual_memakai_kunci_yang_sama_dengan_yang_terjadwal():
+    """Sapuan manual dan sapuan terjadwal tidak boleh berjalan bersamaan."""
+    kunci = 'set "KUNCI=%CD%\\data\\sapu-sedang-jalan.lock"'
+    for berkas in (SAPU, SEKARANG, SEMUA_BULAN):
+        assert kunci in berkas.read_text(encoding="ascii"), berkas.name
