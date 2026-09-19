@@ -2591,3 +2591,47 @@ sendiri dan meleset 5 dari 230. Jangan menebak nama; panggil fungsinya.
 Angka yang terbit: **75.118 pcs, nilai bersih Rp3.854.901.550** dari 230 PO.
 Dua di antaranya cocok dengan catatan lama sampai rupiah terakhir — Agustus
 2026 Rp424.156.009 (bagian 11) dan Juli 2026 Rp582.599.09x (bagian 18).
+
+### Laporan sapuan TERBUKTI ikut ditolak kuota — SELESAI 19 September 2026
+
+Yosua bertanya di bagian Drive mana berkas sapuan terbaru bisa dilihat.
+Saat memeriksanya, dua hal terbukti sekaligus.
+
+**1. Dokumen memang sampai ke Drive.** Folder
+`DOKUMEN OTOMATIS HAPPY PUMPKIN` berisi satu folder per order sheet, di
+dalamnya satu folder per PO, berisi keempat berkas `.xlsx`. Contoh yang
+diperiksa: `PO_11_September_-_Katamama_(Tapos)` berisi INVOICE, SURAT_JALAN,
+PACKING_LIST, dan FAKTUR_PAJAK. **Pemiliknya
+`finance.dwiputramandiri@gmail.com`, bukan akun layanan** — itu tanda pasti
+berkasnya datang lewat Drive for Desktop, bukan lewat API.
+
+**2. Laporan sapuan TIDAK pernah sampai.** Folder
+`LAPORAN BOT ORDER SHEET` (`1injx6oMv3kV9XxVamgEcAi4RglOdVnNE`) ada, dimiliki
+**akun layanan**, dan **isinya kosong** — padahal bot sudah menyapu
+berkali-kali sejak 16 September.
+
+Sebabnya sama dengan folder dokumen: akun layanan bisa membuat FOLDER (tidak
+memakan ruang) tapi tidak bisa membuat BERKAS. Bagian 14 menulis
+"kemungkinan besar ikut tertolak, kalau terbukti begitu `folder_laporan_id`
+dikosongkan juga" — sekarang terbukti, dan sudah dikosongkan.
+
+Akibat kalau dibiarkan: tiap sapuan menambah satu baris "Laporan gagal
+diunggah ke Google Drive" di daftar masalah, padahal tidak ada yang bisa
+diperbaiki siapa pun. `bot.py` melewati blok unggah laporan seluruhnya kalau
+id-nya kosong, jadi tidak ada percobaan dan tidak ada pesan galat.
+
+**Cara memeriksa hal semacam ini:** jangan berhenti di "foldernya ada".
+Folder yang ada tapi kosong adalah gejala khas `storageQuotaExceeded`, sebab
+folder tidak memakan kuota. Turun sampai ke berkasnya, dan lihat SIAPA
+pemiliknya — pemilik `finance.dwiputramandiri@gmail.com` berarti Drive for
+Desktop, pemilik akun layanan berarti lewat API.
+
+### Dokumen di Drive tertanggal 16 September, bukan hasil sapuan di sesi ini
+
+Perlu selalu diingatkan ke Yosua: sapuan yang dijalankan dari sesi Claude ini
+menghasilkan berkas di WADAH SEMENTARA, bukan di Drive. Yang ada di Drive
+adalah hasil sapuan terakhir dari komputer Yosua sendiri (16 September).
+
+Jadi perbaikan format apa pun yang dikerjakan di sini — logo 86 px, dua
+template faktur, proforma — baru muncul di Drive setelah Yosua menjalankan
+`sapu-sekarang.bat` di komputernya dengan kode terbaru.

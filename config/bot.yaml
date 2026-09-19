@@ -16,10 +16,21 @@ folder_order_sheet:
 
 # ---- KE MANA LAPORAN DITARUH -------------------------------
 # ID folder Drive tempat bot menaruh laporan sapuan.
-# Kosongkan kalau belum ada; laporan tetap tersimpan di komputer.
-# Folder "LAPORAN BOT HAPPY PUMPKIN" dibuat 12 Sep 2026 di My Drive Yosua,
-# dan sudah di-Share ke akun layanan bot sebagai Editor.
-folder_laporan_id: "1BTHfFCgULMJGceqGJ9aPDub-Rf8KgBUI"
+#
+# SENGAJA DIKOSONGKAN, jangan diisi lagi. Diperiksa 19 September 2026:
+# folder "LAPORAN BOT ORDER SHEET" di Drive ADA tapi ISINYA KOSONG, padahal
+# bot sudah menyapu berkali-kali. Sebabnya sama dengan folder dokumen —
+# akun layanan tidak punya jatah penyimpanan Drive (storageQuotaExceeded),
+# jadi bisa membuat FOLDER tapi tidak bisa membuat BERKAS. CLAUDE.md bagian
+# 14 sudah menduga ini; sekarang terbukti.
+#
+# Kalau diisi, tiap sapuan menambah satu baris "Laporan gagal diunggah ke
+# Google Drive" di daftar masalah, padahal tidak ada yang bisa diperbaiki.
+#
+# Laporannya tetap tersimpan di komputer: keluaran/sapuan/
+# Kalau mau ikut naik ke Drive, taruh folder proyek di dalam folder Google
+# Drive for Desktop — jalur yang sama dengan dokumen.
+folder_laporan_id: ""
 
 # Nama folder laporan yang dibuat bot di dalam folder di atas.
 nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
