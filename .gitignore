@@ -1,0 +1,30 @@
+# Order sheet asli & data perusahaan — jangan pernah masuk git
+data/*.xlsx
+data/*.xls
+data/*.csv
+# subfolder juga — pola di atas TIDAK menutup data/semua/xxx.xlsx
+data/**/*.xlsx
+data/**/*.xls
+data/**/*.csv
+!data/CONTOH_*.xlsx
+
+# Hasil dokumen
+keluaran/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Kredensial
+kredensial*.json
+*credentials*.json
+token*.json
+data/arsip/
+
+# Kredensial bot & keadaan sapuan
+config/kredensial_bot.json
+data/kondisi_sapu.json
+keluaran/sapuan/

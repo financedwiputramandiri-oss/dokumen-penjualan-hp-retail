@@ -1,0 +1,163 @@
+# ============================================================
+# PENGATURAN BOT PENYAPU ORDER SHEET
+# ============================================================
+# Bot ini menarik semua order sheet dari folder Drive tiap 12 jam,
+# membuat draf dokumen untuk PO yang ATO-nya sudah terisi, dan
+# memberi tahu kalau ada PO lama yang angkanya atau rumusnya berubah.
+
+# ---- FOLDER ORDER SHEET DI GOOGLE DRIVE --------------------
+# Ambil ID-nya dari alamat folder di browser:
+#   https://drive.google.com/drive/folders/<INI_ID_NYA>
+folder_order_sheet:
+  - nama: "Order Sheet 2026"
+    id: "1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB"
+  - nama: "Order Sheet 2025"
+    id: "1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57"
+
+# ---- KE MANA LAPORAN DITARUH -------------------------------
+# ID folder Drive tempat bot menaruh laporan sapuan.
+#
+# SENGAJA DIKOSONGKAN, jangan diisi lagi. Diperiksa 19 September 2026:
+# folder "LAPORAN BOT ORDER SHEET" di Drive ADA tapi ISINYA KOSONG, padahal
+# bot sudah menyapu berkali-kali. Sebabnya sama dengan folder dokumen —
+# akun layanan tidak punya jatah penyimpanan Drive (storageQuotaExceeded),
+# jadi bisa membuat FOLDER tapi tidak bisa membuat BERKAS. CLAUDE.md bagian
+# 14 sudah menduga ini; sekarang terbukti.
+#
+# Kalau diisi, tiap sapuan menambah satu baris "Laporan gagal diunggah ke
+# Google Drive" di daftar masalah, padahal tidak ada yang bisa diperbaiki.
+#
+# Laporannya tetap tersimpan di komputer: keluaran/sapuan/
+# Kalau mau ikut naik ke Drive, taruh folder proyek di dalam folder Google
+# Drive for Desktop — jalur yang sama dengan dokumen.
+folder_laporan_id: ""
+
+# Nama folder laporan yang dibuat bot di dalam folder di atas.
+nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
+
+# ---- SHEET OTOMATISASI -------------------------------------
+# Sheet tempat draf dokumen ditulis (OTOMATISASI_HAPPY_PUMPKIN_SINKRON).
+sheet_otomatisasi_id: "1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw"
+
+# ---- APA YANG DIKERJAKAN BOT -------------------------------
+buat_draf_dokumen: true      # buat Invoice/Surat Jalan/Faktur Pajak/Packing List
+pantau_perubahan: true       # deteksi perubahan pada PO lama
+pantau_rumus: true           # ikut membandingkan rumus, bukan cuma angkanya
+
+# ---- DRAF DOKUMEN OTOMATIS ---------------------------------
+# Begitu ATO sebuah PO terisi DAN angkanya cocok dengan order sheet, bot
+# langsung membuat draf dokumennya sendiri. Kalau PO itu kemudian DIREVISI,
+# drafnya dibuat ulang memakai angka terbaru, dan draf lama dipindahkan ke
+# subfolder _KEDALUWARSA supaya tidak terpakai tanpa sengaja.
+#
+# Dokumen TIDAK PERNAH dibuat kalau angkanya belum cocok dengan order sheet.
+#
+# Kalau memakai Google Drive for Desktop (cara yang dipakai sekarang),
+# arahkan ke folder sinkronnya. Drive for Desktop yang menyalinkannya ke
+# Drive, jadi berkasnya dimiliki Yosua dan lepas dari batasan kuota akun
+# layanan.
+#
+# ADA DUA CARA MENULISNYA:
+#
+# 1. ALAMAT PENUH — hanya benar di SATU komputer:
+#      folder_draf: "G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN"
+#    Huruf drive Drive for Desktop bisa beda di komputer lain (G:, H:, ...),
+#    jadi config ini harus disunting ulang di tiap komputer.
+#
+# 2. ALAMAT RELATIF — sama di SEMUA komputer (dianjurkan):
+#      folder_draf: "../DOKUMEN OTOMATIS HAPPY PUMPKIN"
+#    Alamat relatif dihitung dari folder proyek ini. Jadi kalau folder
+#    proyek ditaruh DI DALAM folder Drive yang disinkronkan, satu config
+#    yang sama langsung benar di laptop maupun komputer kantor, berapa pun
+#    huruf drive-nya. Langkahnya ada di PANDUAN_BOT.md bagian
+#    "Bot dipakai dari beberapa perangkat".
+#
+# Sesudah mengunduh ulang proyek ini, PERIKSA baris di bawah — isian bawaan
+# menimpa alamat folder sinkron Bapak.
+folder_draf: "keluaran/draf"
+
+# true -> sekalian dibuatkan PDF-nya. Perlu LibreOffice terpasang, dan
+#         membuat sapuan jauh lebih lama. Bawaannya mati.
+draf_pdf: false
+
+# ---- KE MANA DOKUMENNYA DINAIKKAN DI DRIVE -----------------
+# Folder Drive tempat Invoice, Surat Jalan, Faktur Pajak, dan Packing List
+# ditaruh supaya divisi bisa langsung membukanya. Susunannya:
+#
+#   DOKUMEN OTOMATIS HAPPY PUMPKIN/
+#     Order Sheet Agustus 2026/
+#       PO 20 Agustus - Miniku/
+#         INVOICE_... , SURAT_JALAN_... , FAKTUR_PAJAK_... , PACKING_LIST_...
+#
+# Berkas bernama sama DITIMPA, bukan ditambah, supaya tidak menumpuk banyak
+# "Invoice Miniku" yang tidak jelas mana yang berlaku. Versi lama tetap aman
+# di folder _KEDALUWARSA pada komputer yang menjalankan bot.
+#
+# SENGAJA DIKOSONGKAN, jangan diisi tanpa alasan kuat.
+#
+# Akun layanan Google TIDAK punya jatah penyimpanan Drive, jadi setiap
+# unggahan ditolak dengan `storageQuotaExceeded`. Menambah izin tidak
+# menolong — dua jalan keluar resmi Google (Shared Drive dan OAuth
+# delegation) sama-sama butuh Google Workspace, sedangkan akun Happy
+# Pumpkin memakai @gmail.com.
+#
+# Karena itu dokumen dikirim lewat Google Drive for Desktop: bot menulis ke
+# `folder_draf` di atas, dan Drive yang menyalinkannya. Sudah terbukti jalan
+# 16 September 2026.
+#
+# Id folder DOKUMEN OTOMATIS HAPPY PUMPKIN, kalau suatu saat dibutuhkan
+# lagi: 1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP
+folder_dokumen_id: ""
+
+# ---- SEBERAPA HEMAT BOT MEMBACA ----------------------------
+# Bot TIDAK mengunduh spreadsheet. Ia membaca tab langsung lewat Sheets API.
+#
+# true  -> spreadsheet yang tidak berubah sejak sapuan terakhir dilewati
+#          sama sekali. Waktu ubahnya dibaca dari Google Drive, jadi order
+#          sheet lama yang sudah selesai tidak ditarik berulang tiap hari.
+# false -> semua spreadsheet dibaca ulang tiap sapuan (lebih lambat,
+#          hanya perlu kalau catatan kondisi rusak atau mau memaksa).
+lewati_yang_tidak_berubah: true
+
+# Hanya order sheet yang diubah dalam sekian hari terakhir yang diperiksa.
+# Isi 0 untuk memeriksa semuanya.
+hanya_yang_berubah_hari: 0
+
+# ---- BOT DIPAKAI DARI BEBERAPA KOMPUTER ---------------------
+# true -> sebelum menyapu, bot memasang kunci di sheet OTOMATISASI
+#         (tab BOT_KUNCI). Komputer lain yang kebetulan bangun pada jam
+#         yang sama melihat kunci itu SEKETIKA dan mengalah.
+#
+# Kunci di jadwal/sapu.bat TIDAK cukup untuk ini: kunci itu berupa berkas
+# di komputer yang bersangkutan, jadi hanya menahan dua sapuan di satu
+# komputer. Kunci berbasis berkas di folder Drive juga tidak menolong,
+# sebab Drive baru menyinkronkan beberapa detik kemudian dan dalam jeda
+# itu kedua komputer sama-sama merasa mendapat kunci.
+#
+# Kunci ini kedaluwarsa sendiri sesudah 45 menit, jadi komputer yang mati
+# di tengah sapuan tidak memblokir komputer lain.
+#
+# Hanya matikan kalau memang cuma ada SATU komputer dan sheet
+# OTOMATISASI sedang tidak bisa dihubungi.
+pakai_kunci_bersama: true
+
+# ---- BERKAS ------------------------------------------------
+berkas_kredensial: "config/kredensial_bot.json"
+
+# Catatan sapuan: sidik jari tiap PO, dipakai untuk tahu apa yang berubah
+# dan dokumen mana yang perlu dibuat ulang.
+#
+# SATU KOMPUTER SAJA -> biarkan seperti di bawah ini.
+#
+# BEBERAPA KOMPUTER -> pindahkan ke dalam folder yang disinkronkan Google
+# Drive, supaya semua komputer membaca catatan yang SAMA:
+#
+#     berkas_kondisi: "../DOKUMEN OTOMATIS HAPPY PUMPKIN/_bot/kondisi_sapu.json"
+#
+# (alamat relatif dihitung dari folder proyek ini, sama seperti folder_draf)
+#
+# Kalau tiap komputer punya catatannya sendiri, komputer kedua menganggap
+# semua dokumen belum pernah dibuat, lalu mengarsipkan dokumen komputer
+# pertama ke _KEDALUWARSA tanpa alasan. Bot memperingatkan kalau
+# mendeteksi keadaan itu.
+berkas_kondisi: "data/kondisi_sapu.json"

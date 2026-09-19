@@ -1,0 +1,5 @@
+# Sapuan order sheet Happy Pumpkin, tiap 12 jam (06:00 dan 18:00).
+# Pasang dengan:  crontab -e   lalu tempel baris di bawah.
+# Ganti /path/ke/ dengan lokasi folder proyek yang sebenarnya.
+
+0 6,18 * * * cd /path/ke/dokumen-penjualan-hp-retail && /usr/bin/python3 jalankan.py sapu >> keluaran/sapuan/log.txt 2>&1
