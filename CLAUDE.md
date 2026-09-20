@@ -2991,3 +2991,41 @@ ia baru saja meminta data customer dikosongkan sampai ia sendiri yang
 mengisi. Jangan menyimpulkan data customer dari berkas contoh.
 
 Tes 209 -> 232.
+
+### Revisi format MTN dari suntingan Yosua — 20 September 2026
+
+Yosua mengirim dua tangkapan layar dari berkas MTN yang ia sunting sendiri:
+blok CUSTOMER, dan bagian bawah invoice. **Gambarnya tidak dipakai sebagai
+acuan** — berkas suntingannya dibongkar sel per sel, sama seperti bagian 20.
+
+| Bagian | Yang saya buat | Revisi Yosua |
+|---|---|---|
+| Blok CUSTOMER | kisi-kisi, garis di tiap baris | **satu kotak luar** + garis di bawah label saja |
+| Label CUSTOMER | ditulis di kolom A (3,43 satuan) | digabung **A:C** |
+| Blok rekening | sejajar Subtotal, **tanpa kotak** | mulai satu baris di bawah Subtotal, **kotak medium** A:C |
+| `Hormat kami,` | satu baris di bawah rekening | **sejajar** baris rekening terakhir |
+| Kotak nomor Surat Jalan | medium | **tipis** |
+
+Blok CUSTOMER itu **penyimpangan yang disengaja dari berkas asli MTN**, yang
+justru memberi garis atas-bawah di tiap baris (`A11:C15` semuanya `LRTB`).
+Yosua memilih bentuk yang lebih bersih. Jangan dikembalikan ke kisi-kisi hanya
+karena berkas aslinya begitu — sama seperti keputusan "blok penutup tidak
+bercetak tebal" di bagian 20.
+
+Template blok CUSTOMER ini dipakai **Invoice DAN Surat Jalan** — keduanya
+lewat `_blok_customer()` yang sama.
+
+### Cacat yang hanya kelihatan dari gambar: "STOMER"
+
+Percobaan pertama tidak menggabung baris label. Karena kolom A cuma 3,43
+satuan dan tulisannya dirata-tengahkan, "CUSTOMER" terpotong garis kotaknya
+dan tercetak **"STOMER"**. Nilai selnya tetap `"CUSTOMER"`, jadi tes berbasis
+nilai sel lolos semua.
+
+Ketahuan setelah PDF-nya dirender jadi PNG lalu **dilihat sebagai gambar**.
+Ini kali keenam pola yang sama muncul (kolom C Surat Jalan bagian 19, DISK%
+proforma bagian 28, label Faktur Pajak bagian 28, tanggal MTN bagian 31,
+rumus rusak karena lembar master dihapus bagian 33, dan sekarang ini).
+**Cacat lebar kolom tidak pernah kelihatan dari membaca nilai sel.**
+
+Lima tes baru. Tes 232 -> 237.

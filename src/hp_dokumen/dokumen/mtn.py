@@ -153,6 +153,11 @@ def _blok_customer(ws: Worksheet, cust, nama_tampil: str, baris_label: int,
     masing bergaris empat sisi), sedangkan di tab SURAT JALAN keduanya berbagi
     SATU kotak (F11:H12, tanpa garis pemisah di tengahnya).
     """
+    # Label CUSTOMER digabung A:C. Tanpa penggabungan ini tulisannya
+    # ditengahkan di kolom A yang cuma 3,43 satuan, lalu terpotong garis
+    # kotaknya - tercetak "STOMER". Ketahuan dari gambar hasil render.
+    ws.merge_cells(start_row=baris_label, start_column=1,
+                   end_row=baris_label, end_column=3)
     gaya.sel_isi(ws, baris_label, 1, "CUSTOMER", ukuran=HURUF_LABEL, rata="center")
     for awal, akhir, label, nilai in kolom_kanan:
         for r, teks, tebal in ((baris_label, label, False),
@@ -163,7 +168,10 @@ def _blok_customer(ws: Worksheet, cust, nama_tampil: str, baris_label: int,
             gaya.sel_isi(ws, r, awal, teks, ukuran=HURUF_LABEL, tebal=tebal,
                          rata="center")
         if kotak_gabung:
-            gaya.kotak(ws, baris_label, awal, baris_label + 1, akhir)
+            # TIPIS, bukan medium - satu-satunya garis tebal di dokumen MTN
+            # adalah kotak blok rekening.
+            gaya.kotak(ws, baris_label, awal, baris_label + 1, akhir,
+                       tebal="thin")
         else:
             gaya.beri_garis(ws, baris_label, awal, baris_label + 1, akhir)
 
@@ -179,10 +187,18 @@ def _blok_customer(ws: Worksheet, cust, nama_tampil: str, baris_label: int,
         teks = alamat[i - 1] if i - 1 < len(alamat) else None
         gaya.sel_isi(ws, r + i, 1, teks, ukuran=HURUF_CUSTOMER)
 
-    # Kotak blok customer: garis luar + garis pemisah antar baris, sama
-    # seperti A11:C15 di berkas asli.
-    gaya.beri_garis(ws, baris_label, 1,
-                    baris_label + BARIS_BLOK_CUSTOMER - 1, 3)
+    # Kotak blok customer: SATU kotak luar, ditambah garis di bawah label
+    # CUSTOMER saja. TIDAK ada garis antar baris alamat.
+    #
+    # Revisi Yosua 20 September 2026, dibaca dari berkas suntingannya sendiri
+    # (A12..A15 cuma bergaris kiri, C12..C15 cuma bergaris kanan). Berkas asli
+    # MTN memang memberi garis atas-bawah di tiap baris, tapi Yosua memilih
+    # bentuk yang lebih bersih ini - nama dan alamat customer terbaca sebagai
+    # satu blok, bukan empat kotak terpisah. Jangan dikembalikan ke kisi-kisi
+    # hanya karena berkas aslinya begitu.
+    akhir_blok = baris_label + BARIS_BLOK_CUSTOMER - 1
+    gaya.beri_garis(ws, baris_label, 1, baris_label, 3)      # kotak label
+    gaya.kotak(ws, baris_label, 1, akhir_blok, 3, tebal="thin")
 
 
 def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
@@ -273,11 +289,18 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
         gaya.sel_isi(ws, p + i, 8, nilai, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
     gaya.beri_garis(ws, p, 7, p + 2, 8)
 
-    # ---- rekening di kolom A, sejajar penutup ----------------------------
-    for i, teks in enumerate(perusahaan.baris_rekening()):
-        gaya.sel_isi(ws, p + i, 1, teks, ukuran=HURUF_ISI, tebal=True)
+    # ---- rekening di kolom A, MULAI SATU BARIS DI BAWAH Subtotal ---------
+    # Revisi Yosua 20 September 2026: blok rekening sejajar mulai dari baris
+    # "Value Disc", bukan dari "Subtotal", dan dikelilingi kotak medium -
+    # sama seperti faktur DPM. Versi sebelumnya menempelkannya sejajar
+    # Subtotal dan tanpa kotak sama sekali.
+    rekening = perusahaan.baris_rekening()
+    for i, teks in enumerate(rekening):
+        gaya.sel_isi(ws, p + 1 + i, 1, teks, ukuran=HURUF_ISI, tebal=True)
+    if rekening:
+        gaya.kotak(ws, p + 1, 1, p + len(rekening), 3)
 
-    akhir = p + max(3, len(perusahaan.baris_rekening()))
+    akhir = p + max(3, len(rekening))
     ws.merge_cells(start_row=akhir, start_column=7, end_row=akhir, end_column=8)
     gaya.sel_isi(ws, akhir, 7, "Hormat kami,", ukuran=HURUF_ISI, rata="center")
 

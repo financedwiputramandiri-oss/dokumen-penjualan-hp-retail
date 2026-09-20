@@ -125,3 +125,68 @@ def test_nomor_mtn_berbentuk_FA_dan_SJ():
     assert nomor_mtn("SJ", "001", date(2026, 5, 5)) == "SJ-001/05/2026"
     # nomor yang belum diisi tetap jadi penanda kosong, bukan ditebak
     assert "_" in nomor_mtn("FA", "________", date(2026, 5, 5))
+
+
+# ---------------------------------------------- revisi Yosua 20 Sep 2026
+def _mtn_inv(order, cfg, daftar, mtn):
+    ws = Workbook().active
+    cust = daftar.cari(order.nama_tab)
+    buat_invoice_mtn(ws, order, tentukan_nett(order, cust), cust, mtn,
+                     cfg.pengaturan, "001")
+    return ws
+
+
+def test_label_customer_digabung_supaya_tidak_terpotong(order, cfg, daftar, mtn):
+    """Kolom A cuma 3,43 satuan.
+
+    Tanpa digabung A:C, tulisan "CUSTOMER" yang dirata-tengahkan terpotong
+    garis kotaknya dan tercetak "STOMER". Tidak kelihatan sama sekali dari
+    nilai selnya - hanya muncul di gambar hasil render.
+    """
+    ws = _mtn_inv(order, cfg, daftar, mtn)
+    assert ws.cell(11, 1).value == "CUSTOMER"
+    assert "A11:C11" in {str(m) for m in ws.merged_cells.ranges}
+
+
+def test_blok_customer_satu_kotak_tanpa_garis_antar_baris(order, cfg, daftar, mtn):
+    """Revisi Yosua: kotak luar + satu garis di bawah label CUSTOMER saja.
+
+    Berkas asli MTN memberi garis atas-bawah di TIAP baris, tapi Yosua
+    memilih bentuk yang lebih bersih ini. Jangan dikembalikan ke kisi-kisi
+    hanya karena berkas aslinya begitu.
+    """
+    ws = _mtn_inv(order, cfg, daftar, mtn)
+    assert ws.cell(11, 1).border.bottom.style, "garis di bawah label hilang"
+    for r in (13, 14, 15):
+        assert not ws.cell(r, 1).border.top.style, (
+            f"A{r} masih bergaris atas - blok customer jadi kisi-kisi"
+        )
+    assert ws.cell(15, 1).border.bottom.style, "kotak tidak ditutup di bawah"
+
+
+def test_rekening_mulai_satu_baris_di_bawah_subtotal_dan_berkotak(
+        order, cfg, daftar, mtn):
+    """Sejajar "Value Disc", dengan kotak medium - seperti faktur DPM."""
+    ws = _mtn_inv(order, cfg, daftar, mtn)
+    baris_sub = next(r for r in range(1, ws.max_row + 1)
+                     if str(ws.cell(r, 7).value or "").strip() == "Subtotal")
+    assert ws.cell(baris_sub, 1).value is None, "rekening tidak boleh sejajar Subtotal"
+    assert "PEMBAYARAN" in str(ws.cell(baris_sub + 1, 1).value or "").upper()
+    assert ws.cell(baris_sub + 1, 1).border.top.style == "medium"
+
+
+def test_hormat_kami_sejajar_baris_rekening_terakhir(order, cfg, daftar, mtn):
+    ws = _mtn_inv(order, cfg, daftar, mtn)
+    baris_hormat = next(r for r in range(1, ws.max_row + 1)
+                        if str(ws.cell(r, 7).value or "") == "Hormat kami,")
+    assert "A/C NO" in str(ws.cell(baris_hormat, 1).value or "").upper()
+
+
+def test_kotak_nomor_surat_jalan_tipis_bukan_tebal(order, cfg, daftar, mtn):
+    """Satu-satunya garis TEBAL di dokumen MTN adalah kotak blok rekening."""
+    ws = Workbook().active
+    cust = daftar.cari(order.nama_tab)
+    buat_surat_jalan_mtn(ws, order, cust, mtn, "001")
+    kolom_label = next(c for c in range(1, ws.max_column + 1)
+                       if str(ws.cell(11, c).value or "") == "SURAT JALAN")
+    assert ws.cell(11, kolom_label).border.top.style == "thin"
