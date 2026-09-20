@@ -3053,3 +3053,80 @@ untuk tab Invoice baris 9-nya kosong, dan nomornya memang sudah ada di label
 FAKTUR di kanan. Ada tes yang menolak munculnya judul di faktur MTN.
 
 Dua tes baru. Tes 237 -> 239.
+
+## 34. Sapuan seluruh order sheet dengan format terbaru — 20 September 2026
+
+Yosua: *"sekarang jalankan sapuan sapuan order sheet dan upload ke google drive
+ke folder ini .../1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP"* (folder
+`DOKUMEN OTOMATIS HAPPY PUMPKIN`).
+
+Dijalankan dengan cara yang sama seperti bagian 29 — kunci bot tidak ada di
+wadah ini dan memang tidak boleh dikirim ke sini, jadi 21 order sheet diunduh
+lewat konektor Drive lalu `buat-semua` dijalankan per berkas.
+
+### Hasil
+
+| | 18 Sep (bagian 30) | 20 Sep |
+|---|---:|---:|
+| Order sheet terbaca | 21 dari 22 | 21 dari 22 |
+| PO seluruhnya | 454 | **459** |
+| PO menghasilkan dokumen | 230 | **235** |
+| Berkas | 943 | **728** |
+| Qty terbit | 75.118 pcs | **75.617 pcs** |
+| Nilai bersih terbit | Rp3.854.901.550 | **Rp3.882.026.298** |
+
+Berkasnya **turun** dari 943 ke 728 justru karena formatnya membaik: sejak
+bagian 33 Invoice dan Surat Jalan digabung jadi SATU berkas, jadi 4 berkas per
+PO (INVOICE_SURAT_JALAN, FAKTUR_PAJAK, PACKING_LIST, + PROFORMA untuk Haritsa
+& Katamama), bukan 5. Selisih PO 230 -> 235 seluruhnya dari September 2026 yang
+memang bertambah isinya sejak sapuan terakhir.
+
+Per bulan yang terbit: Januari 2026 29, Maret 2026 10, April 2026 35,
+Mei 2026 25, Juni 2026 21, Juli 2026 30, Agustus 2026 (Harga Baru) 16,
+September 2026 15, Agustus 2025 24, November 2025 10, Desember 2025 20.
+
+### Sepuluh order sheet masih terhalang pencocokan — sebabnya tetap di SHEET
+
+224 PO tidak terbit, seluruhnya dengan sebab yang sama: angka belum cocok
+dengan baris TOTAL order sheet. Rinciannya sudah tercatat di bagian 29 dan 30;
+empat rumus yang harus diperbaiki Yosua belum berubah:
+
+| Order sheet | Tab | Sel | Sekarang | Seharusnya |
+|---|---|---|---|---|
+| Februari 2026 | PO 5 Feb - Defara Baby | W3:W90 | `=SUM(N3:S3)` | `=SUM(N3:V3)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W4:W157 | `=SUM(N4:S4)` | `=SUM(N4:V4)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W160 | `=sum(W24:W71,W72:W79)` | `=SUM(W4:W157)` |
+| Agustus 2026 Harga Lama | PO 07 Agu - Katamama Tapos | W116 | `=SUM(W3:W108,W114:W115)` | `=SUM(W3:W115)` |
+
+Order Sheet Juni 2025 (11,4 MB) tetap ditolak Google saat diekspor.
+
+### Yang bisa dan TIDAK bisa diunggah dari sesi ini — tegaskan ini tiap kali
+
+Yang naik ke folder Yosua, lewat jalur `textContent` + `contentMimeType:
+text/csv` (bagian 14):
+
+| Berkas | Isi |
+|---|---|
+| `RINGKASAN SAPUAN 20 SEPTEMBER 2026` | 21 baris, satu per order sheet |
+| `REKAP SAPUAN PER PO 20 SEPTEMBER 2026` | 235 PO terbit + 224 PO belum terbit |
+
+**728 dokumennya sendiri TIDAK diunggah, dan memang TIDAK BOLEH.** Dua alasan
+yang berbeda, dua-duanya berlaku:
+
+1. **Tidak muat.** Satu berkas gabungan = 36.471 byte = 48.628 huruf base64
+   dalam satu panggilan. Konektor Drive hanya mengirim berkas sebagai teks.
+2. **Lebih penting: akan dihapus bot sendiri.** Berkas yang diunggah dari sini
+   tidak dikenal `data/kondisi_sapu.json` di komputer Yosua. Sapuan berikutnya
+   akan menganggapnya draf asing dan memindahkannya ke `_KEDALUWARSA` —
+   diam-diam, tanpa galat.
+
+**Jalan yang benar tetap satu: klik dua kali `jadwal/sapu-semua-bulan.bat` di
+komputer Yosua.** Bot menulis ke `folder_draf`, Drive for Desktop yang
+menyalinkannya, dan sidik jarinya ikut tercatat. Jalur ini sudah terbukti sejak
+16 September (bagian 25 dan 30): berkas di `DOKUMEN OTOMATIS HAPPY PUMPKIN`
+dimiliki `finance.dwiputramandiri@gmail.com`, bukan akun layanan.
+
+Sebelum menjalankannya, `data/kondisi_sapu.json` harus DIHAPUS dulu — yang
+berubah sejak sapuan terakhirnya bukan order sheetnya melainkan format
+dokumennya, dan `SidikPO` tidak pernah mengawasi kode (jebakan bagian 26, 27,
+dan 32). Tanpa itu, seluruh 235 PO akan dilewati sebagai "tidak berubah".
