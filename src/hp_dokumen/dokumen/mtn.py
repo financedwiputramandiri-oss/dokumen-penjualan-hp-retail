@@ -75,6 +75,17 @@ LEBAR_UKURAN_SJ_SEMPIT = 5.6
 LEBAR_QTY_SJ = 8.0
 JATAH_A4_SJ = 115.0     # sama dengan DPM, lihat CLAUDE.md bagian 19
 
+# Judul "SURAT JALAN" di tengah, baris 9. TIDAK ada di berkas MTN asli -
+# ini tambahan Yosua 20 September 2026, dibaca dari tangkapan layar berkas
+# suntingannya. Ukuran 16 menyamakannya dengan judul Surat Jalan DPM
+# (surat_jalan.HURUF_JUDUL_DOK), jadi kedua perusahaan memakai ukuran yang
+# sama. FAKTUR MTN tetap TANPA judul - berkas suntingan Yosua untuk tab
+# Invoice baris 9-nya kosong, dan nomornya memang sudah ada di label FAKTUR.
+JUDUL_SJ = "SURAT JALAN"
+BARIS_JUDUL_SJ_DOK = 9
+HURUF_JUDUL_SJ_DOK = 16
+TINGGI_JUDUL_SJ_DOK = 21.0
+
 BARIS_LABEL_SJ = 11
 BARIS_NILAI_SJ = 12
 BARIS_KALIMAT_SJ = 17
@@ -350,6 +361,12 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
     gaya.atur_lebar(ws, lebar)
 
     _kop(ws, perusahaan, 1, LEBAR_SJ_TETAP[1], LEBAR_SJ_TETAP[2])
+
+    # Judul dokumen, ditengahkan selebar seluruh tabel.
+    ws.merge_cells(start_row=BARIS_JUDUL_SJ_DOK, start_column=1,
+                   end_row=BARIS_JUDUL_SJ_DOK, end_column=kol_qty)
+    gaya.judul(ws, BARIS_JUDUL_SJ_DOK, 1, JUDUL_SJ, ukuran=HURUF_JUDUL_SJ_DOK)
+    ws.row_dimensions[BARIS_JUDUL_SJ_DOK].height = TINGGI_JUDUL_SJ_DOK
 
     nama_tampil = (cust.nama_di_dokumen if cust else "") or order.customer_kunci
     # Tanggal butuh ruang: kolom Qty cuma 8 satuan, jauh kurang untuk

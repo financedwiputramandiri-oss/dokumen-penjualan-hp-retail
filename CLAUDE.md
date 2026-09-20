@@ -3029,3 +3029,27 @@ rumus rusak karena lembar master dihapus bagian 33, dan sekarang ini).
 **Cacat lebar kolom tidak pernah kelihatan dari membaca nilai sel.**
 
 Lima tes baru. Tes 232 -> 237.
+
+### Surat Jalan MTN diberi JUDUL di tengah — 20 September 2026
+
+Yosua mengirim tangkapan layar lembar `SURAT JALAN` dari berkas gabungan
+keluaran program yang ia sunting sendiri. Satu-satunya yang berbeda: baris 9
+berisi **`SURAT JALAN`** ditengahkan dan tebal, di antara kop dan blok
+CUSTOMER.
+
+**Berkas MTN asli TIDAK punya judul itu** — diperiksa ulang, baris 9 tab
+`SURAT JALAN` pada `FA 0010526` memang kosong. Jadi ini tambahan Yosua, bukan
+sesuatu yang saya lewatkan. Sama seperti blok CUSTOMER tanpa kisi-kisi:
+penyimpangan yang disengaja dari berkas asli.
+
+| | |
+|---|---|
+| Letak | baris 9, digabung dari kolom A sampai kolom Qty |
+| Ukuran | **16**, sama dengan `surat_jalan.HURUF_JUDUL_DOK` milik DPM |
+| Tinggi baris | 21,0 |
+
+**FAKTUR MTN tetap TANPA judul.** Bukan kelalaian: berkas suntingan Yosua
+untuk tab Invoice baris 9-nya kosong, dan nomornya memang sudah ada di label
+FAKTUR di kanan. Ada tes yang menolak munculnya judul di faktur MTN.
+
+Dua tes baru. Tes 237 -> 239.

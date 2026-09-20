@@ -190,3 +190,37 @@ def test_kotak_nomor_surat_jalan_tipis_bukan_tebal(order, cfg, daftar, mtn):
     kolom_label = next(c for c in range(1, ws.max_column + 1)
                        if str(ws.cell(11, c).value or "") == "SURAT JALAN")
     assert ws.cell(11, kolom_label).border.top.style == "thin"
+
+
+def test_surat_jalan_mtn_berjudul_di_tengah(order, cfg, daftar, mtn):
+    """Judul "SURAT JALAN" di baris 9, ditengahkan selebar tabel.
+
+    TIDAK ada di berkas MTN asli - ini tambahan Yosua 20 September 2026.
+    Ukurannya disamakan dengan judul Surat Jalan DPM supaya kedua perusahaan
+    memakai ukuran yang sama.
+    """
+    from hp_dokumen.dokumen.mtn import BARIS_JUDUL_SJ_DOK, HURUF_JUDUL_SJ_DOK
+    from hp_dokumen.dokumen.surat_jalan import HURUF_JUDUL_DOK
+
+    ws = Workbook().active
+    cust = daftar.cari(order.nama_tab)
+    buat_surat_jalan_mtn(ws, order, cust, mtn, "001")
+    sel = ws.cell(BARIS_JUDUL_SJ_DOK, 1)
+    assert sel.value == "SURAT JALAN"
+    assert sel.alignment.horizontal == "center"
+    assert sel.font.bold
+    assert HURUF_JUDUL_SJ_DOK == HURUF_JUDUL_DOK, "beda ukuran dengan judul DPM"
+    lebar = [m for m in ws.merged_cells.ranges
+             if m.min_row == BARIS_JUDUL_SJ_DOK and m.min_col == 1]
+    assert lebar, "judul tidak digabung, jadi tidak benar-benar di tengah"
+
+
+def test_invoice_mtn_TIDAK_berjudul(order, cfg, daftar, mtn):
+    """Nomornya sudah ada di label FAKTUR; berkas suntingan Yosua pun kosong."""
+    ws = _mtn_inv(order, cfg, daftar, mtn)
+    from hp_dokumen.dokumen.mtn import BARIS_JUDUL_SJ_DOK
+
+    for c in range(1, 9):
+        assert ws.cell(BARIS_JUDUL_SJ_DOK, c).value in (None, ""), (
+            "faktur MTN tidak boleh punya judul dokumen"
+        )
