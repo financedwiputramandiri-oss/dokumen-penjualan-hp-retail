@@ -26,6 +26,7 @@ from openpyxl.styles import Font
 
 from ..model import Order
 from . import gaya
+from . import rumus as rms
 
 KOL_NO = 1
 KOL_KODE = 2
@@ -75,7 +76,7 @@ MIN_KODE, MAKS_KODE = 11.0, 23.0
 MIN_DESKRIPSI = 20.0
 
 
-def _lebar_menyesuaikan(order) -> dict[int, float]:
+def _lebar_menyesuaikan(order, min_ab: float = 0.0) -> dict[int, float]:
     """Lebarkan kolom ARTICLE CODE mengikuti kode terpanjang di PO ini.
 
     Aturannya sama dengan invoice: kode seperti `41065 (Bottom/Celana)`
@@ -87,9 +88,10 @@ def _lebar_menyesuaikan(order) -> dict[int, float]:
     lebar = dict(LEBAR)
     kode = [str(b.kode) for blok in order.blok for b in blok.baris if b.qty > 0]
     if not kode:
-        return lebar
+        kode = [""]
     huruf = 1.05
-    butuh = min(max(max(len(k) for k in kode) * huruf + 1.5, MIN_KODE), MAKS_KODE)
+    butuh = min(max(max(len(k) for k in kode) * huruf + 1.5, MIN_KODE,
+                    min_ab - lebar[1]), MAKS_KODE)
     tambahan = butuh - lebar[2]
     lebar[2] = butuh
     lebar[5] = max(lebar[5] - tambahan, MIN_DESKRIPSI)
@@ -145,7 +147,8 @@ def _label_terpakai(blok) -> list[str]:
     return [str(label[i]).strip() for i in _posisi_terpakai(blok)]
 
 
-def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> int:
+def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str],
+                 pakai_rumus: bool = False) -> int:
     """Satu tabel untuk satu blok. Mengembalikan baris kosong sesudahnya."""
     posisi = _posisi_terpakai(blok)
     label = _label_terpakai(blok)
@@ -199,7 +202,13 @@ def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> in
             q = b.qty_per_ukuran[i] if i < len(b.qty_per_ukuran) else 0
             gaya.sel_isi(ws, r, KOL_UKURAN_MULAI + kolom_ke, q or None,
                          rata="center", ukuran=HURUF_ANGKA, lipat=True)
-        gaya.sel_isi(ws, r, kol_qty, b.qty, rata="center", tebal=True,
+        # Kolom Qty = jumlah kolom ukuran di baris yang sama, seperti
+        # `=SUM(E21:J21)` pada Surat Jalan asli MTN. Ditulis sebagai rumus
+        # supaya penerima barang bisa melihat sendiri qty itu dari mana.
+        isi_qty = (rms.qty_surat_jalan(r, gaya.huruf(KOL_UKURAN_MULAI),
+                                       gaya.huruf(kol_qty - 1))
+                   if (pakai_rumus and kol_qty > KOL_UKURAN_MULAI) else b.qty)
+        gaya.sel_isi(ws, r, kol_qty, isi_qty, rata="center", tebal=True,
                      ukuran=HURUF_ANGKA, lipat=True)
         for i in range(len(kolom_gudang)):
             gaya.sel_isi(ws, r, kol_qty + 1 + i, None, ukuran=HURUF_TEKS)
@@ -212,10 +221,11 @@ def _tulis_tabel(ws: Worksheet, blok, baris: int, kolom_gudang: list[str]) -> in
 
 def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
             tanggal_dokumen: Optional[date], judul: str,
-            kolom_gudang: list[str]) -> None:
+            kolom_gudang: list[str], pakai_rumus: bool = False) -> None:
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
     kolom_akhir = _kolom_terakhir(order, len(kolom_gudang))
-    for kolom, lebar in _lebar_menyesuaikan(order).items():
+    for kolom, lebar in _lebar_menyesuaikan(
+            order, gaya.min_kolom_ab(perusahaan)).items():
         ws.column_dimensions[gaya.huruf(kolom)].width = lebar
     # Kolom ukuran, Qty, dan kolom gudang tidak bisa ditulis tetap seperti di
     # atas: jumlahnya ikut berapa banyak ukuran yang benar-benar terpakai.
@@ -275,7 +285,7 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     r = BARIS_TABEL
     for blok in order.blok:
         if any(b.qty > 0 for b in blok.baris):
-            r = _tulis_tabel(ws, blok, r, kolom_gudang)
+            r = _tulis_tabel(ws, blok, r, kolom_gudang, pakai_rumus)
 
     r += 1
     # Urutan tanda tangan: PENERIMA dulu, baru Pengirim, lalu Mengetahui.
@@ -294,8 +304,10 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
     gaya.siapkan_cetak(ws, kolom_akhir, landscape=False)
 
 
-def buat_surat_jalan(ws, order, customer, perusahaan, nomor: str, tanggal_dokumen=None) -> None:
-    _bangun(ws, order, customer, perusahaan, nomor, tanggal_dokumen, "SURAT JALAN", [])
+def buat_surat_jalan(ws, order, customer, perusahaan, nomor: str, tanggal_dokumen=None,
+                     pakai_rumus: bool = False) -> None:
+    _bangun(ws, order, customer, perusahaan, nomor, tanggal_dokumen, "SURAT JALAN", [],
+            pakai_rumus)
 
 
 def buat_packing_list(ws, order, customer, perusahaan, nomor: str, tanggal_dokumen=None) -> None:

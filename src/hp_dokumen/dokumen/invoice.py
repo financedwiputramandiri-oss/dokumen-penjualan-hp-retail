@@ -24,6 +24,7 @@ from ..model import KeputusanNett, Order
 from ..nilai_bersih import nett_baris, persen_diskon_efektif
 from ..ukuran import bagi_rata_nilai, deskripsi_dengan_ukuran
 from . import gaya
+from . import rumus as rms
 
 KOLOM_TERAKHIR = 8          # A..H, persis seperti faktur asli DPM
 BARIS_KOP = 2               # kop mulai baris 2 (baris 1 dibiarkan kosong)
@@ -126,7 +127,8 @@ def lebar_judul_faktur(ukuran: int) -> float:
     return 10 * (ukuran / 11.0) + 1.0
 
 
-def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL) -> dict:
+def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL,
+                       min_ab: float = 0.0) -> dict:
     """Lebarkan kolom ARTICLE CODE dan DESKRIPSI mengikuti isi terpanjang.
 
     Lebar tetap seperti faktur asli memotong kode panjang macam
@@ -142,7 +144,8 @@ def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL) -> dic
     huruf = 1.05  # perkiraan lebar satu huruf Calibri 10 dalam satuan kolom
     kode = max(len(str(b.kode)) for b in baris) * huruf + 1.5
     lebar[2] = min(
-        max(kode, MIN_KODE, lebar_judul_faktur(gaya_faktur.ukuran_judul) - lebar[1]),
+        max(kode, MIN_KODE, lebar_judul_faktur(gaya_faktur.ukuran_judul) - lebar[1],
+            min_ab - lebar[1]),
         MAKS_KODE,
     )
 
@@ -268,6 +271,7 @@ def buat_invoice(
     pengaturan,
     nomor: str,
     tanggal_dokumen: Optional[date] = None,
+    pakai_rumus: bool = False,
 ) -> None:
     """Tulis invoice ke satu lembar, mengikuti faktur asli CV Dwi Putra Mandiri.
 
@@ -292,7 +296,7 @@ def buat_invoice(
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
     ada_diskon = any(b.diskon > 0.5 for b in baris)
-    lebar_kolom = lebar_menyesuaikan(baris, gy)
+    lebar_kolom = lebar_menyesuaikan(baris, gy, gaya.min_kolom_ab(perusahaan))
 
     gaya.kop_dpm(
         ws, perusahaan,
@@ -374,11 +378,19 @@ def buat_invoice(
         gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=gy.huruf_angka)
         gaya.sel_isi(ws, r, 2, b.kode, ukuran=gy.huruf_teks, lipat=True)
         # Deskripsi MELIPAT di keenam faktur asli, bukan terpotong.
-        gaya.sel_isi(ws, r, 3, b.deskripsi, ukuran=gy.huruf_teks, lipat=True)
+        # Deskripsi diambil lewat VLOOKUP ke lembar MASTER HARGA kalau
+        # dokumennya memuat lembar itu. Tidak berlaku untuk faktur per
+        # ukuran: deskripsinya sudah ditambahi "Uk. 3-6M", jadi tidak ada
+        # di master dan VLOOKUP-nya akan kosong.
+        gaya.sel_isi(ws, r, 3,
+                     rms.nama_barang(r) if (pakai_rumus and not per_ukuran)
+                     else b.deskripsi,
+                     ukuran=gy.huruf_teks, lipat=True)
         gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=gy.huruf_angka)
         ws.row_dimensions[r].height = gy.tinggi_data
+        harga_sel = rms.harga(r) if pakai_rumus else b.harga
         if ada_diskon:
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 5, harga_sel, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             gaya.sel_isi(ws, r, 6, (b.diskon / b.qty) if b.qty else 0.0,
                          angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP,
@@ -387,15 +399,21 @@ def buat_invoice(
             # faktur asli 0310726 MAE BEBE baris 1: 18 x 62.900 = 1.132.200,
             # diskon 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama
             # dengan baris "Total", bukan "Subtotal".
-            gaya.sel_isi(ws, r, 8, b.nett, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 8,
+                         rms.jumlah_baris(r, "D", "E", "G") if pakai_rumus
+                         else b.nett,
+                         angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
         else:
             # Tanpa diskon, Harga menempati sel gabungan E:G dan
             # Jumlah = qty x harga, persis 0020826 CV. BASA MANDIRI.
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
-            gaya.sel_isi(ws, r, 5, b.harga, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 5, harga_sel, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             for kolom in (6, 7):
                 gaya.sel_isi(ws, r, kolom, None, ukuran=gy.huruf_angka)
-            gaya.sel_isi(ws, r, 8, b.kotor, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 8,
+                         rms.jumlah_baris(r, "D", "E", None) if pakai_rumus
+                         else b.kotor,
+                         angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
         r += 1
     akhir = r - 1
     gaya.beri_garis(ws, j, 1, akhir, KOLOM_TERAKHIR)
@@ -421,6 +439,32 @@ def buat_invoice(
         ("DPP", dpp), (label_ppn, ppn), ("Total", dpp + ppn),
     ]
     p = akhir + 1
+    # Rumus penutup memakai letak baris yang baru diketahui di sini.
+    # Kolom "Nilai Diskon" per baris SENGAJA tetap berupa angka — lihat
+    # penjelasan panjangnya di dokumen/rumus.py.
+    if pakai_rumus:
+        # Label "Total" muncul DUA kali (sesudah Diskon, dan paling bawah
+        # sesudah PPN). Yang jadi dasar DPP adalah yang PERTAMA, jadi letaknya
+        # dicatat dengan kemunculan pertama yang menang — bukan dict biasa
+        # yang justru menyimpan kemunculan terakhir.
+        letak = {}
+        for i, (label, _) in enumerate(penutup):
+            letak.setdefault(label, p + i)
+        b_total = letak["Total"]
+        b_dpp, b_ppn = letak["DPP"], letak[label_ppn]
+        isi_rumus = {
+            b_dpp: rms.dpp("H", b_total),
+            b_ppn: rms.selisih("H", b_total, b_dpp),
+            p + len(penutup) - 1: rms.tambah("H", b_dpp, b_ppn),
+        }
+        if ada_diskon:
+            isi_rumus[letak["Subtotal"]] = rms.subtotal(BARIS_DATA, akhir, "D", "E")
+            isi_rumus[letak["Diskon"]] = rms.jumlahkan(BARIS_DATA, akhir, "G")
+            isi_rumus[b_total] = rms.selisih("H", letak["Subtotal"], letak["Diskon"])
+        else:
+            isi_rumus[b_total] = rms.subtotal(BARIS_DATA, akhir, "D", "E")
+        penutup = [(label, isi_rumus.get(p + i, nilai))
+                   for i, (label, nilai) in enumerate(penutup)]
     for i, (label, nilai) in enumerate(penutup):
         # TIDAK ada cetak tebal di blok penutup — permintaan Yosua
         # 14 September 2026. Faktur asli menebalkan seluruh blok ini, tapi

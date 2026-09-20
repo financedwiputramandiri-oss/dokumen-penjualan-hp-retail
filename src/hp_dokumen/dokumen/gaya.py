@@ -113,13 +113,13 @@ def tulis_kop(
         size=10,
     )
     _tulis(ws, r + 2, kanan, "Kepada Yth.", size=10)
-    _tulis(ws, r + 3, kanan, nama_customer or "(nama customer belum diisi)", bold=True, size=10)
+    _tulis(ws, r + 3, kanan, nama_customer or "", bold=True, size=10)
     if alamat_customer:
         _tulis(ws, r + 4, kanan, alamat_customer, size=9, wrap=True)
         ws.row_dimensions[r + 4].height = 42
         tinggi_kanan = 5
     else:
-        _tulis(ws, r + 4, kanan, "(alamat belum diisi)", size=9)
+        pass      # alamat belum diketahui -> dibiarkan KOSONG untuk diisi Yosua
         tinggi_kanan = 5
 
     return r + max(tinggi_kiri, tinggi_kanan, baris_logo) + 1
@@ -251,8 +251,33 @@ def _alamat_perusahaan(baris: list, maks_huruf: Optional[int]) -> list:
 
 
 # ---------------------------------------------------------------- logo
-TINGGI_LOGO = 86            # permintaan Yosua 18 Sep 2026 (dulu 70)
+# ---- UKURAN LOGO -------------------------------------------------------
+# Diukur dari berkas ASLI, bukan dikira-kira (20 September 2026):
+#
+#   0110826 BABY WISE (DPM), FORMAT INVOICE & FORMAT SURAT JALAN : 118,9 x 119,7 px
+#   FA 0010526 BABY FAME (MTN), tab faktur                       : 111 x 126 px
+#   FA 0010526 BABY FAME (MTN), tab SURAT JALAN                  : 120 x 124 px
+#
+# Versi sebelumnya memakai tinggi tetap 86 px untuk semua, jadi logonya JAUH
+# lebih kecil daripada dokumen yang dipakai divisi — dan karena tingginya yang
+# dikunci, logo MTN (gambarnya lebih jangkung) tampil jauh lebih sempit
+# daripada logo DPM. Yosua membetulkannya sendiri dengan menarik logo MTN
+# di Excel, 20 September 2026.
+#
+# Yang dikunci sekarang LEBARNYA, bukan tingginya:
+#   - lebar itu yang dibatasi blok kolom A:B, jadi logonya tidak pernah
+#     menabrak teks kop di kolom C;
+#   - tingginya mengikuti bentuk asli gambar, jadi logo tidak pernah gepeng.
+# Satu angka per perusahaan berarti Invoice, Surat Jalan, Packing List, dan
+# Proforma SELALU memakai ukuran yang sama persis.
+LEBAR_LOGO = {"DPM": 119, "MTN": 104}
+LEBAR_LOGO_BAWAAN = 110
+TINGGI_LOGO = 86            # hanya untuk pemanggil lama yang menyetel sendiri
 GESER_LOGO_BAWAH = 55000    # EMU, +-0,15 cm
+
+
+# Sisa ruang kiri-kanan logo di dalam blok kolom A:B.
+MARGIN_LOGO_PX = 4
 
 
 def lebar_kolom_px(lebar: float) -> float:
@@ -260,8 +285,25 @@ def lebar_kolom_px(lebar: float) -> float:
     return lebar * 7 + 5
 
 
+def min_kolom_ab(perusahaan) -> float:
+    """Jumlah lebar kolom A+B paling kecil supaya logo muat UTUH.
+
+    Tanpa batas bawah ini, kolom B menyempit mengikuti kode artikel yang
+    pendek, logonya ikut mengecil, dan ukuran logo jadi berbeda antara
+    Invoice dan Surat Jalan di berkas yang sama — persis yang dikeluhkan
+    Yosua 20 September 2026.
+    """
+    return (lebar_logo(perusahaan) + 2 * MARGIN_LOGO_PX - 10) / 7
+
+
+def lebar_logo(perusahaan) -> int:
+    """Lebar logo perusahaan ini dalam piksel. Lihat LEBAR_LOGO."""
+    kode = (getattr(perusahaan, "kode", "") or "").strip().upper()
+    return LEBAR_LOGO.get(kode, LEBAR_LOGO_BAWAAN)
+
+
 def pasang_logo(ws, perusahaan, baris: int, lebar_blok_px: Optional[float] = None,
-                tinggi: int = TINGGI_LOGO) -> None:
+                tinggi: Optional[int] = None) -> None:
     """Pasang logo perusahaan di blok kolom A:B.
 
     Kalau `lebar_blok_px` diberikan, logonya DITENGAHKAN di blok itu; kalau
@@ -279,10 +321,19 @@ def pasang_logo(ws, perusahaan, baris: int, lebar_blok_px: Optional[float] = Non
         from openpyxl.drawing.image import Image as XlImage
 
         img = XlImage(str(berkas))
-        if not img.height:
+        if not img.height or not img.width:
             return
-        img.width = int(tinggi * img.width / img.height)
-        img.height = tinggi
+        rasio = img.width / img.height          # bentuk asli gambar
+        if tinggi is not None:                  # pemanggil lama: tinggi dikunci
+            img.width, img.height = int(tinggi * rasio), tinggi
+        else:
+            lebar = lebar_logo(perusahaan)
+            # Tidak pernah melebihi blok A:B. Kalau kolomnya menyempit karena
+            # kode artikelnya pendek, logonya ikut mengecil — tetap lebih baik
+            # daripada menabrak teks kop di kolom C.
+            if lebar_blok_px is not None:
+                lebar = int(min(lebar, lebar_blok_px - 2 * MARGIN_LOGO_PX))
+            img.width, img.height = max(lebar, 1), max(int(lebar / rasio), 1)
 
         if lebar_blok_px is None:
             ws.add_image(img, f"A{baris}")
@@ -351,11 +402,11 @@ def kop_dpm(
     _tulis(ws, r, k, f"{perusahaan.kota_penerbitan}, {tanggal_indonesia(tanggal_dokumen)}",
            size=ukuran_teks)
     _tulis(ws, r + 1, k, "Kepada Yth.", size=ukuran_teks)
-    _tulis(ws, r + 2, k, nama_customer or "(nama customer belum diisi)",
+    _tulis(ws, r + 2, k, nama_customer or "",
            bold=True, size=ukuran_customer)
     baris_alamat_cust = pecah_alamat(alamat_customer)
     if not baris_alamat_cust:
-        baris_alamat_cust = ["(alamat belum diisi)"]
+        baris_alamat_cust = []
     for i, teks in enumerate(baris_alamat_cust, start=3):
         _tulis(ws, r + i, k, teks, size=ukuran_teks)
 

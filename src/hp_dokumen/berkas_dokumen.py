@@ -16,6 +16,7 @@ from .dokumen.faktur_pajak import buat_faktur_pajak
 from .dokumen.invoice import buat_invoice
 from .dokumen.proforma import buat_proforma
 from .dokumen.mtn import buat_invoice_mtn, buat_surat_jalan_mtn
+from .dokumen import rumus as rms
 from .dokumen.surat_jalan import buat_packing_list, buat_surat_jalan
 from .pdf import ke_pdf, libreoffice_ada
 
@@ -35,6 +36,7 @@ def buat_berkas(
     folder: Path,
     nomor: str = NOMOR_KOSONG,
     *,
+    master: dict | None = None,
     pdf: bool = False,
     sertakan_packing_list: bool = True,
     cetak=None,
@@ -45,6 +47,18 @@ def buat_berkas(
     Surat Jalan, dan Faktur Pajak adalah yang diminta. Packing List ikut dibuat
     selama `sertakan_packing_list` masih True, karena belum dipastikan apakah
     masih dipakai.
+
+    SATU BERKAS UNTUK INVOICE + SURAT JALAN (permintaan Yosua 20 Sep 2026).
+    Keduanya jadi dua lembar di berkas yang sama, ditambah lembar MASTER HARGA
+    berisi salinan tab "Harga Retail" sebagaimana adanya saat dokumen itu
+    dibuat. Lembar itu bukan pelengkap: rumus harga di faktur menunjuk ke
+    sana, dan karena harga retail berubah sepanjang tahun (Milo Set 49.400 ->
+    61.000 pada Agustus 2026), tiap faktur jadi membawa bukti harganya
+    sendiri.
+
+    `master` boleh None — dokumennya tetap terbit, hanya tanpa lembar MASTER
+    HARGA dan tanpa rumus. Dokumen yang tidak terbit jauh lebih merugikan
+    daripada dokumen tanpa rumus.
     """
     cust = cfg.customer.cari(order.nama_tab)
     pt = cfg.perusahaan.untuk(cust)
@@ -56,16 +70,9 @@ def buat_berkas(
     # yang dikirim Yosua 19 September 2026. Lihat dokumen/mtn.py.
     pakai_mtn = (pt.kode or "").strip().upper() == "MTN"
 
+    pakai_rumus = bool(master)
+
     tugas = [
-        ("INVOICE",
-         (lambda ws: buat_invoice_mtn(ws, order, keputusan, cust, pt,
-                                      cfg.pengaturan, nomor)) if pakai_mtn else
-         (lambda ws: buat_invoice(ws, order, keputusan, cust, pt,
-                                  cfg.pengaturan, nomor))),
-        ("SURAT_JALAN",
-         (lambda ws: buat_surat_jalan_mtn(ws, order, cust, pt, nomor))
-         if pakai_mtn else
-         (lambda ws: buat_surat_jalan(ws, order, cust, pt, nomor))),
         ("FAKTUR_PAJAK",
          lambda ws: buat_faktur_pajak(ws, order, keputusan, cust, pt, cfg.pengaturan, nomor)),
     ]
@@ -85,6 +92,55 @@ def buat_berkas(
         )
 
     dibuat: list[Path] = []
+
+    # ---- satu berkas: INVOICE + SURAT JALAN + MASTER HARGA --------------
+    wb = Workbook()
+    ws_inv = wb.active
+    ws_inv.title = rms.TAB_INVOICE
+    if pakai_mtn:
+        buat_invoice_mtn(ws_inv, order, keputusan, cust, pt, cfg.pengaturan,
+                         nomor, pakai_rumus=pakai_rumus)
+    else:
+        buat_invoice(ws_inv, order, keputusan, cust, pt, cfg.pengaturan, nomor,
+                     pakai_rumus=pakai_rumus)
+    # buat_invoice* menyetel ws.title sendiri; dikembalikan supaya nama
+    # lembarnya sama untuk DPM maupun MTN, sebab rumus menunjuk ke nama itu.
+    ws_inv.title = rms.TAB_INVOICE
+
+    ws_sj = wb.create_sheet(rms.TAB_SURAT_JALAN)
+    if pakai_mtn:
+        buat_surat_jalan_mtn(ws_sj, order, cust, pt, nomor,
+                             pakai_rumus=pakai_rumus)
+    else:
+        buat_surat_jalan(ws_sj, order, cust, pt, nomor,
+                         pakai_rumus=pakai_rumus)
+    ws_sj.title = rms.TAB_SURAT_JALAN
+
+    if master:
+        tarif = cfg.pengaturan.tarif_ppn if pt.kenakan_ppn else 0.0
+        rms.tulis_master(wb.create_sheet(rms.TAB_MASTER), master, pt, tarif,
+                         order.tanggal_po)
+    berkas_utama = folder / f"INVOICE_SURAT_JALAN_{aman}.xlsx"
+    wb.save(berkas_utama)
+    dibuat.append(berkas_utama)
+
+    # PDF dokumen ini dibuat dari SALINAN TANPA lembar MASTER HARGA.
+    # PDF-lah yang dikirim ke customer, dan master harga memuat SELURUH harga
+    # retail Happy Pumpkin — 195 artikel, sepuluh halaman. Ikut tercetak
+    # berarti membocorkan daftar harga seluruh produk ke satu customer.
+    # Lembarnya tetap ada di berkas Excel-nya, yang dipakai di dalam kantor.
+    berkas_pdf_sumber = berkas_utama
+    if master:
+        # Lembarnya DISEMBUNYIKAN, bukan dihapus. Versi pertama menghapusnya
+        # dan seluruh rumus faktur langsung rusak: Subtotal jadi nol dan
+        # DPP/PPN jadi `#NAME?`, karena rumusnya menunjuk ke lembar yang
+        # sudah tidak ada. Ketahuan dari PDF hasil render, bukan dari kode.
+        # LibreOffice tidak mencetak lembar tersembunyi, tapi rumus yang
+        # menunjuk ke sana tetap terhitung.
+        wb[rms.TAB_MASTER].sheet_state = "hidden"
+        berkas_pdf_sumber = folder / f"_tanpa_master_{aman}.xlsx"
+        wb.save(berkas_pdf_sumber)
+
     for nama, fungsi in tugas:
         wb = Workbook()
         ws = wb.active
@@ -101,9 +157,18 @@ def buat_berkas(
                 cetak("   Di Ubuntu/Debian: sudo apt install libreoffice-calc)")
         else:
             for p in list(dibuat):
-                hasil_pdf, pesan = ke_pdf(p, folder)
+                sumber = berkas_pdf_sumber if p == berkas_utama else p
+                hasil_pdf, pesan = ke_pdf(sumber, folder)
+                if hasil_pdf and sumber != p:
+                    # Namanya dikembalikan supaya PDF dan Excel-nya sepasang.
+                    tujuan = folder / f"{p.stem}.pdf"
+                    hasil_pdf.replace(tujuan)
+                    hasil_pdf = tujuan
                 if hasil_pdf:
                     dibuat.append(hasil_pdf)
                 elif cetak:
                     cetak(f"  (PDF {p.name} dilewati: {pesan})")
+
+    if berkas_pdf_sumber != berkas_utama:
+        berkas_pdf_sumber.unlink(missing_ok=True)
     return dibuat

@@ -162,7 +162,8 @@ def buat_proforma(
     nama_cust = (customer.nama_di_dokumen if customer else "") or order.customer_kunci
     ws.merge_cells(start_row=b, start_column=3, end_row=b, end_column=6)
     gaya.sel_isi(ws, b, 3, nama_cust, tebal=True, ukuran=14)
-    alamat = gaya.pecah_alamat(customer.alamat if customer else "") or ["(alamat belum diisi)"]
+    # Alamat yang belum diketahui DIBIARKAN KOSONG untuk diisi Yosua sendiri.
+    alamat = gaya.pecah_alamat(customer.alamat if customer else "")
     for i, teks in enumerate(alamat, start=1):
         ws.merge_cells(start_row=b + i, start_column=3, end_row=b + i, end_column=6)
         gaya.sel_isi(ws, b + i, 3, teks, ukuran=HURUF_ISI)

@@ -2861,3 +2861,133 @@ dokumennya** — jebakan lama bagian 26 dan 27: `SidikPO` hanya mengawasi order
 sheet, tidak pernah kode.
 
 Tes 173 -> 209.
+
+## 33. Satu berkas, rumus, dan ukuran logo dari berkas asli — 20 September 2026
+
+Yosua mengirim BALIK keempat berkas keluaran program (Invoice & Surat Jalan
+Satu Sama Veteran untuk DPM, Baby Fame untuk MTN) sesudah **menyuntingnya
+sendiri di Excel**, lalu meminta tiga hal: pelajari kedua format, gabungkan
+Invoice dan Surat Jalan ke satu berkas berlembar banyak dengan lembar master
+harga dan rumus, dan kosongkan data customer yang belum diketahui.
+
+### Berkas yang dikirim balik BUKAN berkas yang sama — periksa `md5sum` dulu
+
+Keempatnya beda `md5` dari keluaran program. Itu petunjuknya: Yosua tidak
+sekadar mengirim ulang, ia **membetulkan sendiri** apa yang salah. Yang
+dilakukan pertama adalah mengadu berkasnya sel per sel dengan keluaran
+program — bukan membaca permintaannya saja.
+
+Hasil adu itu memisahkan dua hal yang sangat berbeda:
+
+| Berkas | Yang berubah | Artinya |
+|---|---|---|
+| DPM (Satu Sama) | hanya letak logo digeser; 0 sel, 0 garis berubah | tata letaknya sudah benar |
+| MTN (Baby Fame) | logo DIPERBESAR, 31 sel diberi GARIS, label dirata-tengahkan | tata letaknya SALAH |
+
+Lalu suntingan MTN itu diadu lagi dengan berkas asli `FA 0010526`: ternyata
+Yosua sedang **mengembalikan bentuk aslinya**, yang saya lewatkan.
+
+### Cacat 1 — kepala dokumen MTN kehilangan seluruh garisnya
+
+Berkas asli MTN mengotaki blok CUSTOMER `A11:C15` lengkap dengan garis
+pemisah antar baris, mengotaki tiap label FAKTUR/TANGGAL (tab faktur) dan
+SURAT JALAN/TANGGAL (tab surat jalan), dan **menengahkan** tulisan labelnya.
+Bagian 31 melewatkan ketiganya, jadi kepala dokumen MTN tampil polos.
+
+Satu beda halus yang ikut ditiru: di tab faktur label dan nilainya berkotak
+**sendiri-sendiri** (G11 dan G12 masing-masing empat sisi), sedangkan di tab
+surat jalan keduanya berbagi **satu** kotak (F11:H12, tanpa garis di
+tengahnya). Karena itu `_blok_customer()` punya `kotak_gabung`.
+
+### Cacat 2 — logo terlalu kecil, dan beda-beda antar dokumen
+
+Diukur dari berkas asli (anchor-nya `TwoCellAnchor`, jadi ukurannya harus
+dihitung dari lebar kolom dan tinggi baris yang dilewatinya, bukan dibaca
+langsung):
+
+| Berkas asli | Ukuran logo |
+|---|---|
+| 0110826 BABY WISE (DPM), Invoice & Surat Jalan | 118,9 x 119,7 px |
+| FA 0010526 (MTN), tab faktur | 111 x 126 px |
+| FA 0010526 (MTN), tab SURAT JALAN | 120 x 124 px |
+
+Program memakai **tinggi tetap 86 px** untuk semuanya. Akibatnya dua-duanya:
+logonya jauh lebih kecil daripada dokumen divisi, DAN karena yang dikunci
+tingginya, logo MTN (gambarnya jangkung, rasio 0,835) tampil jauh lebih
+sempit daripada logo DPM (rasio 1,063).
+
+Sekarang yang dikunci **LEBARNYA**, satu angka per perusahaan
+(`gaya.LEBAR_LOGO`): DPM 119 px, MTN 104 px, tingginya mengikuti bentuk asli
+gambar. Lebar yang dikunci, sebab lebar itulah yang dibatasi blok kolom A:B —
+logo tidak pernah menabrak teks kop di kolom C.
+
+**Ini belum cukup.** Percobaan pertama masih menghasilkan 119x111 di Invoice
+dan 114x107 di Surat Jalan pada berkas yang SAMA, karena kolom B menyempit
+mengikuti kode artikel yang pendek lalu logonya ikut dikecilkan. Ditambah
+`gaya.min_kolom_ab()`: lebar A+B tidak boleh kurang dari lebar logo, dan
+kekurangannya diambil dari kolom deskripsi — cara yang sama dengan bagian 26.
+
+### Satu berkas: INVOICE / SURAT JALAN / MASTER HARGA
+
+`buat_berkas()` sekarang menghasilkan `INVOICE_SURAT_JALAN_<tab>.xlsx` berisi
+tiga lembar. Faktur Pajak, Packing List, dan Proforma tetap berkas sendiri —
+Yosua hanya menyebut invoice dan surat jalan.
+
+Lembar MASTER HARGA bukan pelengkap: rumus harga menunjuk ke sana, dan karena
+harga retail berubah sepanjang tahun (bagian 18: Milo Set 49.400 -> 61.000),
+tiap faktur jadi membawa bukti harganya sendiri.
+
+### Rumus — dan SATU kolom yang sengaja TIDAK dirumuskan
+
+| Yang dirumuskan | Rumusnya |
+|---|---|
+| Deskripsi & Harga satuan | `VLOOKUP` ke lembar MASTER HARGA |
+| Jumlah per baris | `=Qty x Harga - Nilai Diskon` |
+| Subtotal | `=SUMPRODUCT(Qty, Harga)` |
+| Diskon | `=SUM(Nilai Diskon)` |
+| Total, DPP, PPN | diturunkan dari Subtotal dan tarif di `MASTER HARGA!$C$3` |
+| Qty Surat Jalan | `=SUM(kolom ukuran)` — seperti berkas asli MTN |
+
+**Kolom "Nilai Diskon" per baris TETAP berupa angka.** Diuji pada dua PO
+sungguhan: menghitungnya ulang lewat `qty x harga x persen efektif` meleset
+**Rp1** (Satu Sama Veteran) dan **Rp2** (Baby Fame) dari baris TOTAL order
+sheet. Kecil, tapi nilai bersih di order sheet memang TIDAK dihitung dari
+persentase — ia dibaca apa adanya dari kolomnya (Aturan 2). Kecocokan sampai
+rupiah terakhir itulah yang membuat pencocokan berani MENOLAK menerbitkan
+dokumen; menukarnya dengan rumus yang lebih enak dilihat adalah pertukaran
+yang salah. Ada tesnya, dan jangan diubah tanpa membaca `dokumen/rumus.py`.
+
+Deskripsi TIDAK di-VLOOKUP untuk customer per ukuran (Haritsa, Katamama) —
+di sana deskripsinya sudah ditambahi "Uk. 3-6M" dan tidak ada di master.
+
+### PDF: lembar master DISEMBUNYIKAN, bukan dihapus
+
+PDF-lah yang dikirim ke customer, dan MASTER HARGA memuat SELURUH harga
+retail Happy Pumpkin — 195 artikel, sepuluh halaman. Ikut tercetak berarti
+membocorkan daftar harga seluruh produk ke satu customer.
+
+Percobaan pertama MENGHAPUS lembar itu dari salinan untuk PDF. Hasilnya
+seluruh rumus faktur rusak: Subtotal jadi nol (IFERROR menelan VLOOKUP yang
+gagal) dan DPP/PPN jadi `#NAME?`. **Ketahuan dari PDF hasil render, bukan
+dari kode** — pola yang sama untuk kelima kalinya. Yang benar: lembarnya
+disembunyikan (`sheet_state = "hidden"`). LibreOffice tidak mencetak lembar
+tersembunyi, tapi rumus yang menunjuk ke sana tetap terhitung. Berkas Excel
+yang dipakai di kantor tetap memperlihatkannya.
+
+Dibuktikan pada PDF sungguhan: 2 halaman, dan totalnya persis sama dengan
+sebelum ada rumus — DPM Rp3.009.431, MTN Rp14.057.700.
+
+### Data customer yang belum diketahui DIKOSONGKAN
+
+Permintaan Yosua: *"Kalau anda belum tahu tentang data customer biarkan
+kosong saja nanti agar saya yang mengisi"*. Tulisan penampung
+`(nama customer belum diisi)` dan `(alamat belum diisi)` dihapus dari invoice,
+surat jalan, dan proforma — tulisan itu ikut tercetak ke dokumen yang dikirim
+ke customer, jauh lebih buruk daripada sel kosong yang tinggal diketik.
+
+Alamat Baby Fame sebenarnya MUNCUL di berkas suntingan Yosua (ikut terbawa
+dari berkas contoh Mei 2026), tapi tidak disimpan ke `config/customer.csv` —
+ia baru saja meminta data customer dikosongkan sampai ia sendiri yang
+mengisi. Jangan menyimpulkan data customer dari berkas contoh.
+
+Tes 209 -> 232.

@@ -139,12 +139,13 @@ def _nomor(cfg, urut: int, diberikan: str | None) -> str:
     return f"{awal + urut:03d}{int(nd.get('bulan', 8)):02d}{int(nd.get('tahun', 26)):02d}"
 
 
-def _buat_dokumen(cfg, h: HasilRekonsiliasi, urut: int, args) -> list[Path]:
+def _buat_dokumen(cfg, h: HasilRekonsiliasi, urut: int, args,
+                  master: dict | None = None) -> list[Path]:
     folder = FOLDER_KELUARAN / _aman(h.order.nama_tab)
     return buat_berkas(
         cfg, h.order, h.keputusan, folder,
         _nomor(cfg, urut, args.nomor),
-        pdf=args.pdf, cetak=print,
+        master=master, pdf=args.pdf, cetak=print,
     )
 
 
@@ -167,7 +168,7 @@ def perintah_buat(args) -> int:
     semua: list[Path] = []
     for i, h in enumerate(hasil):
         print(f"Membuat dokumen: {h.order.nama_tab}")
-        dibuat = _buat_dokumen(cfg, h, i, args)
+        dibuat = _buat_dokumen(cfg, h, i, args, master)
         semua.extend(dibuat)
         for p in dibuat:
             print(f"  - {p.relative_to(AKAR)}")

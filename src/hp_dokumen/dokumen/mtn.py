@@ -32,6 +32,7 @@ from typing import Optional
 from openpyxl.worksheet.worksheet import Worksheet
 
 from . import gaya
+from . import rumus as rms
 from .invoice import susun_baris, _persen_tertulis, _persen_ringkas
 from ..model import KeputusanNett, Order
 
@@ -101,13 +102,21 @@ def nomor_mtn(awalan: str, nomor: str, tanggal: Optional[date]) -> str:
     return f"{awalan}-{urut}"
 
 
-def _kop(ws: Worksheet, perusahaan, baris_mulai: int) -> None:
-    """Kop MTN: logo di kiri, teks di kolom C. TIDAK ada blok kanan."""
+def _kop(ws: Worksheet, perusahaan, baris_mulai: int,
+         lebar_a: float = None, lebar_b: float = None) -> None:
+    """Kop MTN: logo di kiri, teks di kolom C. TIDAK ada blok kanan.
+
+    Lebar kolom A dan B diminta dari pemanggil, sebab Invoice dan Surat Jalan
+    MTN memakai lebar yang berbeda. Kalau dihitung dari LEBAR_INV untuk
+    dua-duanya, logo Surat Jalan meleset dari tengah tanpa ada yang sadar.
+    """
     r = baris_mulai
+    a = LEBAR_INV[1] if lebar_a is None else lebar_a
+    b = LEBAR_INV[2] if lebar_b is None else lebar_b
     ws.merge_cells(start_row=r, start_column=1, end_row=r + 6, end_column=2)
     gaya.pasang_logo(
         ws, perusahaan, r,
-        gaya.lebar_kolom_px(LEBAR_INV[1]) + gaya.lebar_kolom_px(LEBAR_INV[2]),
+        gaya.lebar_kolom_px(a) + gaya.lebar_kolom_px(b),
     )
     gaya.sel_isi(ws, r, 3, perusahaan.nama_resmi or perusahaan.nama,
                  ukuran=HURUF_NAMA, tebal=True)
@@ -117,38 +126,70 @@ def _kop(ws: Worksheet, perusahaan, baris_mulai: int) -> None:
         gaya.sel_isi(ws, r + i, 3, teks, ukuran=HURUF_KOP, tebal=True)
 
 
+# Blok customer MTN selalu LIMA baris: label, nama, dan tiga baris alamat -
+# persis A11:C15 pada berkas asli. Tingginya dibuat tetap supaya kotaknya
+# tidak ikut mengerut waktu alamatnya belum diisi.
+BARIS_BLOK_CUSTOMER = 5
+
+
 def _blok_customer(ws: Worksheet, cust, nama_tampil: str, baris_label: int,
-                   kolom_kanan: list[tuple[int, int, str, str]]) -> None:
+                   kolom_kanan: list[tuple[int, int, str, str]],
+                   kotak_gabung: bool = False) -> None:
     """Label CUSTOMER di kiri, label lain (FAKTUR/TANGGAL, dst) di kanan.
 
     `kolom_kanan` berisi (kolom_awal, kolom_akhir, label, nilai). Rentangnya
     digabung, persis seperti berkas asli MTN yang memakai F11:H11 untuk
     "SURAT JALAN" dan I11:K11 untuk "TANGGAL". Tanpa penggabungan itu tanggal
     panjang seperti "17 September 2026" tercetak terpotong.
+
+    GARIS DAN RATA TENGAH. Berkas asli MTN mengotaki blok customer (A11:C15)
+    dan tiap label di kanan, serta menengahkan tulisan labelnya. Versi pertama
+    melewatkan keduanya sehingga kepala dokumen MTN tampil polos, dan Yosua
+    menambahkannya sendiri di Excel (20 September 2026). Sekarang dipasang
+    program.
+
+    `kotak_gabung` membedakan keduanya, mengikuti berkas aslinya: di tab
+    faktur label dan nilainya berkotak SENDIRI-SENDIRI (G11 dan G12 masing-
+    masing bergaris empat sisi), sedangkan di tab SURAT JALAN keduanya berbagi
+    SATU kotak (F11:H12, tanpa garis pemisah di tengahnya).
     """
-    gaya.sel_isi(ws, baris_label, 1, "CUSTOMER", ukuran=HURUF_LABEL)
+    gaya.sel_isi(ws, baris_label, 1, "CUSTOMER", ukuran=HURUF_LABEL, rata="center")
     for awal, akhir, label, nilai in kolom_kanan:
         for r, teks, tebal in ((baris_label, label, False),
                                (baris_label + 1, nilai, True)):
             if akhir > awal:
                 ws.merge_cells(start_row=r, start_column=awal,
                                end_row=r, end_column=akhir)
-            gaya.sel_isi(ws, r, awal, teks, ukuran=HURUF_LABEL, tebal=tebal)
+            gaya.sel_isi(ws, r, awal, teks, ukuran=HURUF_LABEL, tebal=tebal,
+                         rata="center")
+        if kotak_gabung:
+            gaya.kotak(ws, baris_label, awal, baris_label + 1, akhir)
+        else:
+            gaya.beri_garis(ws, baris_label, awal, baris_label + 1, akhir)
 
     r = baris_label + 1
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=3)
     gaya.sel_isi(ws, r, 1, nama_tampil, ukuran=HURUF_CUSTOMER, tebal=True)
 
-    alamat = (cust.alamat if cust else "") or "(alamat belum diisi)"
-    for i, baris_alamat in enumerate(gaya.pecah_alamat(alamat, 3), start=1):
+    # Alamat yang belum diketahui DIBIARKAN KOSONG untuk diisi Yosua sendiri.
+    # Barisnya tetap dibuat supaya tinggi kotaknya tidak berubah.
+    alamat = gaya.pecah_alamat((cust.alamat if cust else ""), 3)
+    for i in range(1, BARIS_BLOK_CUSTOMER - 1):
         ws.merge_cells(start_row=r + i, start_column=1, end_row=r + i, end_column=3)
-        gaya.sel_isi(ws, r + i, 1, baris_alamat, ukuran=HURUF_CUSTOMER)
+        teks = alamat[i - 1] if i - 1 < len(alamat) else None
+        gaya.sel_isi(ws, r + i, 1, teks, ukuran=HURUF_CUSTOMER)
+
+    # Kotak blok customer: garis luar + garis pemisah antar baris, sama
+    # seperti A11:C15 di berkas asli.
+    gaya.beri_garis(ws, baris_label, 1,
+                    baris_label + BARIS_BLOK_CUSTOMER - 1, 3)
 
 
 def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
                      cust, perusahaan, pengaturan,
                      nomor: str = "________",
-                     tanggal_dokumen: Optional[date] = None) -> dict:
+                     tanggal_dokumen: Optional[date] = None,
+                     pakai_rumus: bool = False) -> dict:
     """Invoice dengan tata letak CV. MUTIARA TIMUR NUSANTARA."""
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
     ws.title = "Invoice"
@@ -163,9 +204,10 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
          (8, 8, "TANGGAL", gaya.tanggal_indonesia(tanggal))],
     )
 
+    per_ukuran = bool(cust and cust.pecah_per_ukuran)
     baris = susun_baris(
         order, keputusan,
-        pecah_per_ukuran=bool(cust and cust.pecah_per_ukuran),
+        pecah_per_ukuran=per_ukuran,
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
     teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
@@ -195,13 +237,20 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
     for i, b in enumerate(baris, start=1):
         gaya.sel_isi(ws, r, 1, i, rata="center", ukuran=HURUF_ISI)
         gaya.sel_isi(ws, r, 2, b.kode, ukuran=HURUF_ISI)
-        gaya.sel_isi(ws, r, 3, b.deskripsi, ukuran=HURUF_ISI, lipat=True)
+        gaya.sel_isi(ws, r, 3,
+                     rms.nama_barang(r) if (pakai_rumus and not per_ukuran)
+                     else b.deskripsi,
+                     ukuran=HURUF_ISI, lipat=True)
         gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=HURUF_ISI, angka="#,##0")
-        gaya.sel_isi(ws, r, 5, b.harga, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 5, rms.harga(r) if pakai_rumus else b.harga,
+                     ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
         gaya.sel_isi(ws, r, 6, b.diskon / b.qty if b.qty else 0,
                      ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
         gaya.sel_isi(ws, r, 7, b.diskon, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 8, b.nett, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 8,
+                     rms.jumlah_baris(r, "D", "E", "G") if pakai_rumus
+                     else b.nett,
+                     ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
         ws.row_dimensions[r].height = TINGGI_DATA_INV
         r += 1
     gaya.beri_garis(ws, BARIS_DATA_INV, 1, r - 1, KOL_AKHIR_INV)
@@ -212,9 +261,14 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
     nett = kotor - diskon
     p = r + 1
     label_diskon = f"Value Disc {tulisan_diskon}"
-    for i, (label, nilai) in enumerate((("Subtotal", kotor),
-                                        (label_diskon, diskon),
-                                        ("Total", nett))):
+    isi = [("Subtotal", kotor), (label_diskon, diskon), ("Total", nett)]
+    if pakai_rumus:
+        # MTN tidak mengenakan PPN, jadi penutupnya berhenti di Total -
+        # tidak ada DPP dan PPN yang perlu diturunkan.
+        isi = [(isi[0][0], rms.subtotal(BARIS_DATA_INV, r - 1, "D", "E")),
+               (isi[1][0], rms.jumlahkan(BARIS_DATA_INV, r - 1, "G")),
+               (isi[2][0], rms.selisih("H", p, p + 1))]
+    for i, (label, nilai) in enumerate(isi):
         gaya.sel_isi(ws, p + i, 7, label, ukuran=HURUF_ISI)
         gaya.sel_isi(ws, p + i, 8, nilai, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
     gaya.beri_garis(ws, p, 7, p + 2, 8)
@@ -251,7 +305,8 @@ def _lebar_ukuran_sj(jumlah_ukuran: int) -> float:
 
 def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
                          nomor: str = "________",
-                         tanggal_dokumen: Optional[date] = None) -> dict:
+                         tanggal_dokumen: Optional[date] = None,
+                         pakai_rumus: bool = False) -> dict:
     """Surat Jalan dengan tata letak CV. MUTIARA TIMUR NUSANTARA.
 
     Susunan kolomnya BEDA dari DPM: deskripsi barang di kolom C tunggal
@@ -271,7 +326,7 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
     lebar[kol_qty] = LEBAR_QTY_SJ
     gaya.atur_lebar(ws, lebar)
 
-    _kop(ws, perusahaan, 1)
+    _kop(ws, perusahaan, 1, LEBAR_SJ_TETAP[1], LEBAR_SJ_TETAP[2])
 
     nama_tampil = (cust.nama_di_dokumen if cust else "") or order.customer_kunci
     # Tanggal butuh ruang: kolom Qty cuma 8 satuan, jauh kurang untuk
@@ -284,6 +339,7 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
         [(awal_nomor, awal_tanggal - 1, "SURAT JALAN",
           nomor_mtn("SJ", nomor, tanggal)),
          (awal_tanggal, kol_qty, "TANGGAL", gaya.tanggal_indonesia(tanggal))],
+        kotak_gabung=True,
     )
 
     gaya.sel_isi(ws, BARIS_KALIMAT_SJ, 1, KALIMAT_SJ, ukuran=HURUF_CUSTOMER)
@@ -330,7 +386,13 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
                              rata="center", ukuran=HURUF_ISI)
             qty = sum(b.qty_per_ukuran[p] for p in posisi)
             total_qty += qty
-            gaya.sel_isi(ws, r, kol_qty, qty, rata="center", ukuran=HURUF_ISI)
+            # Berkas asli MTN menulis kolom Qty sebagai `=SUM(E21:J21)`.
+            gaya.sel_isi(ws, r, kol_qty,
+                         rms.qty_surat_jalan(r, gaya.huruf(KOL_UKURAN_MULAI_SJ),
+                                             gaya.huruf(kol_qty - 1))
+                         if (pakai_rumus and kol_qty > KOL_UKURAN_MULAI_SJ)
+                         else qty,
+                         rata="center", ukuran=HURUF_ISI)
             ws.row_dimensions[r].height = TINGGI_DATA_SJ
             r += 1
         gaya.beri_garis(ws, awal, 1, r - 1, kol_qty)

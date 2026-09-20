@@ -109,6 +109,7 @@ def buat_draf(
     folder_induk: Path,
     *,
     nomor: str = "________",
+    master: dict | None = None,
     pdf: bool = False,
     waktu: Optional[datetime] = None,
 ) -> HasilDraf:
@@ -116,7 +117,8 @@ def buat_draf(
     waktu = waktu or datetime.now()
     folder = folder_induk / nama_aman(baru.nama_sheet) / nama_aman(order.nama_tab)
     arsip = arsipkan(folder, folder_induk / "_KEDALUWARSA", waktu) if alasan == REVISI else None
-    berkas = buat_berkas(cfg, order, keputusan, folder, nomor, pdf=pdf)
+    berkas = buat_berkas(cfg, order, keputusan, folder, nomor,
+                         master=master, pdf=pdf)
     return HasilDraf(
         tab=order.nama_tab,
         alasan=alasan,

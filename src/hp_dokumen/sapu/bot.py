@@ -319,7 +319,7 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
                                     hd = buat_draf(
                                         cfg, order, keputusan, lama_sidik,
                                         baru_sidik, alasan, p.folder_draf,
-                                        pdf=p.draf_pdf,
+                                        master=master, pdf=p.draf_pdf,
                                     )
                                     draf.append(hd)
                                     cetak(f"    draf {alasan}: {hd.ringkas()}")
