@@ -14,8 +14,27 @@ folder_order_sheet:
   - nama: "Order Sheet 2025"
     id: "1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57"
 
-# ---- KE MANA LAPORAN DITARUH -------------------------------
-# ID folder Drive tempat bot menaruh laporan sapuan.
+# ---- KE MANA HASIL SAPUAN DITARUH --------------------------
+# Hasil sapuan sampai ke Drive lewat DUA jalur, dua-duanya jalan sendiri
+# tanpa pengaturan tambahan:
+#
+#   1. Tab BOT_REKAP di sheet OTOMATISASI — rekap per order sheet: berapa PO,
+#      berapa dokumen yang terbit, qty, dan nilai bersihnya. Ditulis lewat
+#      Sheets API ke berkas yang SUDAH ADA, jadi tidak pernah kena batas
+#      `storageQuotaExceeded`. Langsung terlihat di Drive, dan tidak perlu
+#      Google Drive for Desktop sama sekali.
+#
+#   2. Berkas LAPORAN_SAPUAN_*.xlsx di folder `_LAPORAN`, satu folder dengan
+#      dokumennya (lihat `folder_draf` di bawah). Kalau folder itu
+#      disinkronkan Drive for Desktop, laporannya ikut naik dengan
+#      sendirinya — jalur yang sama persis dengan dokumen.
+#
+# Berapa laporan terakhir yang disimpan di folder `_LAPORAN`. Dua sapuan
+# sehari berarti +-730 berkas setahun menumpuk di folder yang dilihat divisi.
+# Isi 0 kalau tidak mau ada yang dihapus sama sekali.
+simpan_laporan_terakhir: 30
+
+# ID folder Drive tempat bot MENGUNGGAH SENDIRI laporan sapuan.
 #
 # SENGAJA DIKOSONGKAN, jangan diisi lagi. Diperiksa 19 September 2026:
 # folder "LAPORAN BOT ORDER SHEET" di Drive ADA tapi ISINYA KOSONG, padahal
@@ -27,9 +46,7 @@ folder_order_sheet:
 # Kalau diisi, tiap sapuan menambah satu baris "Laporan gagal diunggah ke
 # Google Drive" di daftar masalah, padahal tidak ada yang bisa diperbaiki.
 #
-# Laporannya tetap tersimpan di komputer: keluaran/sapuan/
-# Kalau mau ikut naik ke Drive, taruh folder proyek di dalam folder Google
-# Drive for Desktop — jalur yang sama dengan dokumen.
+# Biarkan kosong. Laporannya sudah sampai ke Drive lewat dua jalur di atas.
 folder_laporan_id: ""
 
 # Nama folder laporan yang dibuat bot di dalam folder di atas.

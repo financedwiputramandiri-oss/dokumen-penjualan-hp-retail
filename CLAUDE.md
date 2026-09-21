@@ -3130,3 +3130,60 @@ Sebelum menjalankannya, `data/kondisi_sapu.json` harus DIHAPUS dulu — yang
 berubah sejak sapuan terakhirnya bukan order sheetnya melainkan format
 dokumennya, dan `SidikPO` tidak pernah mengawasi kode (jebakan bagian 26, 27,
 dan 32). Tanpa itu, seluruh 235 PO akan dilewati sebagai "tidak berubah".
+
+## 35. Hasil sapuan naik ke Drive sendiri — 20 September 2026
+
+Yosua: *"atur sendiri agar hasil sapuan dapat diupload ke drive"*, sesudah
+bagian 34 menerangkan bahwa dokumen tidak bisa dikirim dari sesi ini.
+
+Jalur unggah yang selama ini dipakai bot SUDAH terbukti gagal dan tidak akan
+pernah berhasil: akun layanan tidak punya jatah penyimpanan Drive, jadi tidak
+bisa membuat berkas baru (`storageQuotaExceeded`, bagian 14 dan 30). Jadi yang
+dikerjakan bukan memperbaiki unggahan itu, melainkan **memakai dua jalur yang
+sudah terbukti jalan** dan tidak pernah menyentuh pembuatan berkas baru.
+
+### Jalur 1 — tab `BOT_REKAP` di sheet OTOMATISASI
+
+Menulis ke berkas yang **SUDAH ADA** lewat Sheets API. Mengisi berkas yang
+sudah ada tidak memakan jatah penyimpanan sama sekali, jadi batasan kuota tidak
+pernah kena. Sudah terbukti sejak 16 September lewat `BOT_DAFTAR_PO`,
+`BOT_PERUBAHAN`, dan `BOT_STATUS` (bagian 25).
+
+Kelebihan yang menentukan: **tidak perlu Google Drive for Desktop.** Tab ini
+terisi walaupun Drive for Desktop mati atau belum dipasang, dan terlihat dari
+komputer mana pun yang bisa membuka sheet-nya.
+
+### Jalur 2 — berkas laporan pindah ke `folder_draf/_LAPORAN`
+
+Laporan dulu ditulis ke `AKAR/keluaran/sapuan/`, di dalam folder proyek. Itu
+sebabnya laporan tidak pernah sampai ke siapa pun kecuali yang duduk di depan
+komputer bot — folder proyek tidak ikut disinkronkan Drive.
+
+Sekarang `bot.folder_laporan()` mengembalikan `p.folder_draf / "_LAPORAN"`,
+jadi laporan duduk satu folder dengan dokumennya dan ikut naik lewat Drive for
+Desktop. Jalur yang sama persis, tanpa pengaturan baru.
+
+### `sapu/rekap.py` — satu sumber angka untuk tiga tempat
+
+Rekap dipakai lembar REKAP di berkas laporan, tab `BOT_REKAP`, dan ringkasan
+di layar. Kalau masing-masing menghitung sendiri, cepat atau lambat ketiganya
+menyebut angka berlainan dan tidak ada yang tahu mana yang benar. Pola yang
+sama dengan `berkas_dokumen.py` yang sengaja dipakai bersama perintah manual
+dan bot (bagian 15).
+
+Aturan bagian 30 ikut dipindahkan ke sini: untuk PO yang dokumennya TIDAK
+terbit, qty dan nilainya **DIKOSONGKAN**, bukan ditampilkan. Ada tesnya.
+
+### Pemangkasan laporan — dan kenapa polanya dikunci ketat
+
+Dua sapuan sehari berarti +-730 berkas setahun menumpuk di folder yang dilihat
+divisi. `pangkas_laporan()` menyisakan 30 terbaru (`simpan_laporan_terakhir`,
+isi 0 untuk tidak menghapus apa pun).
+
+Yang dihapus HANYA berkas yang cocok `LAPORAN_SAPUAN_20*.xlsx`. Polanya dikunci
+tes yang menaruh `Catatan Yosua.xlsx`, `LAPORAN_SAPUAN_manual.txt`, dan
+`INVOICE_PO_A.xlsx` di folder yang sama lalu memastikan ketiganya selamat.
+**Folder itu folder Drive yang disinkronkan** — kalau polanya dilonggarkan,
+berkas orang ikut terhapus dan hilangnya sampai ke Drive.
+
+Tes 239 -> 246.

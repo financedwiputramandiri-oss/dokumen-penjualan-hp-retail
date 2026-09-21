@@ -14,11 +14,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Iterable, Optional
 
+from . import rekap as rkp
+
 AWALAN_BOT = "BOT_"
 
 TAB_DAFTAR = "BOT_DAFTAR_PO"
 TAB_PERUBAHAN = "BOT_PERUBAHAN"
 TAB_STATUS = "BOT_STATUS"
+TAB_REKAP = "BOT_REKAP"
 
 
 class PenulisSheet:
@@ -77,18 +80,46 @@ class PenulisSheet:
             ["Draf dokumen dibuat", jumlah_draf],
             ["Perubahan penting", jumlah_genting],
             [],
-            ["Laporan lengkap", tautan_laporan or "(belum diunggah ke Drive)"],
+            ["Rekap hasil sapuan", f"lihat tab {TAB_REKAP}"],
+            ["Berkas laporan lengkap", tautan_laporan or "(tidak dibuat)"],
             [],
             ["CATATAN",
              "Tab yang namanya diawali BOT_ diisi ulang otomatis tiap sapuan. "
              "Jangan diketik manual, isinya akan tertimpa. "
              "Tab lain di sheet ini tidak pernah disentuh bot."],
+            ["", "Berkas laporan ditaruh di folder _LAPORAN, satu folder dengan "
+                 "dokumennya. Kalau folder itu disinkronkan Google Drive for "
+                 "Desktop, laporannya ikut naik ke Drive dengan sendirinya."],
         ]
         if jumlah_genting:
             baris.insert(2, [f"ADA {jumlah_genting} PERUBAHAN PENTING — lihat tab {TAB_PERUBAHAN}"])
         else:
             baris.insert(2, ["Tidak ada perubahan penting pada PO lama."])
         self.tulis_tab(TAB_STATUS, baris)
+
+    def tulis_rekap(self, rekaman: list[dict], waktu: datetime) -> None:
+        """Hasil sapuan dalam bentuk paling ringkas: per order sheet.
+
+        Inilah jawaban atas "hasil sapuan bisa dilihat di Drive di mana".
+        Tab ini ditulis lewat Sheets API ke berkas yang SUDAH ADA dan
+        dimiliki Yosua, jadi tidak pernah kena batas `storageQuotaExceeded`
+        yang memblokir pengunggahan berkas baru oleh akun layanan
+        (CLAUDE.md bagian 14 dan 30). Tidak perlu Drive for Desktop.
+        """
+        baris = [
+            ["REKAP HASIL SAPUAN"],
+            [f"Sapuan {waktu.strftime('%d %B %Y, %H:%M')}"],
+            [],
+            list(rkp.JUDUL_PER_SHEET),
+        ]
+        baris.extend(rkp.baris_per_sheet(rekaman))
+        baris.append([])
+        baris.append([
+            "Qty dan nilai dikosongkan untuk order sheet yang dokumennya belum "
+            "terbit — angka itu justru yang belum cocok dengan baris TOTAL "
+            "order sheet, jadi jangan dipakai sebagai angka resmi."
+        ])
+        self.tulis_tab(TAB_REKAP, baris)
 
     def tulis_daftar_po(self, rekaman: Iterable[dict]) -> None:
         baris = [[

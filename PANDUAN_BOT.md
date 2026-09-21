@@ -465,15 +465,50 @@ akun layanan, jadi tidak kena batasan kuota.
 
 `folder_dokumen_id` dikosongkan supaya bot berhenti mencoba mengunggah sendiri.
 
+### Di mana hasil sapuan bisa dilihat
+
+Tiap selesai menyapu, bot menaruh hasilnya di **dua tempat**. Keduanya jalan
+sendiri, tidak ada yang perlu diatur.
+
+**1. Di Google Sheet OTOMATISASI, tab `BOT_REKAP`** — buka sheet-nya, langsung
+kelihatan. Isinya satu baris per order sheet: berapa PO-nya, berapa dokumen
+yang terbit, qty, dan nilai bersihnya, ditutup baris TOTAL.
+
+Ini yang paling bisa diandalkan, sebab bot menulisnya ke berkas yang **sudah
+ada** lewat Sheets API. Akun layanan Google tidak punya jatah penyimpanan
+Drive sehingga tidak bisa membuat berkas baru, tapi MENGISI berkas yang sudah
+ada tidak memakan jatah sama sekali. Jadi tab ini terisi walaupun Drive for
+Desktop mati, atau belum dipasang.
+
+Tab `BOT_DAFTAR_PO` di sebelahnya memuat rinciannya per PO.
+
+**2. Berkas `LAPORAN_SAPUAN_<tanggal>.xlsx`** di folder **`_LAPORAN`**, satu
+folder dengan dokumen-dokumennya. Isinya lima lembar: RINGKASAN, REKAP,
+REKAP PER PO, PERUBAHAN, dan YANG DIPERIKSA.
+
+Karena letaknya di dalam `folder_draf`, laporan ini ikut naik ke Drive lewat
+Google Drive for Desktop — jalur yang sama persis dengan dokumennya. Tidak
+perlu pengaturan tambahan.
+
+Bot menyimpan 30 laporan terakhir lalu menghapus yang lebih lama, supaya
+foldernya tidak penuh (dua sapuan sehari = +-730 berkas setahun). Angkanya bisa
+diubah lewat `simpan_laporan_terakhir` di `config/bot.yaml`; isi `0` kalau
+tidak mau ada yang dihapus. Yang dihapus hanya berkas bernama
+`LAPORAN_SAPUAN_*.xlsx` — berkas lain di folder itu tidak pernah disentuh.
+
 ### Kalau Drive for Desktop tidak dipakai
 
 Kosongkan saja `folder_dokumen_id`. Dokumen tetap dibuat lengkap di
-`keluaran/draf/`, tinggal disalin ke Drive secara manual kalau perlu.
+`folder_draf`, tinggal disalin ke Drive secara manual kalau perlu.
 
-Laporan sapuan **tetap naik ke Drive** dengan normal — laporan diunggah ke
-folder LAPORAN BOT, dan ukurannya kecil... tapi perlu dicatat: laporan pun
-berkas baru, jadi kemungkinan besar ikut tertolak. Kalau begitu, kosongkan juga
-`folder_laporan_id`; laporannya tetap tersimpan di `keluaran/sapuan/`.
+Tab `BOT_REKAP` **tetap terisi** walaupun begitu, jadi angkanya tetap bisa
+dilihat dari mana saja. Yang tidak ikut naik hanya berkas laporannya.
+
+`folder_laporan_id` biarkan kosong. Sudah diuji 19 September 2026: folder
+LAPORAN BOT di Drive ada tapi isinya kosong, karena akun layanan tidak bisa
+membuat berkas baru (`storageQuotaExceeded`). Mengisinya hanya membuat tiap
+sapuan menambah satu baris "Laporan gagal diunggah" yang tidak bisa
+diperbaiki siapa pun.
 
 ---
 

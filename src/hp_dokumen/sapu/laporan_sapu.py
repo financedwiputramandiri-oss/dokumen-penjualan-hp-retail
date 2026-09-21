@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 
 from ..dokumen import gaya
+from . import rekap as rkp
 from .pantau import GENTING, KABAR, PERHATIAN, Perubahan
 
 
@@ -21,6 +22,48 @@ def _isi(ws, r, c, v, *, bold=False, fmt=None, wrap=False):
     return s
 
 
+def _tabel(ws, r: int, judul: list[str], baris: list[list],
+           lebar: dict[int, int]) -> int:
+    """Satu tabel bergaris. Kolom yang judulnya menyebut rupiah diformat Rp."""
+    uang = {c for c, j in enumerate(judul, start=1)
+            if j.startswith(("SEBELUM DISKON", "NILAI BERSIH"))}
+    gaya.baris_judul_tabel(ws, r, judul)
+    awal = r
+    r += 1
+    for isi in baris or [["(tidak ada)"] + [""] * (len(judul) - 1)]:
+        for c, v in enumerate(isi, start=1):
+            _isi(ws, r, c, v,
+                 fmt=gaya.FORMAT_RP if c in uang and isinstance(v, (int, float)) else None)
+        r += 1
+    gaya.beri_garis(ws, awal, 1, r - 1, len(judul))
+    gaya.atur_lebar(ws, lebar)
+    ws.freeze_panes = ws.cell(awal + 1, 1)
+    return r
+
+
+def _lembar_rekap(wb, rekaman: list[dict], waktu: datetime) -> None:
+    """Dua lembar: ringkas per order sheet, lalu rinci per PO."""
+    ws = wb.create_sheet("REKAP", 1)
+    t = ws.cell(1, 1, "REKAP HASIL SAPUAN — PER ORDER SHEET")
+    t.font = Font(name=gaya.FONT, size=14, bold=True)
+    _isi(ws, 2, 1, f"Sapuan {waktu:%d %B %Y, %H:%M}")
+    r = _tabel(ws, 4, rkp.JUDUL_PER_SHEET, rkp.baris_per_sheet(rekaman),
+               {1: 46, 2: 8, 3: 16, 4: 14, 5: 22, 6: 22, 7: 60})
+    r += 1
+    _isi(ws, r, 1,
+         "Qty dan nilai SENGAJA dikosongkan untuk order sheet yang dokumennya "
+         "belum terbit. Angka itu justru yang belum cocok dengan baris TOTAL "
+         "order sheet, jadi tidak boleh dipakai sebagai angka resmi.", wrap=True)
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
+    ws.row_dimensions[r].height = 30
+
+    ws2 = wb.create_sheet("REKAP PER PO", 2)
+    t = ws2.cell(1, 1, "REKAP HASIL SAPUAN — PER PO")
+    t.font = Font(name=gaya.FONT, size=14, bold=True)
+    _tabel(ws2, 3, rkp.JUDUL_PER_PO, rkp.baris_per_po(rekaman),
+           {1: 42, 2: 34, 3: 22, 4: 13, 5: 10, 6: 20, 7: 12, 8: 20, 9: 14, 10: 52})
+
+
 def tulis(
     berkas: Path,
     perubahan: list[Perubahan],
@@ -30,8 +73,10 @@ def tulis(
     waktu: datetime | None = None,
     dilewati: list[str] | None = None,
     tab_ditarik: int = 0,
+    rekaman: list[dict] | None = None,
 ) -> Path:
     dilewati = dilewati or []
+    rekaman = rekaman or []
     waktu = waktu or datetime.now()
     wb = Workbook()
 
@@ -148,6 +193,12 @@ def tulis(
         _isi(ws3, r, 1, m, wrap=True)
         r += 1
     gaya.atur_lebar(ws3, {1: 70, 2: 46, 3: 16})
+
+    # ------------------------------------------------------------- REKAP
+    # Ditaruh di depan dengan sengaja: inilah yang dicari orang kalau ia
+    # membuka laporan sapuan di Drive — berapa dokumen yang jadi, dari PO
+    # mana, dan yang belum jadi itu kenapa.
+    _lembar_rekap(wb, rekaman, waktu)
 
     berkas.parent.mkdir(parents=True, exist_ok=True)
     wb.save(berkas)

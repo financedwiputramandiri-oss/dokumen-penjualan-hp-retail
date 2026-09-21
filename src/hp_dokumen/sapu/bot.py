@@ -38,6 +38,47 @@ from .pantau import GENTING, Perubahan, bandingkan
 from .tulis_sheet import PenulisSheet
 
 
+# Nama berkas laporan dikunci polanya, sebab `pangkas_laporan()` MENGHAPUS
+# berkas yang cocok dengan pola ini. Kalau polanya dilonggarkan, berkas lain
+# milik orang di folder yang sama ikut terhapus — dan folder itu biasanya
+# folder Drive yang disinkronkan, jadi hilangnya sampai ke Drive.
+AWALAN_LAPORAN = "LAPORAN_SAPUAN_"
+POLA_LAPORAN = AWALAN_LAPORAN + "20*.xlsx"
+NAMA_FOLDER_LAPORAN = "_LAPORAN"
+
+
+def folder_laporan(p: "Pengaturan") -> Path:
+    """Laporan ditaruh DI SEBELAH dokumen, bukan di dalam folder proyek.
+
+    Dengan begitu laporan ikut naik ke Drive lewat jalur yang sama dengan
+    dokumen: Google Drive for Desktop. Akun layanan tidak bisa mengunggah
+    berkas baru sendiri (`storageQuotaExceeded`, CLAUDE.md bagian 14), jadi
+    menaruh laporan di `keluaran/sapuan/` berarti laporannya tidak pernah
+    sampai ke siapa pun kecuali yang duduk di depan komputer bot.
+    """
+    return p.folder_draf / NAMA_FOLDER_LAPORAN
+
+
+def pangkas_laporan(folder: Path, simpan: int) -> list[Path]:
+    """Sisakan `simpan` laporan terbaru, hapus sisanya. 0 = jangan hapus.
+
+    Dua sapuan sehari berarti +-730 berkas setahun menumpuk di folder Drive
+    yang dilihat divisi. Yang dihapus HANYA berkas yang namanya cocok
+    `POLA_LAPORAN` di folder `_LAPORAN` — berkas lain tidak pernah disentuh.
+    """
+    if simpan <= 0 or not folder.is_dir():
+        return []
+    ada = sorted(folder.glob(POLA_LAPORAN), key=lambda x: x.name, reverse=True)
+    dibuang = []
+    for berkas in ada[simpan:]:
+        try:
+            berkas.unlink()
+            dibuang.append(berkas)
+        except OSError:
+            pass
+    return dibuang
+
+
 @dataclass
 class Pengaturan:
     folder: list[dict]
@@ -55,6 +96,7 @@ class Pengaturan:
     draf_pdf: bool = False
     folder_dokumen_id: str = ""
     pakai_kunci_bersama: bool = True
+    simpan_laporan_terakhir: int = 30
 
     @classmethod
     def muat(cls, berkas: Path | None = None) -> "Pengaturan":
@@ -76,6 +118,7 @@ class Pengaturan:
             draf_pdf=bool(d.get("draf_pdf", False)),
             folder_dokumen_id=(d.get("folder_dokumen_id") or "").strip(),
             pakai_kunci_bersama=bool(d.get("pakai_kunci_bersama", True)),
+            simpan_laporan_terakhir=int(d.get("simpan_laporan_terakhir", 30)),
         )
 
 
@@ -380,11 +423,12 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
     kondisi.simpan(p.berkas_kondisi)
 
     waktu = datetime.now()
-    nama_laporan = f"LAPORAN_SAPUAN_{waktu:%Y%m%d_%H%M}.xlsx"
-    berkas_laporan = AKAR / "keluaran" / "sapuan" / nama_laporan
+    nama_laporan = f"{AWALAN_LAPORAN}{waktu:%Y%m%d_%H%M}.xlsx"
+    berkas_laporan = folder_laporan(p) / nama_laporan
     tulis_laporan(berkas_laporan, perubahan, diperiksa,
                   [d.ringkas() for d in draf], masalah, waktu,
-                  dilewati, dibaca_tab)
+                  dilewati, dibaca_tab, rekaman)
+    pangkas_laporan(folder_laporan(p), p.simpan_laporan_terakhir)
 
     id_drive = None
     genting = [x for x in perubahan if x.tingkat == GENTING]
@@ -400,16 +444,19 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
         try:
             penulis = PenulisSheet(sambung, p.sheet_otomatisasi_id)
             penulis.muat_daftar_tab()
+            penulis.tulis_rekap(rekaman, waktu)
             penulis.tulis_daftar_po(rekaman)
             penulis.tulis_perubahan(perubahan)
             tautan = (
-                f"https://drive.google.com/file/d/{id_drive}/view" if id_drive else ""
+                f"https://drive.google.com/file/d/{id_drive}/view" if id_drive
+                else str(berkas_laporan)
             )
             penulis.tulis_status(
                 waktu, len(diperiksa), sum(n for _, _, n in diperiksa),
                 len(genting), len(draf), tautan,
             )
-            cetak("Sheet OTOMATISASI diperbarui (tab BOT_DAFTAR_PO, BOT_PERUBAHAN, BOT_STATUS).")
+            cetak("Sheet OTOMATISASI diperbarui (tab BOT_REKAP, BOT_DAFTAR_PO, "
+                  "BOT_PERUBAHAN, BOT_STATUS).")
         except Exception as e:
             masalah.append(f"Sheet OTOMATISASI tidak bisa diperbarui: {e}")
             cetak(f"Sheet OTOMATISASI gagal diperbarui: {e}")
