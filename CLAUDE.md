@@ -1,0 +1,3553 @@
+# CLAUDE.md — Proyek Otomatisasi Dokumen Penjualan
+
+**CV Dwi Putra Mandiri · brand Happy Pumpkin**
+Pemilik proyek: Yosua, Finance
+Dipindahkan dari Claude.ai pada 10 September 2026
+
+Berkas ini adalah ingatan proyek. Isinya konteks, temuan, dan keputusan yang
+sudah diambil. Baca seluruhnya sebelum mengerjakan apa pun, dan jangan
+mengulang penelusuran yang hasilnya sudah tercatat di sini.
+
+---
+
+## 1. Tujuan
+
+Menghasilkan **Surat Jalan, Invoice, Packing List, dan Faktur Pajak** secara
+otomatis dari order sheet, mengikuti ketentuan masing-masing customer, dan
+ikut berubah setiap order sheet diperbarui.
+
+## 2. Berkas
+
+### ORDER SHEET YANG BERLAKU — ditegaskan Yosua 26 September 2026
+
+> *"INGAT LINK INI SEBAGAI LINK ORDER SHEET"*
+
+    https://docs.google.com/spreadsheets/d/1PNWs_o9DQR8jiRC9XzNbaqSTMz3-OLjIfUbPEjG2GYw/edit
+
+| | |
+|---|---|
+| ID | `1PNWs_o9DQR8jiRC9XzNbaqSTMz3-OLjIfUbPEjG2GYw` |
+| Judul | `9. (External) Order Sheet - Happy Pumpkin September 2026` |
+| Folder induk | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` (Order Sheet 2026) |
+| Pemilik | `happypumpkinkids.id@gmail.com` |
+
+**Inilah berkas yang dipakai kalau Yosua menyebut "order sheet" tanpa
+menyebut bulan.** Mulai dari sini, jangan mencari-cari lagi.
+
+Dua hal yang harus diingat tiap kali memakainya:
+
+1. **Periksa `modifiedTime` dulu, jangan langsung memakai salinan lama.**
+   Berkas ini berubah beberapa kali sehari. Pada 26 September saja tercatat
+   berubah jam 02:05 lalu 02:12 — dan PO baru (`PO 21 September - Buchi Kids`)
+   memang belum ada di salinan tanggal 20 September.
+2. **Ini berkas BULANAN.** Isinya September 2026; bulan berikutnya akan
+   berupa berkas lain di folder `1RDH...` yang sama. Jadi kalau bulan sudah
+   berganti dan tab yang dicari tidak ketemu di sini, cari berkas bulan itu
+   di folder induknya — jangan menyimpulkan tabnya tidak ada.
+
+ID `1yBWhMTFY8pLEhvEVFHI2hhrOouUx36aGjaE83ApcNhw` yang dulu tercatat di sini
+adalah order sheet **Agustus 2026**, dan sudah TIDAK dipakai lagi sebagai
+acuan "order sheet" begitu saja.
+
+### Berkas lain
+
+| Berkas | ID |
+|---|---|
+| Order sheet Agustus 2026 (acuan lama) | `1yBWhMTFY8pLEhvEVFHI2hhrOouUx36aGjaE83ApcNhw` |
+| OTOMATISASI (versi lama, tanpa sambungan) | `1poWqdvKjJ3gwixtBg2oeZgjhhtUn6ytum2pM297wBUs` |
+| OTOMATISASI_HAPPY_PUMPKIN_SINKRON | `1lL-AXy2Th369iC4IJiS1-pM8BQGRnhCPZ5igL9oNpUM` |
+
+Seluruh order sheet dimiliki `happypumpkinkids.id@gmail.com`, dibagikan ke
+`finance.dwiputramandiri@gmail.com`.
+
+Faktur dan surat jalan lama ada di folder Drive `DPM - INVOICE / SURAT JALAN`,
+sekitar 120 berkas, Mei sampai Agustus 2026. Dipakai sebagai acuan format.
+
+---
+
+## 3. Struktur order sheet
+
+### Tab
+
+18 tab: `Harga Retail`, `Packing List Haritsa`, dan 16 tab PO dengan pola
+nama `PO <tanggal> - <customer>`.
+
+Nama tab yang memakai kurung: `Baby Wise (Surabaya)`, `Katamama (Tapos)`,
+`Katamama (Cikarang)`. Saat mencocokkan ke master customer, buang tanda
+kurungnya.
+
+### Kolom tab PO
+
+| Kolom | Isi |
+|---|---|
+| A | ARTICLE CODE |
+| B | PRODUCT NAME |
+| C | COLOUR |
+| D–L | ORIGINAL PO, 9 kolom ukuran |
+| M | TOTAL original PO |
+| **N–V** | **AVAILABLE TO ORDER (ATO), 9 kolom ukuran — dasar semua dokumen** |
+| W | TOTAL ATO |
+| X | PRICE W/ VAT (sudah termasuk PPN) |
+| Y | TOTAL ORI PO (VALUE) |
+| Z | TOTAL ATO (VALUE) — nilai sebelum diskon |
+| AA | LOSSES |
+| AB | DISC |
+| **AC** | **TOTAL VALUE — nilai bersih untuk customer TOP/Tempo (font biru tua)** |
+| **AD** | **DISCOUNT CBD +1,5% — nilai bersih untuk customer CBD (font biru muda)** |
+| **AE** | **DISCOUNT COD +1,5% — nilai bersih untuk customer COD (font biru muda)** |
+| AF | NOTE (hanya ada di sebagian tab) |
+
+### Blok bertumpuk — temuan paling menentukan
+
+Satu tab PO bisa berisi beberapa tabel bertumpuk. Tiap tabel punya baris
+judul `ARTICLE CODE` sendiri dan **sistem ukuran sendiri**, karena mewakili
+kategori produk yang berbeda.
+
+Seluruhnya 34 blok dari 15 PO berisi data, dengan 12 set label ukuran berbeda.
+
+Contoh tab Miniku: 6 blok, 302 baris. Blok 2 memakai `0-3M / 3-6M / 6-12M /
+S / M / L`, blok 3 memakai `1 / 2 / 3 / 4 / 5 / 6 / 7-8Y / 9-10Y`.
+
+Kolom ukuran yang tidak terpakai **disembunyikan**, bukan dihapus.
+
+### Tab Packing List
+
+`Packing List Haritsa` bukan packing list model ekspor. Isinya daftar barang
+yang benar-benar dikirim dalam satu batch, susunannya sama seperti blok PO,
+tapi **qty-nya di kolom D–L**, bukan N–V, karena tidak punya blok ORIGINAL PO.
+
+Isi: 6 baris artikel 42054.1.AT, 333 pcs, sebagian dari PO Haritsa yang
+1.053 pcs.
+
+---
+
+## 4. Angka acuan
+
+> **Diperbarui 11 September 2026.** Seluruh angka di bawah sudah diverifikasi
+> ulang langsung terhadap order sheet oleh program di repo ini, bukan lagi
+> hasil penelusuran manual. Lihat bagian 11 untuk hasil terbaru.
+
+Dihitung dari order sheet per 7 September 2026, hanya baris dengan ATO > 0:
+
+| | |
+|---|---|
+| PO berisi data | 15 |
+| Blok | 34 |
+| Baris | 1.073 |
+| Total qty | **7.609 pcs** |
+| Nilai sebelum diskon | **Rp500.874.100** |
+| Artikel di Harga Retail | 195 |
+
+Blok terbesar: Miniku blok 3, 227 baris.
+PO terbesar: Miniku, 288 baris, 1.783 pcs, Rp120.242.700 sebelum diskon.
+
+Nilai bersih per tab (kolom AC), untuk pencocokan:
+
+| Tab | Sebelum diskon | TOTAL VALUE | Rasio |
+|---|---:|---:|---:|
+| Haritsa 31 Agu | 57.253.000 | 42.939.750 | 0,750 |
+| Baby Wise Surabaya 31 Agu | 22.179.900 | 16.080.428 | 0,725 |
+| Natasha 28 Agu | 537.900 | 430.320 | 0,800 |
+| Mae Bebe 26 Agu | 7.488.000 | 5.616.000 | 0,750 |
+| Panda & Bear 25 Agu | 6.252.000 | 5.126.640 | 0,820 |
+| Pratama 25 Agu | 24.318.000 | 18.238.500 | 0,750 |
+| Katamama Tapos 24 Agu | 24.790.000 | 19.336.200 | 0,780 |
+| Katamama Cikarang 22 Agu | 29.397.600 | 22.930.128 | 0,780 |
+| Yulis 22 Agu | 28.935.800 | 22.569.924 | 0,780 |
+| Miniku 20 Agu | 120.242.700 | 93.789.306 | 0,780 |
+| Mae Bebe 19 Agu | 50.734.500 | 38.050.875 | 0,750 |
+| Baby Wise 19 Agu | 56.184.900 | 42.138.675 | 0,750 |
+| Baby Fame 14 Agu | 30.532.000 | 22.899.000 | 0,750 |
+| Dunia Bayi 13 Agu | 40.865.900 | 30.649.425 | 0,750 |
+| Canina Baby 13 Agu | 1.161.900 | 906.282 | 0,780 |
+
+Rasio hanya untuk pemeriksaan. **Jangan dipakai sebagai sumber diskon** —
+selalu ambil nilai bersihnya langsung dari kolomnya.
+
+---
+
+## 5. Ketentuan per customer
+
+| Customer | Format invoice | Nama di dokumen | Alamat | NPWP |
+|---|---|---|---|---|
+| Haritsa | **per artikel + ukuran** | PT. Haritsa Pipa Rezeki | ada | — |
+| Katamama Tapos | **per artikel + ukuran** | PT. MAMA PAPA JUARA | ada | — |
+| Katamama Cikarang | **per artikel + ukuran** | PT. MAMA PAPA JUARA | — | — |
+| Baby Wise | per artikel | BABY WISE INDONESIA | ada | — |
+| Baby Wise Surabaya | per artikel | — | — | — |
+| Natasha | per artikel | — | — | — |
+| Mae Bebe | per artikel | JONNI SETIADI | ada | — |
+| Panda & Bear | per artikel | — | — | — |
+| Pratama | per artikel | CV. YAKIN ESOK SUKSES | ada | — |
+| Yulis Baby Shop | per artikel | — | — | — |
+| Miniku | per artikel | — | — | — |
+| Baby Fame | per artikel | — | — | — |
+| Dunia Bayi | per artikel | PT. DUNIA BAYI SENTOSA | ada | — |
+| Canina Baby | per artikel | — | — | — |
+
+Alamat yang sudah diketahui:
+
+- **Haritsa** — JL. T. Hasan Dek, RT 000 RW 000 Beurawe, Kuta Alam
+- **Baby Wise** — Ruko Tol Boulevard Blok AH-2/3C-3D, BSD City, Rawabuntu,
+  Serpong, Tangerang Selatan, Banten 15318
+- **Mae Bebe** — Jl. Bintaro Utama V Blok EA. 1/5, RT.001 RW.010,
+  Kel. Jurangmangu Timur, Kec. Pondok Aren, Tangerang Selatan
+- **Pratama** — Jl. P. Diponegoro 88, Tamanan Tulungagung, Jawa Timur 66217
+- **Katamama Tapos** — Ruko Nirwana Estate, Jl. Raya Cikaret, Pabuaran,
+  Cibinong, Kab. Bogor, Jawa Barat
+- **Dunia Bayi** — Pertokoan Udayana Blok Jl. Letda Made Putra 37A,
+  Dauh Puri, Denpasar Barat, Kota Denpasar, Bali 80113
+
+---
+
+## 6. Format dokumen
+
+Acuan: berkas `0050726 YAKIN ESOK SUKSES (PRATAMA)` dan
+`0310726 MAE BEBE JONNI SETIADI` di Drive.
+
+### Kop, dipakai semua dokumen
+
+Logo di kiri. Di sebelahnya:
+
+```
+CV DWI PUTRA MANDIRI
+Jl. Jelambar Baru Raya No. 46, Grogol Petamburan
+Jakarta Barat - 11460, Indonesia
+Phone. +62 (021) 22561723
+Wa:(+62) 0877 7950 0992
+Email : DPMTEX@yahoo.com
+```
+
+Di kanan: `Jakarta, <tanggal>`, lalu `Kepada Yth.`, nama dan alamat customer.
+
+### Invoice
+
+Kolom A sampai H:
+
+```
+No. | ARTICLE CODE | DESKRIPSI BARANG | Qty (PCS) |
+Harga (Satuan) | Diskon (%) | Nilai (Diskon) | Jumlah
+```
+
+Persen diskon berada di satu sel di baris judul, nilai rupiahnya dihitung
+per baris.
+
+Penutup di kolom G–H, urutannya:
+Subtotal, Diskon, Total, Uang Muka, DPP, PPN, Total.
+
+Info rekening di kolom B:
+
+```
+PEMBAYARAN DITRANSFER KE REKENING :
+CV. DWI PUTRA MANDIRI
+BANK BCA
+A/C NO. : 277 950 8000
+```
+
+`Hormat kami,` di kanan bawah.
+
+Invoice **tidak dipecah per tabel** — satu tabel menerus untuk seluruh PO.
+Warna **tidak pernah** masuk invoice.
+
+Baris diskon CBD/COD **tidak dicetak** di invoice; faktur asli DPM tidak
+memuatnya.
+
+### Surat Jalan
+
+```
+No. | ARTICLE CODE | PRODUCT NAME | COLOUR | <9 kolom ukuran> | TOTAL
+```
+
+Satu tabel per blok, bertumpuk dalam satu dokumen. Tiap tabel punya baris
+judul sendiri dengan label ukurannya sendiri, nomor urut mulai dari 1 lagi,
+dan baris TOTAL di bawahnya. Di bawah semua tabel ada TOTAL SELURUH PO.
+
+Tanda tangan: `Pengirim :` / `Penerima :` / `Mengetahui :`
+
+### Packing List
+
+Sama seperti Surat Jalan, ditambah kolom **JUMLAH DIKIRIM** dan **NO. KOLI**
+yang diisi gudang. Berat dan dimensi tidak ada di order sheet dan tidak boleh
+ditebak rumus.
+
+### Faktur Pajak
+
+Bukan untuk dicetak. Berisi data siap ketik ke Coretax: nama dan NPWP
+pembeli, alamat, nomor referensi, tanggal, DPP, PPN, total. Ditambah rincian
+per artikel.
+
+Harga di order sheet sudah termasuk PPN, jadi DPP dihitung mundur.
+Tarif sementara 11% — **perlu dicek apakah masih sesuai aturan yang berlaku**.
+
+---
+
+## 7. Temuan yang jangan diulang penelusurannya
+
+### Deskripsi barang selalu sama dengan master harga
+
+Dicek 18 kode artikel dari dua faktur berbeda, semuanya sama huruf per huruf,
+termasuk yang aneh seperti `Milo Set (Small Size)` yang memakai kurung. Tidak
+ada customer yang minta penamaan sendiri.
+
+### Surat Jalan asli memang bertumpuk
+
+Faktur Mae Bebe 0310726 membuktikan satu Surat Jalan memuat beberapa tabel
+dengan judul ukuran berbeda. Struktur blok di order sheet bukan kekacauan.
+
+### Tidak ada NPWP di Drive
+
+Setelah menelusuri ±120 berkas faktur dan surat jalan Mei–Agustus 2026, tidak
+ditemukan satu pun NPWP customer, dan tidak ada berkas faktur pajak.
+
+### Kekhususan Haritsa yang belum dikonfirmasi
+
+Berkas faktur Haritsa berisi sheet `FASHION` dan `SURAT JALAN - FASHION`,
+dengan brand ditulis `BRAND : HAPPY PUMPKIN " FASHION "`. Kemungkinan Haritsa
+menerima faktur terpisah per kategori produk.
+
+### Selisih dengan Laporan Penjualan Agustus 2026
+
+| Faktur | Laporan Penjualan | Order sheet | Selisih |
+|---|---:|---:|---:|
+| FA-013 Panda & Bear | 5.001.600 | 5.126.640 | 125.040 |
+| FA-008 Canina | 1.161.900 | 906.282 | 255.618 |
+
+Panda & Bear tercatat memakai potongan 20% padahal seharusnya 18%. Canina
+tercatat tanpa potongan. FA-009 Baby Fame Rp22.899.000 sudah cocok persis.
+
+### Kolom CBD sering belum ditarik penuh
+
+Kolom `DISCOUNT CBD +1,5%` sering belum ditarik sampai baris terakhir oleh
+Sales. Di baris yang terisi, nilainya persis `TOTAL VALUE × 0,985`.
+
+**Aturannya: kolom yang terisi sebagian diabaikan seluruhnya, order itu
+diperlakukan sebagai TOP.** Jangan ditambal sebagian.
+
+Hasil penerapan pada order sheet Agustus 2026:
+
+| Tab | Baris | AD terisi | Status | Nett dipakai |
+|---|---:|---:|---|---:|
+| Baby Wise Surabaya 31 Agu | 34 | 34 | CBD | 15.758.819 |
+| Pratama 25 Agu | 25 | 25 | CBD | 17.964.922 |
+| Katamama Tapos 24 Agu | 106 | 106 | CBD | 19.046.157 |
+| Katamama Cikarang 22 Agu | 109 | 109 | CBD | 22.586.176 |
+| Yulis 22 Agu | 148 | 148 | CBD | 22.118.526 |
+| Canina Baby 13 Agu | 17 | 17 | CBD | 892.688 |
+| Haritsa 31 Agu | 24 | 20 | TOP | 42.939.750 |
+| Natasha 28 Agu | 8 | 0 | TOP | 430.320 |
+| Mae Bebe 26 Agu | 6 | 0 | TOP | 5.616.000 |
+| Panda & Bear 25 Agu | 12 | 0 | TOP | 5.126.640 |
+| Miniku 20 Agu | 288 | 44 | TOP | 93.789.306 |
+| Mae Bebe 19 Agu | 84 | 43 | TOP | 38.050.875 |
+| Baby Wise 19 Agu | 105 | 46 | TOP | 42.138.675 |
+| Baby Fame 14 Agu | 56 | 51 | TOP | 22.899.000 |
+| Dunia Bayi 13 Agu | 51 | 49 | TOP | 30.649.425 |
+| **Total nett** | | | | **380.007.279** |
+
+Aturan ini terbukti benar lewat Baby Fame: kolom AD terisi 51 dari 56, jadi
+TOP, nett Rp22.899.000 — cocok persis dengan FA-009 di Laporan Penjualan
+Agustus 2026. Kalau kolom AD dipaksa dipakai, hasilnya Rp21.757.665 dan
+meleset.
+
+Karena penentuannya murni dari kelengkapan data, tidak perlu membaca warna
+font atau status tersembunyi kolom lewat Sheets API.
+
+---
+
+## 8. Riwayat keputusan
+
+| Keputusan | Alasan |
+|---|---|
+| Satu PO = satu Surat Jalan, bukan satu blok = satu dokumen | Sesuai praktik asli, terbukti dari faktur Mae Bebe di Drive |
+| Invoice satu tabel menerus | Faktur asli tidak dipecah walaupun Surat Jalannya dipecah |
+| Diskon diambil per order, bukan disimpan sebagai persen di master | Persen di master mudah basi dan sudah pernah salah |
+| Berat dan koli diisi manual gudang | Tidak ada di order sheet, tidak boleh ditebak |
+| MASTER_HARGA ditarik dari order sheet, tapi CEK HARGA tetap membandingkan harga baris PO dengan master | Alat kontrol tidak boleh memeriksa dirinya sendiri |
+| Semua warna tabel diputihkan | Permintaan Yosua, 8 September 2026 |
+| Pindah dari Apps Script ke rumus murni, lalu ke Claude Code | Apps Script dan script.google.com terkunci di akun Yosua |
+
+---
+
+## 9. Yang masih menggantung
+
+| Hal | Keterangan |
+|---|---|
+| NPWP 14 customer | Tidak ada di Drive, harus diisi manual |
+| Alamat 8 customer | Baby Wise Surabaya, Natasha, Panda & Bear, Katamama Cikarang, Yulis, Miniku, Baby Fame, Canina |
+| Tarif PPN | Sementara 11%, perlu dicek |
+| Akhiran Y pada label ukuran | Perlu dikonfirmasi ke Yosua. Sementara diaktifkan (2 -> 2Y) mengikuti contoh Yosua sendiri, bisa dimatikan di `config/pengaturan.yaml` |
+| Faktur terpisah Haritsa | Apakah benar per kategori produk |
+| Selisih FA-013 & FA-008 | Perlu ditelusuri mana yang benar |
+| ~~Baby Wise 31 Agustus~~ | **SELESAI 11 Sep 2026.** Sudah terisi final: 121 baris, 991 pcs, Rp60.894.800, TOP, nett Rp44.148.730 |
+| Termin pembayaran | Semua disetel 30 hari, belum dikonfirmasi |
+| Logo | Belum ada berkasnya. Program sudah siap memasangnya: taruh di `config/`, tulis namanya di `perusahaan.yaml` |
+| Nomor dokumen | Pola `0050726` = urut 005, bulan 07, tahun 26. Nomor urut tidak ditebak program — bawaannya dikosongkan |
+| Tab `Packing List Haritsa` | **Sudah tidak ada** di order sheet per 11 Sep 2026. Perlu dipastikan memang dihapus |
+
+---
+
+## 10. Cara kerja yang diminta Yosua
+
+- Bahasa Indonesia yang jelas dan sederhana. Rekan kerjanya kurang akrab
+  dengan teknologi, jadi hasilnya harus bisa dipakai tanpa pelatihan.
+- Keluaran berupa tabel yang rapi, selalu disertai ringkasan.
+- Data berantakan dirapikan dan diseragamkan dulu sebelum diolah.
+- Kalau ada data kurang atau tidak jelas, **tanya dulu**. Jangan ditebak.
+- Ingatkan kalau ada yang berpotensi terlewat di laporan keuangan atau pajak.
+- Berkas keluaran: Excel (.xlsx) atau PDF sesuai kebutuhan.
+
+Pekerjaan rutin bulanan Yosua yang lebih luas, di luar proyek ini: laporan
+pemasukan dan pengeluaran, kartu stok produk, laba perusahaan, sisa stok
+produk, dan pelaporan pajak bulanan.
+
+
+---
+
+## 11. Verifikasi langsung terhadap order sheet — 11 September 2026
+
+Order sheet dibaca langsung lewat konektor Google Drive, diunduh sebagai
+`.xlsx`, lalu diolah program di repo ini. **Semua angka di bagian 4 dan 7
+terbukti benar sampai rupiah terakhir.**
+
+### Angka terbaru (seluruh order sheet)
+
+| | Sebelumnya (7 Sep) | Sekarang (11 Sep) | Selisih |
+|---|---:|---:|---:|
+| PO berisi data | 15 | **16** | +1 |
+| Blok | 34 | **37** | +3 |
+| Baris | 1.073 | **1.194** | +121 |
+| Qty | 7.609 pcs | **8.600 pcs** | +991 |
+| Sebelum diskon | Rp500.874.100 | **Rp561.768.900** | +Rp60.894.800 |
+| Nilai bersih | Rp380.007.279 | **Rp424.156.009** | +Rp44.148.730 |
+
+**Seluruh selisih berasal dari satu tab saja: `PO 31 Agustus - Baby Wise`**,
+yang di bagian 9 tercatat "kolom ATO sempat kosong". Tab itu kini terisi penuh.
+Dikurangi tab tersebut, angkanya kembali persis ke angka acuan lama —
+1.073 baris / 7.609 pcs / Rp500.874.100 / nett Rp380.007.279. Ini sekaligus
+membuktikan pemindai di repo ini membaca order sheet dengan benar.
+
+Tabel AD-terisi di bagian 7 juga cocok **seluruhnya**, ke-15 barisnya.
+
+### Pemeriksaan menyeluruh yang lolos
+
+Diperiksa pada semua 1.194 baris, bukan contoh:
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Tiap tab cocok dengan baris TOTAL miliknya sendiri | 16 dari 16 cocok |
+| `qty x harga = nilai kotor` per baris | 1.194 dari 1.194 cocok |
+| Kode artikel ada di `Harga Retail` | 0 tidak ketemu |
+| Harga nol | 0 baris |
+| Nama barang sama persis dengan master harga | 1.194 dari 1.194 sama |
+| Harga PO sama dengan master harga | sama persis, rasio 1,0 untuk semua |
+
+Temuan bagian 7 "deskripsi barang selalu sama dengan master harga" yang dulu
+dicek pada 18 kode, kini terbukti untuk **seluruh** baris.
+
+---
+
+## 12. Temuan baru 11 September 2026
+
+### Potongan CBD/COD tidak selalu 1,5% — judul kolomnya yang menentukan
+
+Bagian 7 menyebut nilai kolom AD "persis TOTAL VALUE x 0,985". Itu hanya
+benar untuk sebagian tab. Judul kolom AD berbeda-beda antar tab, dan nilainya
+mengikuti judul itu:
+
+| Tab | Judul kolom AD | Pengali sebenarnya |
+|---|---|---:|
+| Pratama, Katamama Tapos, Katamama Cikarang, Canina | `DISCOUNT CBD + 1.5%` | 0,985 |
+| **Yulis Baby Shop** | `DISCOUNT CBD + 2%` | **0,98** |
+| **Baby Wise (Surabaya)** | `DISCOUNT COD + 2%` | **0,98** |
+
+Dua catatan penting:
+
+1. Tab Baby Wise Surabaya menamai kolom AD sebagai **COD**, bukan CBD.
+   Program memakai nama yang tertulis di order sheet, bukan menebak.
+2. Ini justru menguatkan Aturan 2: kalau nett dihitung dari persentase
+   tebakan 1,5%, Yulis meleset Rp112.850 dan Baby Wise Surabaya meleset
+   Rp80.402. Karena nett diambil langsung dari kolomnya, keduanya tepat.
+
+Program sekarang membaca tarif dari judul kolom dan memperingatkan kalau
+angka sebenarnya tidak sesuai judulnya.
+
+### Kolom DISC (AB) tidak bisa dipercaya di dua tab Baby Wise
+
+| Tab | Kolom AB tertulis | Diskon sebenarnya dari nilai bersih |
+|---|---:|---:|
+| PO 31 Agustus - Baby Wise | 0% | **27,5%** |
+| PO 31 Agustus - Baby Wise (Surabaya) | 0% | **27,5%** |
+
+Nilai di kolom AC-nya sendiri sudah benar. Yang salah hanya kolom AB.
+Program memakai nilai bersih (benar) dan memberi peringatan supaya kolom AB
+dirapikan Sales. Di tab lain kolom AB seragam satu nilai dan cocok.
+
+### Kolom ukuran ke-9 (L dan V) tidak pernah terpakai
+
+Di **seluruh** 37 blok, judul kolom ke-9 selalu berisi angka `9`, dan
+**tidak ada satu pun baris** yang punya qty di kolom V. Kolom ini sisa
+rancangan lama. Program tetap membacanya dan akan memberi tahu kalau suatu
+saat terisi.
+
+### Label ukuran kembar dalam satu blok
+
+Tab `PO 28 Agustus - Natasha` blok baris 5 memakai `7-8Y` **dua kali**
+(posisi ke-6 dan ke-7). Tidak berdampak karena Natasha tidak dipecah per
+ukuran, tapi program sekarang memberi peringatan kalau menemukan label kembar,
+sebab invoice per ukuran bisa salah menggabungkan baris.
+
+### Nama tab terpotong saat diunduh sebagai Excel
+
+Excel membatasi nama sheet 31 huruf, jadi hasil unduhan menjadi
+`PO 31 Agustus - Baby Wise (Sura` dan `PO 24 Agustus - Katamama (Tapos`.
+Pencocokan ke master customer sudah tahan terhadap ini: nama persis menang
+lebih dulu, baru kecocokan awalan terpanjang — supaya `Baby Wise` tidak
+tertukar dengan `Baby Wise Surabaya`.
+
+### Tab `Packing List Haritsa` sudah tidak ada
+
+Order sheet per 11 September 2026 berisi 17 tab, tanpa `Packing List Haritsa`.
+Program tetap mendukung tab berawalan `Packing List` (qty dibaca dari kolom
+D–L) kalau nanti dibuat lagi.
+
+### Cara membaca order sheet tanpa kredensial
+
+Tidak perlu Sheets API dan tidak perlu kunci apa pun. Cukup
+**File > Download > Microsoft Excel (.xlsx)** lalu simpan ke
+`data/order_sheet.xlsx`. Ini sekaligus menyelesaikan hambatan "Apps Script
+terkunci di akun Yosua" di bagian 8.
+
+---
+
+## 13. Isi repo ini
+
+| Bagian | Berkas |
+|---|---|
+| Panduan rekan kerja | `PANDUAN.md` |
+| Ringkasan teknis | `README.md` |
+| Yang diisi manusia | `config/customer.csv`, `config/perusahaan.yaml`, `config/pengaturan.yaml` |
+| Aturan 1 — pindai blok | `src/hp_dokumen/pemindai.py` |
+| Aturan 2 — nilai bersih | `src/hp_dokumen/nilai_bersih.py` |
+| Aturan 3 & 4 — label ukuran | `src/hp_dokumen/ukuran.py` |
+| Pencocokan wajib | `src/hp_dokumen/rekonsiliasi.py` |
+| Keempat dokumen | `src/hp_dokumen/dokumen/` |
+| Laporan & rekap | `src/hp_dokumen/laporan.py` |
+| Tes otomatis (28 tes) | `tests/` |
+
+Perintah: `daftar`, `periksa`, `buat`, `buat-semua`, `rekap`.
+Program **berhenti dan tidak membuat dokumen** kalau pencocokan gagal.
+
+
+---
+
+## 14. Perluasan 11 September 2026 — seluruh order sheet & bot penyapu
+
+Arahan baru Yosua: sistem harus bisa mengeluarkan dokumen penjualan **kapan pun
+untuk order sheet mana pun, lama maupun baru**, dikerjakan manual sehari-hari
+oleh divisinya, dan otomatis mengeluarkan draf pertama begitu ATO terisi.
+
+### Berkas yang jadi acuan
+
+| Berkas | ID |
+|---|---|
+| OTOMATISASI_HAPPY_PUMPKIN_SINKRON (milik Yosua) | `1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw` |
+| Folder order sheet 2026 | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` |
+| Folder order sheet 2025 | `1PiXCgbeXMHDOo6Doj5XUPnzmfl9A1S57` |
+| DATABASE CUSTOMER (diunggah 11 Sep 2026, milik Yosua) | `1ffT_GlCQSvKIHoAH25A8-OyqHzoFG1TATS0r1EETFN0` |
+| SISTEM OTOMATISASI (ringkasan, diunggah 12 Sep 2026, milik Yosua) | `1Yld4InWIhMXj9uV8fM1pV_0mEUZD7SZse8FJZ5XWiJE` |
+| ALUR KERJA SISTEM (diunggah 12 Sep 2026, milik Yosua) | `1ufPsXLUy42u2zfkexcFlPMGKtVCmtIyebKhl_W5-Kaw` |
+| Folder DOKUMEN OTOMATIS HAPPY PUMPKIN (dibuat 12 Sep 2026) | `1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP` |
+| Folder LAPORAN BOT HAPPY PUMPKIN (dibuat 12 Sep 2026) | `1BTHfFCgULMJGceqGJ9aPDub-Rf8KgBUI` |
+
+Catatan: ID sheet SINKRON di bagian 2 (`1lL-AXy2Th...`) BUKAN yang dipakai.
+Yang benar `1qkd-_wc3...`, dimiliki `finance.dwiputramandiri@gmail.com`.
+
+### Keadaan sheet SINKRON saat diperiksa
+
+17 tab, strukturnya sudah benar tapi isinya tidak jalan: `MASTER_HARGA` kosong,
+`SUMBER` hanya membaca 1 baris per tab, `DAFTAR_PO` nol, ada `#REF!`, dan
+`TARIK` (IMPORTRANGE) tidak tersambung. Yang sudah berisi dan berguna hanya
+`MASTER_CUSTOMER` (14 customer).
+
+**Keputusan: struktur tab Yosua dipertahankan, tidak diganti.** Bot hanya
+menambah tab berawalan `BOT_`. Modul `sapu/tulis_sheet.py` menolak menulis ke
+tab lain, dan penolakan itu diuji.
+
+### Susunan kolom order sheet berubah sepanjang waktu — temuan penting
+
+Pemindai berbasis huruf kolom hanya jalan untuk sheet terbaru. Ada tiga pola:
+
+| Periode | Kolom ukuran | Kolom nilai bersih |
+|---|---|---|
+| Januari 2025 | 3 | P `TOTAL VALUE`, Q `CBD + 2%`, R `COD + 1,5%` |
+| Feb - Mei 2025 | 6 | W, X, Y |
+| Juli - Sep 2025 | 8 | AA, AB, AC — **AB Agustus 2025 berjudul `PPN + 11%`** |
+| Okt 2025 - kini | 9 | AC, AD, AE |
+
+Agustus 2025 juga punya **baris judul tambahan**, jadi datanya mulai satu baris
+lebih bawah. Jarak baris judul ke baris data sekarang dicari sendiri.
+
+Penyelesaiannya: `tata_letak.py` membaca baris judul dan menentukan letak tiap
+kolom dari teksnya. Jangan pernah kembali memakai huruf kolom tetap.
+
+### Satu tab bisa punya dua kolom berjenis sama
+
+Agustus 2026 Baby Wise (Surabaya): kolom AD **dan** AE dua-duanya berjudul COD.
+April sampai Juli 2026 juga begitu. Kalau dikunci dengan nama jenis saja, yang
+satu menimpa yang lain dan nilai bersihnya salah. Kunci kolom nett sekarang
+dibuat unik (`COD@AD`, `COD@AE`).
+
+### Database customer dari 21 order sheet
+
+`python3 jalankan.py telusuri` menghasilkan `DATABASE_CUSTOMER.xlsx`.
+
+| | |
+|---|---|
+| Order sheet terbaca | 21 dari 22 |
+| PO terbaca | 379 |
+| Customer setelah digabung | 164 |
+
+Tingkat diskon: 25% (60 customer), 20% (33), 18% (25), 22% (18), 30% (6),
+sisanya campuran.
+Cara bayar terakhir: TOP 115, CBD 38, COD 10, PPN 1.
+Tujuh customer pernah memakai kolom `DISCOUNT PPN + 11%`.
+
+**Order Sheet Juni 2025 (11,4 MB) tidak bisa diekspor Google** — ditolak dengan
+"file too large". Satu-satunya berkas yang belum terbaca.
+
+### Nama customer: jangan digabung dengan menebak
+
+Ekspor Excel memotong nama tab di 31 huruf, jadi satu toko muncul sebagai
+`Baby Fame (Lam`, `Baby Fame (Lampun`, dan `Baby Fame (Lampung)`.
+
+Tapi menggabungkan berdasarkan awalan saja BERBAHAYA: `Baby Wise` dan
+`Baby Wise Surabaya` adalah dua toko berbeda, bukan potongan satu sama lain.
+
+**Aturan yang dipakai:** sebuah nama hanya digabung ke nama yang lebih panjang
+kalau nama itu selalu berasal dari tab yang panjangnya 30 huruf atau lebih —
+artinya memang terpotong. Nama yang pernah muncul dari tab pendek dianggap utuh.
+Sisanya dikumpulkan di lembar `PERIKSA_NAMA` untuk dipastikan Yosua, bukan
+ditebak. Ada 18 grup yang perlu diperiksa.
+
+Masalah ini **hilang sendiri** begitu bot berjalan, karena Sheets API memberi
+nama tab lengkap tanpa dipotong.
+
+### Dua perusahaan pemroses — jawaban Yosua nomor 2
+
+| Kode | Perusahaan | PPN 11% |
+|---|---|---|
+| `DPM` | CV. Dwi Putra Mandiri | berlaku |
+| `MTN` | CV. Mutiara Timur Nusantara | **tidak** berlaku |
+
+Diatur di `config/perusahaan.yaml`, dipasangkan per customer lewat kolom
+`perusahaan_pemroses` di `config/customer.csv`. Kop surat, rekening, dan NPWP
+penjual ikut perusahaannya. Kalau kosong, memakai DPM dan program mengingatkan.
+
+Jejaknya ada di order sheet Agustus 2025: kolom AB di sana berjudul
+`DISCOUNT PPN + 11%`, dipakai 7 customer. Perlu dipastikan apakah itu memang
+penanda perusahaan pemroses.
+
+### Bot penyapu
+
+Berjalan tiap 12 jam lewat cron atau systemd. Memakai akun layanan Google
+dengan akses **Viewer** ke folder order sheet — bot tidak akan pernah bisa
+mengubah order sheet.
+
+**Bot membaca tab langsung lewat Sheets API, TIDAK mengunduh spreadsheet.**
+Arahan Yosua 11 September 2026: akun layanan harus membaca dan mengurai tab
+order sheet yang ada, bukan mengunduh berkas tiap hari.
+
+`sapu/lembar_api.py` membungkus hasil Sheets API menjadi objek yang menyediakan
+`title`, `max_row`, `max_column`, dan `cell(r,c).value` — empat hal yang
+dibutuhkan pemindai. Karena itu tata_letak.py, pemindai.py, dan nilai_bersih.py
+dipakai APA ADANYA untuk kedua sumber. Sudah dibuktikan memberi hasil identik
+pada ke-16 tab Agustus 2026.
+
+Penghematannya:
+
+| Keadaan | Kalau mengunduh berkas | Cara sekarang |
+|---|---|---:|
+| Sapuan pertama, 21 order sheet | ~25 MB, 21 berkas | 42 panggilan |
+| Tidak ada yang berubah | tetap 21 unduhan | **0 panggilan** |
+| 1 order sheet berubah | tetap 21 unduhan | 2 panggilan |
+
+Spreadsheet yang tidak berubah dilewati berdasarkan `modifiedTime` dari Drive,
+yang dicatat di `data/kondisi_sapu.json`. Order Sheet Juni 2025 (11,4 MB) yang
+dulu ditolak Google saat diekspor kini terbaca, karena tidak pernah diekspor.
+
+Nama tab dari Sheets API LENGKAP — masalah pemotongan 31 huruf hilang.
+
+Yang dianggap GENTING hanya perubahan pada PO yang **ATO-nya sudah terisi**:
+qty, susunan qty, jumlah baris, nilai bersih, nilai kotor, cara bayar, dan
+perubahan rumus walau angkanya belum berubah.
+
+**Pengaman alarm palsu:** kalau nilai rupiah terbaca nol padahal jumlah baris
+dan qty persis sama, itu diperlakukan sebagai gagal baca rumus, bukan angka
+yang diubah orang. Diuji pada Agustus 2026: tanpa pengaman muncul 40 alarm,
+dengan pengaman tinggal 2 perubahan yang memang disisipkan. Alarm palsu membuat
+orang berhenti percaya pada laporannya.
+
+### Keputusan Yosua 11 September 2026
+
+| Hal | Keputusan |
+|---|---|
+| Akhiran Y pada ukuran | **Tetap dipakai** (2 -> 2Y). Sudah final |
+| PPN 11% | Hanya untuk order lewat CV. Dwi Putra Mandiri |
+| Nomor dokumen | Formatnya masih akan dikonfirmasi Yosua |
+| Termin 30 hari | Tidak berlaku untuk semua customer, diambil dari riwayat |
+
+### Yang masih menggantung setelah perluasan ini
+
+| Hal | Keterangan |
+|---|---|
+| Akun layanan Google | Harus dibuat Yosua sendiri lewat Google Cloud Console, lihat PANDUAN_BOT.md |
+| Alamat & NPWP CV Mutiara Timur Nusantara | Belum ada sama sekali |
+| NPWP CV Dwi Putra Mandiri | Belum ada |
+| Customer mana pakai perusahaan mana | 14 customer belum ditentukan |
+| 18 grup nama di PERIKSA_NAMA | Perlu dipastikan sama atau beda. Sudah ada di Google Sheet "DATABASE CUSTOMER HAPPY PUMPKIN 2025-2026" di My Drive Yosua, lembar PERIKSA_NAMA |
+| Order Sheet Juni 2025 | Terlalu besar untuk diekspor, belum terbaca |
+| Format nomor dokumen | Menunggu Yosua |
+
+
+### Berkas ringkasan sistem — 12 September 2026
+
+Yosua bertanya apakah ada berkas spreadsheet yang memuat sistem ini. Jawabannya
+saat itu: belum ada. Sheet `OTOMATISASI_HAPPY_PUMPKIN_SINKRON` **belum disentuh
+sama sekali** — diperiksa 12 Sep 2026, `modifiedTime` masih 10 Sep 2026 10:52
+(suntingan Yosua sendiri) dan tidak ada satu pun tab berawalan `BOT_`. Itu memang
+sesuai rancangan: tab `BOT_` baru muncul setelah akun layanan Google dibuat.
+
+Karena itu dibuat berkas ringkasan `SISTEM OTOMATISASI DOKUMEN PENJUALAN HAPPY
+PUMPKIN` di My Drive Yosua, berisi tujuh bagian: MULAI DI SINI, ISI SISTEM,
+4 ATURAN WAJIB, CARA PAKAI HARIAN, BOT PENYAPU, ANGKA TERVERIFIKASI, dan
+YANG DITUNGGU. Pembuatnya `alat/ringkasan_sistem.py`, menghasilkan `.xlsx`
+(tujuh tab) dan `.csv` (satu lembar).
+
+Catatan teknis unggahan: konektor Drive menolak `base64Content` yang panjang
+(berkas 16 KB gagal). Jalur yang berhasil adalah `textContent` berisi CSV dengan
+`contentMimeType: text/csv`, yang dikonversi Google menjadi Spreadsheet. Untuk
+unggahan berikutnya, pakai CSV lewat `textContent`, jangan xlsx lewat base64.
+
+
+## 15. Alur kerja resmi — penjelasan Yosua 12 September 2026
+
+Yosua memperjelas alurnya dengan kalimatnya sendiri:
+
+> "dari spreadsheet (External) Order Sheet terdapat tab PO, lalu dari bagian
+> Available to Order buatlah Invoice, Surat Jalan, dan Faktur Pajak sesuai
+> dengan karakteristik Invoice, Surat Jalan masing-masing setiap customer dan
+> buat sistem itu selalu update setiap ada perubahan pada (External) Order Sheet."
+
+### Yang menjadi PASTI
+
+| Hal | Keputusan |
+|---|---|
+| Sumber | Bagian **AVAILABLE TO ORDER** pada tab PO. ORIGINAL PO tidak dipakai |
+| Dokumen | **Invoice, Surat Jalan, Faktur Pajak** — mengikuti karakteristik tiap customer |
+| Kapan final | Saat ATO terisi. **Tapi tidak final selamanya** |
+| Kalau direvisi | Dokumen **wajib dibuat ulang** mengikuti data paling terbaru |
+| Sifat sistem | Selalu ikut berubah setiap order sheet berubah |
+
+Kutipan Yosua untuk poin revisi: *"itu tidak sepenuhnya final karena jika ada
+revisi anda juga harus memperbaikinya lagi dan menyesuaikannya dengan data yang
+paling terbaru"*.
+
+### Yang MASIH menunggu konfirmasi Yosua (dinyatakan sendiri olehnya)
+
+| Hal | Sementara program memakai |
+|---|---|
+| Pengiriman bertahap | 1 PO = 1 Surat Jalan = 1 Invoice |
+| Perusahaan pemroses DPM/MTN — per customer atau per pesanan | Per customer, di `config/customer.csv` |
+| Urutan penerbitan dokumen | Ketiganya dibuat sekaligus |
+| Rumus nomor dokumen | Nomor dikosongkan, diisi manual |
+
+### Packing List — SUDAH DIPASTIKAN 15 September 2026
+
+Yosua semula menyebut **tiga** dokumen sehingga Packing List sempat ragu.
+Pada 15 September 2026 ia menjawab *"boleh sertakan juga packing list nya"*.
+
+**Packing List MASIH DIPAKAI** dan ikut diterbitkan. Bentuknya tidak berubah:
+Surat Jalan ditambah kolom JUMLAH DIKIRIM dan NO. KOLI. Lihat bagian 24.
+
+### Draf otomatis — SELESAI 12 September 2026
+
+Celah "bot hanya mendaftar PO siap, belum membuat dokumennya" sudah ditutup.
+
+| Berkas | Isi |
+|---|---|
+| `berkas_dokumen.py` | Pembuat berkas yang dipakai BERSAMA oleh perintah manual dan bot. Sengaja satu kode, supaya hasil manual dan hasil bot tidak pernah berbeda |
+| `sapu/draf.py` | Memutuskan kapan draf dibuat, kapan dibuat ULANG, dan mengarsipkan draf lama |
+
+Aturannya:
+
+| Keadaan | Tindakan |
+|---|---|
+| ATO belum terisi | tidak membuat apa-apa |
+| ATO terisi, angka cocok | buat draf (Invoice, Surat Jalan, Faktur Pajak, Packing List) |
+| ATO terisi, angka TIDAK cocok | **tidak membuat dokumen**, masalahnya dicatat |
+| qty / nilai / cara bayar / jumlah baris berubah | **buat ulang**, draf lama pindah ke `_KEDALUWARSA` |
+| hanya rumus yang berubah | alarm tetap bunyi, dokumen TIDAK dibuat ulang |
+
+Dua keputusan yang jangan diubah tanpa alasan:
+
+1. **Sidik jari disimpan SETELAH draf dibuat.** Kalau pembuatan draf gagal,
+   sidik lama tetap tersimpan, jadi sapuan berikutnya mencoba lagi — bukan
+   menganggapnya sudah beres.
+2. **Draf lama diarsipkan, tidak ditimpa.** Nama folder arsip diberi angka
+   tambahan kalau bentrok di detik yang sama; tanpa itu `shutil.move` menaruh
+   folder lama DI DALAM arsip sebelumnya dan draf yang lebih tua tersembunyi.
+   Ditemukan saat simulasi, bukan dari teori, dan sudah ada tesnya.
+
+Hasil simulasi lima sapuan pada order sheet Agustus 2026 (16 PO):
+
+| Sapuan | Hasil |
+|---|---|
+| 1 — pertama kali | 16 draf baru |
+| 2 — tanpa revisi | 0 dibuat, 16 dilewati |
+| 3 — qty Miniku direvisi | 1 dibuat ulang, draf lama masuk `_KEDALUWARSA` |
+| 4 — revisi tetap, hanya rumus berubah | 0 dibuat ulang |
+| 5 — tidak ada perubahan | 0 dibuat ulang |
+
+Tes bertambah dari 60 menjadi 76.
+
+### Berkas alur kerja di Drive
+
+`ALUR KERJA SISTEM OTOMATISASI HAPPY PUMPKIN`, tujuh bagian: ALUR UTAMA,
+ATURAN SELALU UPDATE, KARAKTERISTIK CUSTOMER, ISI TIAP DOKUMEN, SUMBER ANGKA,
+SUDAH PASTI, MENUNGGU KONFIRMASI. Pembuatnya `alat/alur_kerja.py`.
+
+### Dokumen dinaikkan ke Drive — 12 September 2026
+
+Yosua bertanya di mana dokumen hasil otomatisasi disimpan. Jawabannya waktu itu:
+hanya di komputer yang menjalankan program. Yang naik ke Drive cuma laporan
+sapuan, bukan dokumennya — percuma dibuat otomatis kalau divisi tidak bisa
+mengambilnya.
+
+Folder `DOKUMEN OTOMATIS HAPPY PUMPKIN` karena itu dibuatkan di My Drive Yosua
+dan ID-nya sudah terisi di `config/bot.yaml` (`folder_dokumen_id`).
+
+| Berkas | Isi |
+|---|---|
+| `sapu/unggah.py` | `PengunggahDokumen` — membuat folder bertingkat dan menaruh berkas |
+| `google.py` | `cari_berkas()` dan `unggah_berkas()` yang MENIMPA berkas bernama sama |
+
+Susunan di Drive memakai nama ASLI order sheet dan tab PO (bukan nama berkas
+yang sudah diseragamkan), supaya enak dibaca orang:
+
+    DOKUMEN OTOMATIS HAPPY PUMPKIN/
+      Order Sheet Agustus 2026/
+        PO 20 Agustus - Miniku/
+          INVOICE_... , SURAT_JALAN_... , FAKTUR_PAJAK_... , PACKING_LIST_...
+
+Tiga keputusan yang jangan diubah tanpa alasan:
+
+1. **Berkas bernama sama DITIMPA, bukan ditambah.** Kalau tiap revisi membuat
+   berkas baru, folder Drive penuh berisi banyak "Invoice Miniku" dan tidak ada
+   yang tahu mana yang berlaku. Versi lama tetap aman di `_KEDALUWARSA` pada
+   komputer bot.
+2. **Id folder di-cache selama satu sapuan.** Tanpa itu folder bulan yang sama
+   ditanyakan ke Google berulang kali untuk tiap PO.
+3. **Hak akses bot berbeda per folder:** folder order sheet tetap **Viewer**,
+   folder laporan dan folder dokumen **Editor**. Jangan pernah memberi Editor
+   pada folder order sheet.
+
+Diuji dengan `SambunganPalsu` (tidak menyentuh Google): susunan folder, cache,
+penimpaan berkas, folder gagal dibuat, dan satu berkas gagal sementara sisanya
+tetap naik. Tes 76 -> 82.
+
+### Akun layanan bot — 12 September 2026
+
+Yosua sudah membuat akun layanannya:
+
+    penyapu-order-sheet@happy-pumpkin-bot.iam.gserviceaccount.com
+
+Proyek Google Cloud: `happy-pumpkin-bot`. Berkas kuncinya ada di tangan Yosua,
+TIDAK pernah dikirim ke sesi ini dan memang tidak perlu.
+
+Izin yang SUDAH diberikan lewat konektor Drive (bertindak sebagai Yosua):
+
+| Tempat | Peran | Keadaan |
+|---|---|---|
+| Folder DOKUMEN OTOMATIS | Editor | selesai |
+| Folder LAPORAN BOT | Editor | selesai |
+| Sheet OTOMATISASI (`1qkd-...`) | Editor | selesai |
+| Folder Order Sheet 2026 (`1RDH...`) | Viewer | **DITOLAK** — "caller does not have permission" |
+| Folder Order Sheet 2025 (`1PiX...`) | Viewer | **DITOLAK** — sama |
+
+Dua folder order sheet dimiliki `happypumpkinkids.id@gmail.com`, dan Yosua tidak
+punya hak membagikannya. Harus dikerjakan pemilik akun itu. Jangan dicoba lagi
+dari sini — hasilnya akan sama.
+
+`config/bot.yaml` sekarang sudah terisi lengkap: `folder_laporan_id`,
+`folder_dokumen_id`, dan `sheet_otomatisasi_id`.
+
+### Belum diputuskan: komputer mana yang menjalankan bot
+
+Sesi Claude Code ini berjalan di wadah sementara yang akan dihapus. Bot tiap 12
+jam tidak bisa hidup di sini. Perlu ditentukan Yosua: komputer kantor yang
+menyala terus, atau server kecil. Berkas kunci dan `data/kondisi_sapu.json`
+harus berada di mesin itu.
+
+### Cacat: requirements.txt tidak memuat komponen Google — SELESAI 12 Sep 2026
+
+Saat Yosua memasang di laptop Windows-nya, `py jalankan.py periksa-bot` berhenti
+dengan `ModuleNotFoundError: No module named 'google'`, padahal pemasangan
+komponen sudah dijalankan benar.
+
+Sebabnya bukan di komputer Yosua: `requirements.txt` hanya berisi `openpyxl` dan
+`PyYAML`. Dua paket yang dipakai `sapu/google.py` tidak pernah dicantumkan:
+
+    google-api-python-client
+    google-auth
+
+Tidak ketahuan selama ini karena di wadah pengembangan kedua paket itu
+kebetulan sudah terpasang.
+
+Sudah ditambahkan, dan dikunci dua tes: satu memastikan keempat paket ada di
+`requirements.txt`, satu lagi menyisir seluruh `src/` untuk memastikan tiap
+paket pihak ketiga yang diimpor memang tercantum. Tes 90 -> 92.
+
+### Pemeriksa salah mendiagnosis "API belum dinyalakan" — SELESAI 12 Sep 2026
+
+Saat Yosua menjalankan `periksa-bot` di laptopnya, enam dari tujuh pemeriksaan
+lolos. Yang gagal cuma sheet OTOMATISASI, dengan galat Google:
+
+    HttpError 403 ... Google Sheets API has not been used in project
+    76910858898 before or it is disabled ... 'reason': 'SERVICE_DISABLED'
+
+Sebabnya: pada Langkah 2, hanya **Google Drive API** yang dinyalakan; **Google
+Sheets API** belum. Terbukti dari gejalanya — pembacaan folder Drive (5 dari 5)
+berhasil, hanya pembacaan tab spreadsheet yang ditolak.
+
+Tapi `pemeriksa.py` menyarankan *"Share sheet OTOMATISASI sebagai Editor"*,
+padahal izin sheet itu memang sudah benar sejak awal (diberikan lewat konektor
+Drive). Saran yang salah ini berbahaya: orang akan men-Share ulang berkas yang
+sudah benar, masalahnya tidak selesai, dan kepercayaan pada pemeriksa hilang.
+
+Sekarang pemeriksa membedakan dua sebab itu. Kalau galatnya mengandung
+`SERVICE_DISABLED`, `has not been used in project`, `it is disabled`, atau
+`accessNotConfigured`, sarannya berubah jadi menyalakan API di Cloud Console,
+menyebut nama API-nya, dan **menegaskan bahwa ini bukan masalah izin sehingga
+jangan men-Share ulang apa pun**.
+
+Berlaku untuk ketiga pemeriksaan (folder order sheet, folder tujuan, sheet
+OTOMATISASI). Dikunci dua tes: galat API-mati tidak boleh menyuruh Share, dan
+galat izin biasa harus tetap menyuruh Share. Tes 92 -> 94.
+
+**Pelajaran yang berlaku umum:** galat 403 dari Google TIDAK selalu berarti
+masalah izin. Periksa dulu apakah API-nya menyala.
+
+### Sapuan pertama berhasil, tapi unggahan ke Drive gagal — 12 Sep 2026
+
+Bot berhasil jalan di laptop Yosua. Order sheet 2025 dan 2026 terbaca, draf
+dibuat (4 berkas per PO). Tapi tiap PO melaporkan `0 berkas naik ke Drive`.
+
+Sebabnya belum diketahui saat catatan ini ditulis, KARENA `unggah_berkas()`
+menelan `HttpError` dan mengembalikan `None`, lalu `unggah()` hanya mencatat
+"gagal diunggah" tanpa sebab. Laporannya jadi tidak bisa ditindaklanjuti.
+
+Sudah diperbaiki:
+
+| Berkas | Perubahan |
+|---|---|
+| `google.py` | `unggah_berkas()` tidak lagi menelan galat — dibiarkan naik ke pemanggil |
+| `sapu/unggah.py` | Sebab asli ikut dicatat: `f"{nama}: {e}"`, termasuk kegagalan membuat folder |
+| `sapu/bot.py` | Sebab kegagalan pertama LANGSUNG ditampilkan di layar, tidak hanya masuk laporan |
+
+Dikunci dua tes. Tes 94 -> 96.
+
+**SEBABNYA SUDAH PASTI, 12 Sep 2026.** Diuji langsung di laptop Yosua:
+
+| Uji | Hasil |
+|---|---|
+| Bot membuat FOLDER di DOKUMEN OTOMATIS | berhasil |
+| Bot mengunggah BERKAS ke folder yang sama | ditolak |
+
+Pesan resmi Google:
+
+    HttpError 403 ... Service Accounts do not have storage quota.
+    Leverage shared drives ... or use OAuth delegation instead.
+    'reason': 'storageQuotaExceeded'
+
+Akun layanan **tidak punya jatah penyimpanan Drive**, jadi tidak bisa membuat
+berkas baru di My Drive siapa pun. Folder bisa karena tidak memakan ruang.
+**Menambah izin TIDAK akan menolong** — jangan pernah coba menyelesaikannya
+dengan Share ulang.
+
+Dua jalan keluar resmi Google (Shared Drive, OAuth delegation) sama-sama butuh
+**Google Workspace**, sedangkan akun Happy Pumpkin memakai `@gmail.com`.
+
+**Jalan keluar yang dipilih: Google Drive for Desktop.** Bot menulis ke folder
+lokal yang disinkronkan, lalu Drive for Desktop yang menyalinkannya. Berkas
+dimiliki Yosua, bukan akun layanan, jadi lepas dari batasan kuota. Tidak perlu
+perubahan kode — cukup `folder_draf` diarahkan ke folder sinkron dan
+`folder_dokumen_id` dikosongkan. Langkahnya ada di PANDUAN_BOT.md.
+
+Program sekarang **berhenti mencoba begitu ditolak karena kuota** (penolakan itu
+pasti berlaku untuk semua berkas), dan menampilkan satu pesan yang menjelaskan
+batasannya serta jalan keluarnya. Dikunci dua tes. Tes 96 -> 98.
+
+**Catatan yang belum diuji:** laporan sapuan juga berkas baru, jadi
+kemungkinan besar ikut tertolak. Kalau terbukti begitu, `folder_laporan_id`
+dikosongkan juga.
+
+## 16. Format Invoice & Surat Jalan diperbaiki dari berkas asli — 13 Sep 2026
+
+Yosua melaporkan format invoice dan surat jalan **salah dan berbeda** dari
+format CV Dwi Putra Mandiri, lalu memberi folder berisi faktur asli:
+`1KqROb51kVZx6_kc7fxC4GXOlCb36Pck1` (± 50 berkas, Juli-Agustus 2026).
+
+Berkas acuan yang dibongkar sel per sel:
+
+| Berkas | Kegunaan |
+|---|---|
+| `0250726 KATAMAMA TAPOS.xlsx` | customer per ukuran, Surat Jalan satu tabel |
+| `0310726 MAE BEBE JONNI SETIADI.xlsx` | Surat Jalan BERTUMPUK dua tabel |
+| `0010726 BABY WISE.xlsx` | customer per artikel, faktur berhalaman |
+
+**Tiap berkas punya tab bernama `FORMAT INVOICE` dan `FORMAT SURAT JALAN`.**
+Di situlah tata letak resminya. Kalau suatu saat format berubah lagi, bongkar
+tab itu, jangan mengarang.
+
+### Yang ternyata salah pada versi lama
+
+| Bagian | Versi lama (salah) | Faktur asli |
+|---|---|---|
+| Kop | teks mulai kolom A | ruang logo digabung A2:B6, teks di kolom C |
+| Judul dokumen | `INVOICE` | `FAKTUR No. <nomor>` |
+| Baris BRAND | tidak ada | `BRAND :  HAPPY PUMPKIN` — selalu ada |
+| Baris info PO/termin | ada | tidak ada di faktur asli |
+| Judul tabel invoice | satu baris | **tiga baris bertingkat** (12-14), data mulai baris 15 |
+| Kolom diskon | angka desimal mentah `0.2317...` | `25%` atau `22% + 1,5%` |
+| Kolom H | nilai bersih | **Jumlah KOTOR**; nett = Jumlah - Nilai Diskon |
+| Pemisah ukuran | `... - 3-6M` | `... Uk. 3-6M` |
+| Judul kolom Surat Jalan | PRODUCT NAME / COLOUR / TOTAL | **DESKRIPSI BARANG / WARNA / Qty-PCS** |
+| Deskripsi Surat Jalan | satu kolom | tiga kolom digabung (C:E) |
+| Kalimat pembuka SJ | tidak ada | `Diterima dengan baik barang-barang tersebut dibawah ini :` |
+| Baris TOTAL per tabel SJ | ada | **tidak ada**; jumlah qty ditaruh di kanan baris 9 |
+| Penanda blok | `Kategori 1 dari 2` | tidak ada |
+| Kolom ukuran | semua kolom blok | **hanya yang benar-benar terisi** |
+
+### Yang TERBUKTI benar dan dipertahankan
+
+- **Surat Jalan memang bisa bertumpuk.** Mae Bebe punya dua tabel (sistem
+  ukuran berbeda), Katamama hanya satu. Jadi aturan "satu tabel per blok"
+  benar — bukan selalu bertumpuk, bukan selalu tunggal.
+- Penutup invoice: Subtotal, Diskon, Total, Uang Muka, DPP, PPN 11%, Total.
+- DPP dihitung mundur `Total x 100/111`.
+- Blok rekening di kolom B, sejajar penutup.
+
+### Catatan teknis
+
+- `config/perusahaan.yaml` sudah memuat kalimat "PEMBAYARAN DITRANSFER KE
+  REKENING :" di daftar rekening, jadi `baris_rekening()` tidak boleh
+  menambahkannya lagi — pernah kembar.
+- Kolom ukuran ke-9 berjudul angka `9` dan tidak pernah terisi. Surat Jalan
+  sekarang hanya mencetak kolom sampai ukuran terakhir yang ada isinya.
+- `buat_invoice` tetap mengembalikan dict yang sama seperti sebelumnya supaya
+  laporan dan tes tidak rusak, walaupun tata letaknya berubah total.
+
+Empat tes baru mengunci bentuknya (kop, judul tiga tingkat, blok rekening tidak
+kembar, kolom ukuran kosong tidak dicetak). Tes 98 -> 102.
+
+## 17. Faktur Pajak format Coretax — 13 September 2026
+
+Permintaan Yosua: faktur pajak dalam bentuk Excel yang bisa langsung dimasukkan
+ke **Converter Excel->XML milik DJP**, lalu XML-nya diunggah ke Coretax untuk
+membuat faktur **secara borongan**.
+
+`www.pajak.go.id` DIBLOKIR dari sesi ini, jadi templatenya tidak bisa diunduh
+langsung. Template resminya didapat dari repo publik
+`ACC-TAX-REIGHTEEN/Auto-Input-XML-Pajak-Coretax`, berkas
+`Dapur/Template_v.1.6.1.xlsx`. **Struktur di bawah ini dibaca dari berkas itu,
+bukan ditebak.**
+
+### Susunan template resmi v1.6.1
+
+| Lembar | Isi |
+|---|---|
+| `Faktur` | B1 = NPWP Penjual; judul di baris 3; data mulai baris 4; ditutup `END` |
+| `DetailFaktur` | judul di baris 1; data mulai baris 2; ditutup `END` |
+
+Kolom `Faktur` (18): Baris, Tanggal Faktur, Jenis Faktur, Kode Transaksi,
+Keterangan Tambahan, Dokumen Pendukung, Period Dok Pendukung, Referensi,
+Cap Fasilitas, ID TKU Penjual, NPWP/NIK Pembeli, Jenis ID Pembeli,
+Negara Pembeli, Nomor Dokumen Pembeli, Nama Pembeli, Alamat Pembeli,
+Email Pembeli, ID TKU Pembeli.
+
+Kolom `DetailFaktur` (14): Baris, Barang/Jasa, Kode Barang Jasa,
+Nama Barang/Jasa, Nama Satuan Ukur, Harga Satuan, Jumlah Barang Jasa,
+Total Diskon, DPP, DPP Nilai Lain, Tarif PPN, PPN, Tarif PPnBM, PPnBM.
+
+### Aturan yang paling mudah salah (dari lembar `Keterangan`)
+
+| Aturan | Nilai |
+|---|---|
+| Tanggal Faktur | `DD/MM/YYYY` |
+| Jenis Faktur | selalu `Normal` |
+| Kode Transaksi | `01` = kepada selain Pemungut PPN |
+| Satuan ukur | `UM.0021` = Piece |
+| Barang/Jasa | `A` = Barang |
+| NPWP pembeli tidak diketahui | isi `0000000000000000`, Jenis ID bukan TIN |
+| ID TKU Pembeli bukan TIN | isi `000000` |
+| DPP Nilai Lain | **sama dengan DPP** kalau tidak memakai nilai lain |
+| DPP | harus `Harga Satuan x Jumlah - Total Diskon` |
+| PPN | `Tarif PPN x DPP Nilai Lain` |
+| Angka | maksimal 2 angka di belakang koma |
+
+### Hal paling menentukan: harga di order sheet SUDAH termasuk PPN
+
+Coretax meminta Harga Satuan dan DPP **tanpa PPN**. Jadi tiap nilai dibagi
+`(1 + tarif)` lebih dulu. Kalau ini terlewat, DPP jadi 11% terlalu besar dan
+pajak yang dilaporkan salah.
+
+Diuji ulang: `DPP + PPN` kembali ke nilai bersih invoice. Pada order sheet
+Agustus 2026 selisihnya **Rp0,01** dari 571 baris — murni pembulatan 2 desimal
+yang memang diwajibkan DJP. Program mengawasi selisih ini sendiri dan
+memperingatkan kalau ada faktur yang meleset lebih dari Rp1.
+
+### Perintah baru
+
+    python3 jalankan.py faktur-pajak
+
+Menghasilkan SATU berkas `keluaran/FAKTUR_PAJAK_CORETAX.xlsx` berisi SEMUA PO
+sekaligus — itulah gunanya untuk unggah borongan. Program menolak membuatnya
+kalau angka belum cocok dengan order sheet, dan menyebutkan apa yang masih
+kurang sebelum berkasnya layak diunggah.
+
+### Yang masih harus diisi Yosua sebelum bisa diunggah
+
+| Hal | Tempat |
+|---|---|
+| NPWP CV Dwi Putra Mandiri & CV Mutiara Timur Nusantara | `config/perusahaan.yaml` |
+| **ID TKU Penjual (NITKU 22 digit)** | `config/perusahaan.yaml` -> `id_tku` |
+| NPWP & NITKU tiap customer | `config/customer.csv` -> `npwp`, `id_tku` |
+| Alamat 8 customer | `config/customer.csv` |
+
+NITKU dilihat di Coretax: Profil Wajib Pajak -> Tempat Kegiatan Usaha.
+
+Delapan tes mengunci formatnya. Tes 102 -> 110.
+
+## 18. Uji silang dengan faktur asli Juli 2026 — 13 September 2026
+
+Yosua minta contoh dokumen dari bulan lain. Dipilih **Juli 2026** dengan
+sengaja, karena folder faktur asli `1KqROb51...` juga berisi Juli 2026 —
+jadi hasil program bisa diadu langsung dengan berkas yang benar-benar
+dikirim ke customer.
+
+Dibandingkan baris per baris: `0310726 MAE BEBE JONNI SETIADI` dan
+`0010726 BABY WISE` melawan keluaran program untuk `PO 17 Juli - Mae Bebe`
+dan `PO 07 Juli - Baby Wise`.
+
+### Dua cacat format yang baru ketahuan
+
+**1. Kolom H (Jumlah) berisi nilai SETELAH diskon, bukan nilai kotor.**
+
+Bagian 16 mencatat sebaliknya, dan itu SALAH. Buktinya aritmetika faktur
+asli sendiri, pada dua berkas berbeda:
+
+| Berkas | Baris | Qty x Harga | Nilai Diskon (G) | Jumlah (H) |
+|---|---|---:|---:|---:|
+| 0310726 MAE BEBE | 1 | 18 x 62.900 = 1.132.200 | 283.050 | **849.150** |
+| 0010726 BABY WISE | 1 | 2 x 53.900 = 107.800 | 26.950 | **80.850** |
+
+Jumlah seluruh kolom H sama dengan baris **Total**, bukan **Subtotal**.
+Pada Mae Bebe: jumlah H = 11.932.650 = Total. Subtotal 15.910.200 adalah
+jumlah kotor yang tidak pernah muncul di kolom mana pun.
+
+Sudah diperbaiki. Tesnya kini memeriksa `H + G = Qty x Harga` di **setiap**
+baris, bukan hanya totalnya — supaya cacat semacam ini tidak bisa lolos
+lagi hanya karena totalnya kebetulan cocok.
+
+**2. Persen diskon ada di F13, bukan F14.**
+
+Faktur asli: `F12` berisi label `Diskon ` sendirian, `F13:F14` digabung
+berisi persennya. Versi lama terbalik — `F12:F13` digabung untuk label dan
+persennya jatuh ke `F14`.
+
+### Hasil setelah perbaikan
+
+Invoice Mae Bebe keluaran program sekarang **sama persis** dengan faktur
+asli, sel demi sel, kecuali harga 2 artikel (lihat di bawah). Surat Jalan
+cocok **seluruhnya**: kedua tabel bertumpuk, 24 baris, kode artikel, warna,
+letak kolom ukuran, qty per ukuran, sampai total 288 pcs.
+
+### Harga Milo Set berbeda — order sheet Juli tertinggal
+
+Satu-satunya selisih angka:
+
+| Artikel | Faktur asli 0310726 | Order Sheet Juli 2026 |
+|---|---:|---:|
+| `42022.A` Milo Set (Small Size) | 61.000 | 49.400 |
+| `4202200.A` Milo Set (Big Size) | 69.500 | 55.400 |
+
+Ditelusuri ke seluruh arsip: harga 61.000 / 69.500 **hanya ada di**
+`Order Sheet Agustus 2026 Harga Baru`. Juni 2026, Juli 2026, dan
+Agustus 2026 Harga Lama semuanya masih 49.400 / 55.400.
+
+Artinya faktur yang diterbitkan 28 Juli 2026 **sudah memakai harga baru**,
+padahal order sheet Juli tidak pernah ikut diperbarui. Dampaknya pada satu
+PO ini saja:
+
+| | Faktur asli | Dari order sheet Juli |
+|---|---:|---:|
+| Subtotal | 15.910.200 | 14.985.000 |
+| Total (nett) | 11.932.650 | 11.238.750 |
+| **Selisih** | | **693.900** |
+
+**Jangan ditambal program.** Program benar membaca order sheetnya; yang
+perlu dipastikan Yosua adalah mana yang berlaku untuk Juli — harga lama
+atau harga baru — lalu order sheetnya yang dirapikan.
+
+### Tanggal dokumen bukan tanggal PO
+
+Faktur asli 0310726 bertanggal **28 Juli 2026**, sedangkan tabnya
+`PO 17 Juli`. Program memakai tanggal PO. Perlu dipastikan Yosua apakah
+tanggal dokumen harus tanggal terbit (hari dicetak) atau tanggal PO.
+
+### Cacat `--berkas` ditelan sub-perintah faktur-pajak
+
+    python3 jalankan.py --berkas "order sheet Juli.xlsx" faktur-pajak
+
+diam-diam membaca `data/order_sheet.xlsx` (bulan lain) dan tetap melapor
+"berhasil". Sebabnya sub-perintah `faktur-pajak` mendeklarasikan `--berkas`
+sendiri; argparse memakai satu namespace, jadi yang belakangan menimpa yang
+depan dengan `None`.
+
+Faktur pajak bulan yang salah adalah kesalahan yang mahal. Sudah dihapus,
+dan dikunci `tests/test_cli_argumen.py` yang menyisir SEMUA sub-perintah,
+bukan hanya yang ini.
+
+### Order sheet Juli 2026 jauh lebih besar dari Agustus
+
+| | Juli 2026 | Agustus 2026 |
+|---|---:|---:|
+| PO berisi data | **30** | 16 |
+| Baris | 1.334 | 1.194 |
+| Qty | 10.689 pcs | 8.600 pcs |
+| Sebelum diskon | Rp771.475.700 | Rp561.768.900 |
+| Nilai bersih | Rp582.599.096 | Rp424.156.009 |
+
+Ke-30 PO **COCOK** dengan baris TOTAL masing-masing tab.
+
+Dua hal yang perlu Yosua rapikan di order sheet Juli:
+
+1. **6 tab bernama `Sheet4` sampai `Sheet9`** berisi data PO sungguhan
+   (masing-masing 5-56 baris, sampai 621 pcs) tapi tidak punya nama
+   customer. Program tidak bisa menebak ini milik siapa.
+2. **22 dari 30 PO customernya belum terdaftar** di `config/customer.csv`,
+   antara lain Liz & Co (Surabaya/Bali), Babyland, Piikmii, Halo Baby,
+   Mulia Makmur, Millenium, Erka Kids, Joy Baby, HUMAIRAA, Ayleen,
+   Katamama Cikaret.
+
+Untuk faktur pajak ini fatal: Coretax menolak faktur tanpa nama pembeli.
+Peringatannya sekarang menyebut nama tabnya satu per satu, bukan tanda
+petik kosong.
+
+Tes 110 -> 113.
+
+## 19. Siap cetak A4 — 13 September 2026
+
+Yosua melaporkan tiga hal dari contoh Juli: blok "PEMBAYARAN DITRANSFER KE
+REKENING" dan blok penutup Subtotal tidak berkotak, dan lebar kolom belum
+pas untuk kertas A4. Untuk Surat Jalan ia memberi berkas acuan baru:
+`FA 030426 TOKO BABY FAME (MTN)` — `1bIKVDfPgetI5Lnr_I-S9PloiU2VlgSPA`.
+
+### Surat Jalan ternyata dicetak TEGAK, bukan mendatar
+
+Cacat paling menentukan. Program memakai `landscape=True`, padahal **semua**
+Surat Jalan asli portrait — baik yang DPM maupun yang MTN:
+
+| Berkas | Kertas | Arah | fitToPage | Skala |
+|---|---|---|---|---|
+| FA 030426 BABY FAME (MTN) | A4 (paperSize 9) | portrait | ya | 93 |
+| 0010726 BABY WISE (DPM) | — | portrait | ya | — |
+| 0310726 MAE BEBE (DPM) | — | portrait | ya | 93 |
+
+Karena itu dokumen tidak pernah pas di A4 yang dipakai divisi.
+
+### Lebar kolom diambil dari berkas asli, bukan dikira-kira
+
+Faktur asli (jumlah A..H):
+
+| Berkas | A | B | C | D | E | F | G | H | Jumlah |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0010726 BABY WISE | 4,00 | 15,57 | 29,86 | 4,29 | 12,14 | 12,71 | 13,57 | 15,57 | **107,7** |
+| 0310726 MAE BEBE | 4,14 | 10,86 | 33,29 | 4,86 | 14,29 | 14,00 | 15,00 | 16,57 | 113,0 |
+| versi lama program | 4,30 | 12,60 | **39,40** | 5,00 | 12,10 | 12,60 | 12,60 | 15,60 | 114,2 |
+
+Margin faktur asli juga jauh lebih sempit dari bawaan Excel:
+0,13-0,15 kiri/kanan, bukan 0,7. Margin bawaan itu sendiri sudah cukup
+untuk mendorong tabel ke halaman kedua.
+
+Surat Jalan asli: deskripsi barang +-29 satuan (C+D+E digabung di DPM,
+kolom C tunggal di MTN — dua-duanya berujung di angka yang sama), WARNA
++-10,3, kolom ukuran sempit, Qty +-7.
+
+### Lebar kolom invoice sekarang menyesuaikan isi
+
+Lebar tetap memotong kode artikel panjang. Pada contoh Mei 2026,
+`71092.S (Bottom/Celana)` tercetak jadi `71092.S (Bottom/Celan` — di invoice
+itu fatal, customer tidak bisa tahu barang mana yang ditagih.
+
+Aturannya: kolom B dan C berbagi satu **jatah tetap** (`JATAH_A4`, jumlah
+lebar A..H dari faktur asli). B melebar mengikuti kode terpanjang, dibatasi
+11-23 satuan; sisanya untuk C, minimal 22. Karena jatahnya tetap, jumlah
+A..H tidak pernah bertambah dan dokumennya tetap muat A4 tegak.
+
+### Yang dikunci tes
+
+`tests/test_cetak_a4.py`:
+
+1. Blok penutup dan blok rekening invoice punya garis kotak mengelilinginya.
+2. Invoice, Surat Jalan, dan Packing List semuanya A4 **tegak** dengan
+   `fitToWidth=1` dan `fitToPage=True`.
+3. Jumlah lebar kolom sampai kolom cetak terakhir tidak lebih dari 115
+   satuan — cukup longgar untuk Surat Jalan sembilan ukuran, tapi tetap
+   menangkap kolom kebablasan seperti C selebar 39,4.
+4. Lebar yang menyesuaikan isi tidak pernah melebihi jatah A4.
+
+`gaya.kotak()` sengaja hanya menggambar garis di **tepi** blok dan
+mempertahankan garis sel yang sudah ada, supaya tidak berubah jadi kisi-kisi.
+
+### Dibuktikan pada PDF sungguhan, bukan pada pengaturan saja
+
+Kedelapan contoh 2026 diubah ke PDF lewat LibreOffice lalu diperiksa:
+ke-16 berkas ber-MediaBox 595 x 842 pt — **A4 tegak persis**. Diperiksa juga
+isi halaman pertama Surat Jalan Miniku (288 baris, 5 halaman): kolom paling
+kanan (Qty) ikut tercetak di halaman yang sama, jadi halaman banyak itu
+memanjang ke bawah, bukan terpotong ke samping.
+
+### Yang BELUM diubah dan perlu dipastikan Yosua
+
+Berkas acuan yang diberikan kali ini milik **CV. Mutiara Timur Nusantara**,
+dan tata letaknya berbeda dari Surat Jalan DPM:
+
+| | Surat Jalan DPM | Surat Jalan MTN |
+|---|---|---|
+| Kolom terpakai | A..M | A..K |
+| Deskripsi barang | C:E digabung | C tunggal |
+| Kolom WARNA | F | D |
+| Kolom ukuran | G.. | E..J |
+| Kepala dokumen | kop + Kepada Yth. | label CUSTOMER / SURAT JALAN / TANGGAL |
+| Baris BRAND | ada | tidak ada |
+
+**Hanya lebar kolom dan pengaturan cetaknya yang diambil.** Tata letak DPM
+dipertahankan, sebab bagian 18 baru saja membuktikan Surat Jalan program
+cocok seluruhnya dengan Surat Jalan DPM asli. Kalau tata letak MTN yang
+dipakai untuk semua, kecocokan itu hilang.
+
+Perlu dijawab Yosua: apakah dokumen MTN memang memakai tata letak sendiri
+(kalau ya, program perlu dua tata letak, dipilih dari kolom
+`perusahaan_pemroses`), atau MTN yang menyusul mengikuti DPM.
+
+### Nomor dokumen pada contoh 8 bulan
+
+Contoh Januari-Agustus 2026 memakai nomor urut `001` tiap bulan
+(`0010126` sampai `0010826`). Itu **nomor contoh**, bukan nomor terbit.
+Nomor urut yang sebenarnya tetap tidak ditebak program.
+
+### Surat Jalan juga memotong kode artikel
+
+Terlihat pada contoh Januari 2026: `41065 (Bottom/Celana)` tercetak jadi
+`41065 (Bottom/Celana`. Aturan yang sama dipakai — kolom ARTICLE CODE
+melebar mengikuti kode terpanjang PO itu (11-23 satuan), tambahannya
+diambil dari kolom deskripsi, jadi total lebarnya tidak berubah.
+
+### Jatah lebar boleh melar sampai 135 satuan
+
+Awalnya jatah dikunci di 107,7 (angka faktur asli) dan hasilnya kolom
+saling berebut: begitu kode artikel dilebarkan, deskripsi yang terpotong.
+Invoice Haritsa Januari 2026 butuh keduanya sekaligus — kode 23 huruf
+(`4106500 (Bottom/Celana)`) dan deskripsi 43 huruf
+(`Nilo Straight Denim Pants Small Size Uk. 1Y`).
+
+Karena `fitToWidth` menyusutkan sendiri isinya supaya selebar satu halaman,
+jatah yang lebih besar **tidak** membuat dokumen terpotong ke samping —
+yang terjadi hanya hurufnya mengecil. 135 satuan setara skala +-78%.
+Dibuktikan pada PDF: invoice Haritsa 64 baris, teks utuh, satu halaman A4
+tegak, masih terbaca.
+
+Tes 113 -> 119.
+
+## 20. Format final dari dua berkas asli Agustus 2026 — 14 September 2026
+
+Yosua mengirim tiga tangkapan layar: faktur yang benar, Surat Jalan yang benar,
+dan keluaran program dengan satu angka dikotak merah untuk dihapus.
+
+**Tangkapan layar tidak dipakai sebagai acuan.** Berkas aslinya dicari di Drive
+lalu dibongkar sel per sel:
+
+| Gambar | Berkas asli | ID |
+|---|---|---|
+| 1 — faktur | `0020826 - CV. BASA MANDIRI - FAKTUR.xlsx` | `1054vvGytz8NqYML8MGxrofB36DLCg3AW` |
+| 2 — surat jalan | `0110826 BABY WISE.xlsx` | `1IJa-TbAoUOIAHXWauYdZeg667XtJBlJx` |
+
+### LOGO akhirnya ketemu
+
+Bagian 9 mencatat "logo belum ada berkasnya". Ternyata logonya **tertanam di
+dalam berkas faktur** sebagai `xl/media/image1.jpeg` (9,5 KB). Sudah diambil
+dan disimpan sebagai `config/logo_dpm.jpeg`, dan `perusahaan.yaml` sudah
+menunjuk ke sana. Sejak sekarang semua dokumen DPM berlogo.
+
+Kalau nanti butuh logo MTN, cara yang sama berlaku: buka berkas faktur MTN
+sebagai zip, ambil isi folder `xl/media/`.
+
+### "Rp" itu FORMAT ANGKA, bukan kolom sendiri
+
+Di gambar 1 "Rp" terlihat seperti kolom tersendiri. Bukan. Itu format angka
+akuntansi yang menempelkan "Rp" ke tepi kiri sel:
+
+    _-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-
+
+Kalau ini ditiru dengan membuat kolom "Rp" beneran, jumlah kolomnya bertambah
+dan tabelnya tidak akan pernah pas. Disalin apa adanya ke `gaya.FORMAT_RP`.
+
+### Faktur asli TIDAK memuat baris BRAND
+
+Baris `BRAND : HAPPY PUMPKIN` hanya ada di **Surat Jalan**. Bagian 16 mencatat
+"selalu ada" — itu salah, kesimpulan dari berkas Surat Jalan yang dikira
+berlaku untuk keduanya. Sudah dihapus dari invoice.
+
+### Judul faktur: dua sel, bukan satu kalimat
+
+| | Versi lama | Faktur asli |
+|---|---|---|
+| A9 | `FAKTUR No. 0020826` | `FAKTUR NO.` (tebal) |
+| sel terpisah | — | `0020826` tebal **bergaris bawah** |
+
+### Kolom diskon hanya dicetak kalau memang ada diskonnya
+
+Temuan paling menentukan. Faktur asli DPM punya **dua bentuk**:
+
+| | Tanpa diskon (0020826 BASA) | Berdiskon (0010726 BABY WISE) |
+|---|---|---|
+| Kolom | No, Kode, Deskripsi, Qty, **Harga**, Jumlah | + Diskon %, Nilai Diskon |
+| Penutup | Total, Uang Muka, DPP, PPN, Total | + Subtotal, Diskon di atasnya |
+| Jumlah | qty x harga | nilai SETELAH diskon |
+
+Program sekarang memilih sendiri berdasarkan ada tidaknya diskon di order itu.
+Mencetak kolom diskon berisi nol hanya mengundang pertanyaan customer; dan
+menghapusnya pada order berdiskon akan menyembunyikan potongan yang sudah
+diberikan. **Perlu dipastikan Yosua** apakah pilihan otomatis ini benar.
+
+Blok rekening juga pindah dari kolom B ke **kolom A** (asli: A28:A31).
+
+### Angka total qty di kanan atas Surat Jalan — DIHAPUS
+
+Yosua mengotak-merahi angka `1381` pada Surat Jalan April dan minta dihapus
+dari seluruh format.
+
+Ternyata angkanya memang tidak pernah dicetak di dokumen asli. Di
+`0110826 BABY WISE` angka itu ada di **N12** (`=SUM(M14:M29)`), sedangkan
+`print_area`-nya `A1:M31` — kolom N berada **di luar area cetak**. Jadi itu
+sel bantu untuk pemeriksaan Sales, bukan bagian dokumen.
+
+Versi lama menaruhnya di dalam area cetak, jadi ikut tercetak. Sudah dihapus
+seluruhnya dan dikunci tes yang memeriksa tidak ada sel apa pun di atas baris
+judul tabel yang nilainya sama dengan total qty PO.
+
+### Nomor Surat Jalan: besar, polos, tanpa "No."
+
+Asli: `H9:M9`, huruf **ukuran 18**, tebal, rata tengah, isinya ` 0110826`
+saja. Versi lama menulis `No. 0010426` dengan ukuran biasa.
+
+### Urutan tanda tangan terbalik
+
+| | Versi lama | Asli |
+|---|---|---|
+| Urutan | Pengirim, Penerima, Mengetahui | **Penerima, Pengirim, Mengetahui** |
+
+Sama di kedua berkas asli terbaru: `0110826 BABY WISE` (B31/F31/K31) dan
+`0020826 CV. BASA MANDIRI` (B27/G27/K27). Bagian 6 yang menulis urutan lama
+sudah tidak berlaku.
+
+### Kop invoice dan kop Surat Jalan BERBEDA
+
+Bukan kesalahan, memang begitu aslinya:
+
+| | Invoice (0020826) | Surat Jalan (0110826) |
+|---|---|---|
+| Telepon & WA | **satu baris**, dipisah `;` | dua baris terpisah |
+| Ruang logo | A2:B6 | A1:B5 |
+
+### Tes
+
+Empat tes baru mengunci: total qty tidak tercetak, nomor SJ besar dan polos,
+urutan tanda tangan, dan bentuk faktur tanpa diskon. Tes 119 -> 123.
+
+### Blok penutup bergaris penuh & Uang Muka nol jadi "-" — 14 September 2026
+
+Dua perbaikan lanjutan dari Yosua setelah melihat contoh April.
+
+**1. Blok penutup bergaris PENUH, bukan cuma kotak luar.**
+
+Versi sebelumnya hanya menggambar tepi luar, jadi Subtotal sampai Total
+berhimpitan tanpa pemisah. Faktur asli `0020826 CV. BASA MANDIRI` memberi
+garis `thin` di **keempat sisi tiap sel** (K27..M31), sehingga ada garis
+antar baris dan antara label dengan nilainya.
+
+Sekarang `beri_garis()` dipanggil dulu untuk mengisi kisi, baru `kotak()`
+menebalkan tepi luarnya. Urutan ini penting: `kotak()` sengaja
+mempertahankan garis yang sudah ada di sisi dalam.
+
+Blok rekening TETAP hanya berkotak luar, juga sesuai aslinya (A28:A31).
+
+**2. Uang Muka nol ditulis "-", bukan angka 0.**
+
+Tidak perlu logika khusus. Bagian ketiga format akuntansi Rupiah
+(`_-"Rp"* "-"_-`) memang bagian untuk nilai nol. Sebelumnya baris Uang Muka
+sengaja dikecualikan memakai format angka biasa sehingga tercetak `0`;
+pengecualian itu dihapus dan seluruh kolom nilai kini memakai satu format
+yang sama.
+
+Dikunci dua tes: tiap sel blok penutup wajib bergaris di keempat sisi, dan
+format angka Uang Muka wajib punya bagian nol yang berisi `"-"`.
+
+Tes 123 -> 125.
+
+### Jawaban Yosua 14 September 2026: kolom diskon otomatis SUDAH BENAR
+
+Pertanyaan di bagian 20 ("perlu dipastikan Yosua apakah pilihan otomatis ini
+benar") dijawab Yosua: **"ya benar"**.
+
+Jadi ini sekarang keputusan tetap, bukan dugaan:
+
+| Keadaan order | Bentuk faktur |
+|---|---|
+| ada diskon | kolom Diskon % + Nilai Diskon, penutup memuat Subtotal & Diskon |
+| tanpa diskon | tanpa kolom diskon, penutup langsung Total |
+
+Program memilih sendiri dari ada tidaknya diskon pada order itu. Jangan
+dijadikan pengaturan manual.
+
+### Blok penutup TIDAK bercetak tebal — 14 September 2026
+
+Permintaan Yosua setelah melihat hasil bergaris. Faktur asli
+`0020826 CV. BASA MANDIRI` menebalkan seluruh blok penutup, tapi begitu tiap
+sel diberi garis, huruf tebalnya jadi terlalu ramai.
+
+**Ini penyimpangan yang DISENGAJA dari faktur asli, atas permintaan Yosua
+sendiri.** Jangan "diperbaiki" kembali menjadi tebal hanya karena berkas
+aslinya begitu.
+
+Baris Subtotal dan Total terakhir yang dulu ditebalkan juga ikut dibuat
+biasa — garisnya sudah cukup memisahkan.
+
+Blok rekening TETAP tebal, itu tidak diubah.
+
+Dikunci satu tes: tidak ada satu pun sel di blok penutup yang boleh
+`font.bold`. Tes 125 -> 126.
+
+## 21. Tab Harga Retail jadi satu-satunya sumber harga — 14 September 2026
+
+Permintaan Yosua: *"untuk bagian harga sesuaikan dengan tab master harga yang
+ada di setiap tab yang ada di order sheet"*.
+
+### Diperiksa dulu sebelum diubah
+
+Sebelum menyentuh kode, harga di baris PO dibandingkan dengan tab
+`Harga Retail` pada **seluruh 8.845 baris** order sheet 2026:
+
+| Order sheet | Baris | Harga BEDA dari master |
+|---|---:|---:|
+| Januari - September 2026 (10 berkas) | 8.845 | **0** |
+
+**Tidak ada satu baris pun yang harganya berbeda.** Jadi aturan ini tidak
+mengubah angka mana pun hari ini. Gunanya menangkap kalau suatu saat Sales
+mengetik harga sendiri di baris PO.
+
+Nama barang juga sudah sama di seluruh 8.845 baris.
+
+### Tiga kode yang dikira tidak terdaftar — ternyata cuma beda huruf
+
+| Kode di baris PO | Kode di Harga Retail |
+|---|---|
+| `41065 (bottom/Celana)` | `41065 (Bottom/Celana)` |
+| `71092.M (Top/atasan)` | `71092.M (Top/Atasan)` |
+| `71092.S (Top/atasan)` | `71092.S (Top/Atasan)` |
+
+Pencarian master dulu peka huruf besar-kecil, jadi ketiganya dianggap artikel
+tidak terdaftar. `cari_di_master()` sekarang mengabaikan besar-kecil huruf dan
+spasi di tepi. Setelah diperbaiki: **0 kode tidak terdaftar** dari 8.845 baris.
+
+### Aturannya sekarang
+
+`_samakan_dengan_master()` di `pemindai.py` berjalan untuk tiap tab PO:
+
+| Keadaan | Tindakan |
+|---|---|
+| kode ada di master, harga sama | tidak terjadi apa-apa |
+| kode ada di master, harga BEDA | **master yang dipakai**, selisihnya dilaporkan |
+| kode ada di master, nama beda | **master yang dipakai** |
+| kode TIDAK ada di master | harga baris PO dipakai, dilaporkan |
+
+Penyesuaian harga **tidak pernah didiamkan**. Kalau harga di baris PO berbeda,
+berarti `TOTAL ATO VALUE` di order sheet ikut salah dan pencocokan akan gagal —
+peringatannya menyebut itu supaya order sheetnya yang dirapikan, bukan
+dokumennya yang dipaksa.
+
+### Dibuktikan tidak merusak apa pun
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Baris 2026 yang harganya diubah | 0 dari 8.845 |
+| Kode tidak terdaftar di master | 0 dari 8.845 |
+| Pencocokan Juli 2026 | 30 dari 30 PO cocok |
+| Pencocokan Agustus 2026 | 16 dari 16 PO cocok |
+
+Tiga tes baru. Tes 126 -> 129.
+
+### Bingkai luar blok penutup TIDAK ditebalkan — 14 September 2026
+
+Perbaikan lanjutan Yosua: *"untuk bagian subtotal border luarnya jangan
+dicetak tebal"*.
+
+Sebelumnya blok penutup memakai kisi `thin` di dalam ditambah bingkai
+`medium` di luar — 18 sisi tebal mengelilingi blok Subtotal..Total.
+
+Sekarang `gaya.kotak()` **tidak lagi dipanggil** untuk blok penutup; yang
+tersisa hanya `beri_garis()`, jadi keempat sisi tiap sel seragam `thin`.
+
+Ini justru mengembalikannya ke bentuk faktur asli: di
+`0020826 CV. BASA MANDIRI` sel K27..M31 memang semuanya `thin`, tanpa
+bingkai tebal sama sekali. Bingkai medium itu tambahan saya sendiri yang
+tidak ada di aslinya.
+
+**Blok rekening TETAP berbingkai medium** — Yosua hanya menyebut bagian
+subtotal, dan bingkai tebal di blok rekening itu memang membantu memisahkan
+dari tabel barang.
+
+Tesnya diperketat: tiap sisi blok penutup wajib bergaya persis `thin`,
+bukan sekadar "ada garisnya". Jumlah tes tetap 129.
+
+## 22. Bongkar ulang folder faktur asli Apr–Agu 2026 — 14 September 2026
+
+Yosua: *"masih salah coba pelajari lagi seluruh folder dan file yang memuat
+tentang invoice, surat jalan"* — folder `12I3Y0if4mNk-FOprhjrm48JOn0cYl_5L`,
+berisi subfolder `4. APRIL`, `5. MEI `, `6. JUNI`, `7. JULI`, `INVOICE AGUSTUS`.
+
+### Sebab utamanya: bagian 20 dibangun di atas SATU berkas yang menyendiri
+
+Bagian 20 memakai `0020826 - CV. BASA MANDIRI - FAKTUR.xlsx` sebagai acuan
+tunggal. Berkas itu ternyata memakai template LAMA. Empat faktur asli lain —
+termasuk dua yang paling baru — sepakat melawan berkas itu:
+
+| Bagian | BASA 0020826 (dipakai bagian 20) | 0010726 BW | 0310726 MB | 0110826 BW | 0420826 YULIS |
+|---|---|---|---|---|---|
+| Baris judul | `FAKTUR NO.` sz 16 | `FAKTUR No.` sz 16 | `FAKTUR No.` sz 16 | `FAKTUR No.` sz 18 | `FAKTUR No.` sz 18 |
+| Garis bawah nomor | — | tidak | tidak | tidak | tidak |
+| Baris BRAND di faktur | **tidak ada** | **ADA** A10 | **ADA** A10 | **ADA** A10 | **ADA** A10 |
+| Telepon & WA di kop | satu baris `;` | **dua baris** | **dua baris** | **dua baris** | **dua baris** |
+| Blok rekening | kolom A | **kolom B** | **kolom B** | **kolom B** | **kolom B** |
+
+Yang diperbaiki: `FAKTUR No.` (bukan `NO.`) ukuran 18 tanpa garis bawah,
+baris `BRAND :  HAPPY PUMPKIN` (DUA spasi) dikembalikan di A10, blok rekening
+pindah ke kolom B dengan kotak `medium` selebar B..C.
+
+**Pelajaran umum: jangan pernah menyimpulkan format dari satu berkas.**
+Bandingkan minimal tiga, dan menangkan yang terbaru.
+
+### Berkas acuan terbaik: `0420826 YULIS BABY SHOP` (28 Agustus 2026)
+
+Paling baru dan paling bersih, punya tab `FORMAT INVOICE`,
+`FORMAT SURAT JALAN (2)`, dan `PACKING LIST`.
+
+Invoice: lebar A..H = 4,00 / 16,14 / 27,00 / 5,00 / 13,29 / 12,71 / 13,57 /
+15,57 (jumlah 107,3); print_area `A2:H66`; judul tabel baris 12–14 (A12:A14,
+B12:B14, C12:C14, H12:H14 digabung tegak; D/E/F/G judul di 12, sublabel
+digabung 13:14); data mulai 15; penutup label di G, nilai di H, **seluruh
+sisinya `thin`, tanpa bingkai tebal** — ini membenarkan perbaikan 14 Sep.
+
+Surat Jalan: logo A1:B5, kop C1:C6, judul `SURAT JALAN` A8:M8 tengah sz 16,
+kalimat pembuka A9, **nomor di H9:M9 sz 18 tebal tanpa awalan "No."**,
+`BRAND : HAPPY PUMPKIN` (SATU spasi) di A10:E10, judul tabel 12–13,
+data mulai 14, tabel kedua bertumpuk mulai 34. Tanda tangan
+**Penerima (B) / Pengirim (F) / Mengetahui (K)** — urutan bagian 20 benar.
+
+### Potongan CBD/COD MEMANG dicetak di invoice — bagian 6 keliru
+
+Bagian 6 menulis *"Baris diskon CBD/COD tidak dicetak di invoice"*. Yang benar:
+**baris terpisahnya** tidak ada, tapi tarifnya ikut masuk ke persen diskon dan
+ikut dihitung per baris.
+
+Bukti `0220826 KATAMAMA TAPOS`:
+
+| | |
+|---|---:|
+| Sel diskon | `22% + 1.5%` |
+| Subtotal | 27.332.900 |
+| Diskon | 6.333.032,93 |
+| Total | 20.999.867,07 |
+
+dan `27.332.900 x 0,78 x 0,985 = 20.999.867,07` **persis**. Jadi kedua potongan
+BERUNTUN, bukan dijumlahkan.
+
+Karena itu `_persen_tertulis()` memulihkan diskon dasar dengan MEMBAGI
+(`1 - (1-efektif)/(1-tambahan)`), bukan mengurangi. Cara lama memberi 21,67%
+untuk Katamama, seharusnya 22%. Penulisannya juga disamakan dengan aslinya:
+`22% + 1.5%` — TITIK desimal, tanpa nol yang tidak perlu.
+
+Faktur `0420826 YULIS` menulis `22%` polos karena order itu memang TOP, bukan
+CBD. Jadi kedua bentuk itu benar, dan program sudah memilih sendiri dari kolom
+AD/AE. Tidak ada yang perlu diubah di situ.
+
+### Dokumen asli sering DIPECAH — dua sebab yang berbeda
+
+| Berkas | Pecah jadi | Sebabnya |
+|---|---|---|
+| `0100426 HARITSA` | `FAKTUR 0100426` + `FAKTUR 0100426.A`, `SURAT JALAN 1` + `2` | **KATEGORI**: FASHION (ukuran 1–6) vs BASIC (NB/S/M/L). Nomor kedua berakhiran `.A` |
+| `0160426 BABY WISE` | `FAKTUR (1)` + `(2)`, `SURAT JALAN 1` + `2` | **PANJANG HALAMAN**. Nomor SAMA (`0160426`), ukuran sama (1–6), penomoran baris menyambung (SJ2 mulai dari 34) |
+
+Pembeda pastinya: nomor `.A` + label kategori = pecah kategori; nomor sama +
+penomoran menyambung = sekadar halaman.
+
+Pecah kategori **hanya untuk Haritsa**. Disisir di `4. APRIL`, `5. MEI `,
+`6. JUNI`, `INVOICE AGUSTUS` (± 150 berkas): satu-satunya nama berkas yang
+memuat FASHION/BASIC adalah Haritsa (`0380626 PT. HARITSA - FASHION/BASIC`,
+`0160826 PT. HARITSA - BASIC`, `0170826 PT. HARITSA - FASHION`). Ini akhirnya
+menjawab "Kekhususan Haritsa yang belum dikonfirmasi" di bagian 7: **ya,
+Haritsa menerima faktur terpisah per kategori produk.**
+
+Pecah karena halaman **tidak perlu ditiru** — divisi dulu mengerjakannya
+manual baris per baris. Program memakai `fitToPage` + A4 tegak, jadi Excel
+dan PDF memecah halaman sendiri.
+
+**Label FASHION/BASIC tidak ada di order sheet mana pun.** Sumbernya di luar
+order sheet, jadi program TIDAK boleh menebaknya. Perlu jawaban Yosua sebelum
+pecah kategori Haritsa bisa diprogram.
+
+### Berkas lama memang berantakan — jangan dijadikan acuan format
+
+`0160426 BABY WISE` memuat tab `FAKTUR` berisi **customer lain** (JONNI
+SETIADI / Mae Bebe), bernomor `0150426.A`, seluruh nilainya `#N/A`; juga baris
+`#N/A` dan nol yang tertinggal di kedua Surat Jalannya, dan judul kolom
+`Harga setelah Diskon 22%+2%` yang tidak pernah terisi. Itu sisa salin-tempel,
+bukan bagian dari format.
+
+Untuk acuan format pakai berkas AGUSTUS 2026 yang bertab `FORMAT INVOICE` /
+`FORMAT SURAT JALAN`, jangan berkas April.
+
+### Yang perlu dijawab Yosua
+
+| Hal | Kenapa perlu |
+|---|---|
+| Faktur Haritsa dipecah FASHION / BASIC | Sudah pasti terjadi, tapi label kategorinya tidak ada di order sheet. Artikel mana masuk FASHION, mana BASIC? |
+| Nomor kedua berakhiran `.A` | Perlu dipastikan polanya memang begitu untuk seterusnya |
+
+## 23. Surat Jalan disamakan dengan `0110826 BABY WISE` — 14 September 2026
+
+Yosua mengirim tangkapan layar Surat Jalan dan **berkas aslinya sekalian**:
+`0110826 BABY WISE.xlsx` (`1IJa-TbAoUOIAHXWauYdZeg667XtJBlJx`), tab
+`FORMAT SURAT JALAN`. Berkas itu dibongkar sel per sel, LALU diubah sendiri
+jadi PDF lewat LibreOffice supaya hasil program bisa diadu dengan gambar
+yang sebenarnya, bukan dengan tebakan.
+
+### Yang ternyata salah
+
+| Bagian | Versi lama | Berkas asli |
+|---|---:|---:|
+| Tinggi baris barang | bawaan (~15) | **30,0** |
+| Tinggi baris judul kolom | bawaan | **22,5** lalu 15,0 |
+| Huruf nama perusahaan di kop | 11 | **18** |
+| Huruf nama customer | 10 | **15** tebal |
+| Huruf alamat & tanggal | 9-10 | **11** |
+| Huruf `SURAT JALAN` | 14 | **16** |
+| Huruf kalimat pembuka | 9 biasa | **12 tebal** |
+| Huruf `BRAND : HAPPY PUMPKIN` | 9 | **14 tebal** |
+| Huruf judul kolom tabel | 9 | **12** |
+| Huruf isi tabel | 9 | **11** teks, **12** angka |
+| Lebar kolom ukuran | 5,6 | **9,0** |
+| Lebar kolom Qty | 7,0 | **6,86** |
+| Lipat teks di sel barang | tidak | **ya** |
+| Baris `(..............)` di bawah tanda tangan | ada | **TIDAK ADA** |
+| Blok kanan kop mulai kolom | G | **H** |
+
+Gabungan huruf kecil + baris rapat itulah yang membuat Surat Jalan program
+terlihat jauh berbeda dari yang dipakai divisi, walaupun susunan kolomnya
+sudah benar sejak bagian 18.
+
+### Tanda tangan tanpa garis titik-titik
+
+`0110826 BABY WISE` baris 31 hanya berisi `Penerima :` (B), `Pengirim :` (F),
+`Mengetahui :` (K31:M31) — sel di bawahnya KOSONG. Sama di `0420826 YULIS`
+(B180/F180/K180). Karena itu `gaya.blok_tanda_tangan()` sekarang punya
+`garis_nama` yang bawaannya **mati**.
+
+### Kop: blok kanan mulai kolom H
+
+Awalnya blok kanan Surat Jalan ditaruh di kolom G, dan alamat perusahaan di
+kolom C jadi terpotong — tercetak `...Grogol Petambu`. Di berkas asli tanggal
+dan `Kepada Yth.` ada di **H1..H6**, memberi kolom C..G penuh untuk alamat.
+
+### Lebar kolom ukuran menyusut sendiri kalau ukurannya banyak
+
+Berkas asli memakai 9,0 satuan per kolom ukuran, tapi di situ ukurannya hanya
+enam. Blok dengan sembilan ukuran akan lewat jatah A4 kalau dipaksa 9,0, jadi
+`_lebar_kolom_ukuran()` mengecilkannya sampai muat, dengan batas bawah 5,6.
+Yang menyusut HANYA kolom ukuran — kolom teks tetap, supaya deskripsi barang
+tidak ikut terpotong.
+
+### Cara memastikan yang dipakai sekarang
+
+Bandingkan **gambar lawan gambar**, bukan angka lawan angka: ubah berkas asli
+dan hasil program sama-sama ke PDF, lalu lihat keduanya. Perbedaan tinggi
+baris dan ukuran huruf tidak pernah kelihatan dari membaca nilai sel saja.
+
+Empat tes baru mengunci: tinggi baris, ukuran huruf kop dan tabel, tanda
+tangan tanpa garis titik, dan sel barang yang melipat teks. Tes 129 -> 133.
+
+## 24. Tiga berkas contoh dari Yosua — 15 September 2026
+
+Yosua mengunggah tiga berkas asli sebagai acuan format:
+
+| Berkas | Gunanya |
+|---|---|
+| `0110826 BABY WISE.xlsx` | sama persis dengan yang dipakai di bagian 23 |
+| `0130826 BOBO SAMARINDA.xlsx` | customer per ARTIKEL, diskon tunggal 20% |
+| `0400826 KATAMAMA TAPOS - REVISI(31-08-26).xlsx` | customer per UKURAN, diskon gabungan `22% + 1.5%` |
+
+### Yang sudah benar dan tidak perlu diubah
+
+Bobo Samarinda cocok **sel per sel** dengan hasil bagian 22: `FAKTUR No.` +
+nomor di C9, `BRAND :  HAPPY PUMPKIN` di A10, judul tabel 12–14, data mulai
+15, blok rekening di kolom B, penutup Subtotal..Total di G/H.
+
+Ketiga Surat Jalannya juga cocok seluruhnya dengan bagian 23 — judul 16,
+kalimat pembuka 12 tebal, BRAND 14, nama perusahaan 18, judul kolom 12,
+tinggi baris judul 22,5, nomor 18 di H9, tanda tangan di kolom B tanpa
+garis titik-titik.
+
+### Huruf dan tinggi baris INVOICE ternyata masih kecil
+
+Bagian 23 membenahi Surat Jalan tapi invoice-nya terlewat. Diperiksa pada
+ENAM faktur asli:
+
+| | tinggi judul | tinggi data | huruf judul | huruf isi |
+|---|---:|---:|---:|---:|
+| 0010726 BABY WISE | 13,5 | 26,25 | 12 | 11 |
+| 0110826 BABY WISE | 13,5 | 26,25 | 12 | 11 |
+| 0130826 BOBO | 13,5 | 26,25 | 12 | 11 |
+| 0420826 YULIS | 13,5 | 26,25 | 12 | 11 |
+| 0400826 KATAMAMA | 15,75 | 31,5 | 12 | 11 |
+| 0310726 MAE BEBE | 22,5 | 33,75 | 12 | 12 |
+| **dipakai** | **13,5** | **26,25** | **12** | **11** |
+
+Deskripsi barang **melipat** di keenam berkas, bukan terpotong. Program dulu
+memakai huruf 9 dan tinggi baris bawaan.
+
+### Letak sel persen diskon ikut PANJANG tulisannya
+
+Temuan yang menjelaskan kebingungan lama antara F13 dan F14 — ternyata
+keduanya benar, tergantung bentuk diskonnya:
+
+| Bentuk | Label "Diskon " | Persennya |
+|---|---|---|
+| tunggal (`20%`, `22%`) | F12 sendirian | digabung **F13:F14** |
+| gabungan (`22% + 1.5%`) | digabung **F12:F13** | sendirian di **F14** |
+
+Contoh tunggal: 0130826 BOBO, 0420826 YULIS. Contoh gabungan: 0220826 dan
+0400826 KATAMAMA. Tulisan gabungan memang lebih panjang, jadi diberi baris
+sendiri. Program sekarang memilih bentuknya sendiri.
+
+### Kolom Jumlah: NETT menang 6 lawan 2
+
+Katamama menulis kolom H sebagai nilai KOTOR (`qty x harga`), bukan nett.
+Diperiksa ke tujuh faktur asli:
+
+| Kolom H | Berkas |
+|---|---|
+| **NETT** (6) | 0010726 & 0110826 BABY WISE, 0310726 MAE BEBE, 0130826 BOBO, 0420826 YULIS, 0100426 HARITSA |
+| KOTOR (2) | 0220826 & 0400826 KATAMAMA |
+
+Sempat diduga ini aturan untuk customer "per ukuran", tapi **Haritsa yang
+juga per ukuran memakai NETT**. Jadi ini kebiasaan pembuat berkas Katamama,
+bukan aturan. Program tetap memakai NETT sesuai bagian 18.
+
+Angka **Total tidak terpengaruh** — yang berbeda hanya isi kolom Jumlah per
+baris. Tetap perlu dipastikan Yosua mana yang benar untuk Katamama.
+
+### Kode artikel tebal: tidak ada mayoritas
+
+Tebal di 0400826 KATAMAMA dan 0420826 YULIS, tidak tebal di 0130826 BOBO,
+0110826 BABY WISE, dan 0310726 MAE BEBE. Dibiarkan tidak tebal.
+
+### Tab PACKING LIST Katamama bukan dokumen tersendiri
+
+Isinya baris Surat Jalan yang sama persis, ditambah judul
+`PACKING LIST KATAMAMA TAPOS` di A63, dengan `print_area` A63:O114 — jadi
+**tanpa kop sama sekali**, dan **tanpa kolom JUMLAH DIKIRIM / NO. KOLI**.
+
+Kolom gudang itu rancangan sendiri (bagian 6), bukan dari berkas asli.
+Belum diubah — bagian 15 mencatat Yosua hanya menyebut TIGA dokumen dan
+Packing List belum dipastikan masih dipakai. Jangan diubah sebelum dijawab.
+
+### Dijawab Yosua 15 September 2026 — KEDUANYA SUDAH FINAL
+
+> *"kalau kolom jumlah biarkan rumus yang sudah ada dan boleh sertakan juga
+> packing list nya"*
+
+| Hal | Keputusan |
+|---|---|
+| Kolom Jumlah faktur | **TETAP NETT**, rumus yang sudah ada tidak diubah |
+| Packing List | **MASIH DIPAKAI**, ikut diterbitkan bersama ketiga dokumen lain |
+
+Jadi kolom Jumlah Katamama yang berisi nilai kotor TIDAK diikuti — itu memang
+kebiasaan pembuat berkasnya, bukan aturan. Enam faktur asli lain memakai nett,
+dan Yosua memilih mempertahankannya. **Pertanyaan ini sudah tertutup, jangan
+diangkat lagi.**
+
+Packing List juga tetap memakai bentuk yang sekarang: sama seperti Surat Jalan
+ditambah kolom **JUMLAH DIKIRIM** dan **NO. KOLI** yang diisi gudang. Bentuk
+"salinan Surat Jalan tanpa kop" di tab PACKING LIST berkas Katamama tidak
+dipakai — Yosua tidak memintanya, dan kolom gudang itu justru gunanya.
+
+Karena `buat_packing_list()` memakai `_bangun()` yang sama dengan Surat Jalan,
+seluruh perbaikan bagian 23 dan 24 ikut berlaku tanpa kode tambahan: tinggi
+baris, ukuran huruf, lipat teks, kolom ukuran digabung, tanda tangan tanpa
+garis titik, dan A4 tegak. Sudah dibuktikan pada berkas sungguhan, 11 dari 11
+pemeriksaan lolos.
+
+Sejak sekarang contoh bulanan berisi **EMPAT** dokumen, bukan tiga.
+
+Dua tes baru mengunci bentuk persen gabungan di F14 dan bentuk tunggal di
+F13. Tes 133 -> 134.
+
+### Kolom ukuran Surat Jalan digabung ke bawah — 15 September 2026
+
+Yosua mengirim tangkapan layar baris judul ukuran: angka `1 2 3 4 5` dengan
+sel kosong bergaris di bawahnya, dan minta tiap kolomnya digabung.
+
+Memang begitu di ketiga berkas contoh — `0110826 BABY WISE`, `0130826 BOBO`,
+dan `0400826 KATAMAMA` semuanya memakai `G12:G13`, `H12:H13`, dan seterusnya
+untuk SETIAP kolom ukuran, sama seperti No. / ARTICLE CODE / DESKRIPSI /
+WARNA yang sudah digabung sejak awal.
+
+Versi lama hanya menulis angkanya di baris judul lalu meninggalkan sel kosong
+bergaris di bawahnya, jadi judul ukurannya terlihat terbelah dua.
+
+**Kolom Qty TIDAK ikut digabung** — di situ memang ada `Qty` di atas dan
+`PCS` di bawahnya. Tesnya memeriksa keduanya sekaligus: tiap kolom ukuran
+wajib digabung, dan kolom Qty wajib TIDAK digabung.
+
+Tes 134 -> 135.
+
+### Pemeriksa salah menyebut `folder_dokumen_id` kosong sebagai BELUM — 16 Sep 2026
+
+Saat Yosua menjalankan `periksa-bot` di device barunya, enam dari tujuh lolos.
+Yang gagal cuma:
+
+    [BELUM] Folder dokumen        belum diisi
+    1. Folder dokumen: Isi folder_dokumen_id di config/bot.yaml
+
+**Padahal id itu SENGAJA dikosongkan**, sesuai jalan keluar yang dipilih di
+bagian 14: akun layanan tidak punya jatah penyimpanan Drive
+(`storageQuotaExceeded`), jadi dokumen dikirim lewat Google Drive for Desktop —
+dan untuk itu `folder_dokumen_id` memang harus kosong.
+
+Jadi pemeriksa menyuruh orang **membatalkan pengaturan yang sudah benar**.
+Kalau diikuti, bot kembali ditolak Google.
+
+Ini **kesalahan yang persis sama polanya** dengan saran "Share ulang" pada
+galat `SERVICE_DISABLED` dulu: pemeriksa memberi saran yang salah, orang
+menurutinya, masalahnya tidak selesai, dan kepercayaan pada pemeriksa hilang.
+
+Sekarang id tujuan yang kosong dilaporkan **LULUS** dengan keterangan
+"sengaja dikosongkan", ditambah penjelasan bahwa berkasnya ditulis ke
+`folder_draf` dan Drive for Desktop yang menyalinkannya.
+
+Dikunci dua tes: id kosong tidak boleh dianggap gagal, dan tidak boleh
+membuat pemeriksa menyatakan "PERLU DIBERESKAN". Tes 135 -> 136.
+
+**Aturan umum untuk pemeriksa ini: jangan pernah menandai GAGAL sesuatu yang
+merupakan pilihan pemasangan yang sah.** Bedakan "belum dikerjakan" dari
+"sengaja tidak dipakai".
+
+## 25. Bot BERHASIL jalan penuh — 16 September 2026
+
+Sapuan pertama yang benar-benar tuntas, di device baru Yosua (Windows).
+
+### Hasilnya
+
+| | |
+|---|---|
+| Order sheet dibaca | **22** |
+| Tab PO ditemukan | **427** |
+| Tab ditarik | **893** |
+| Dokumen per PO | 4 berkas (Invoice, Surat Jalan, Packing List, Faktur Pajak) |
+| Perubahan penting pada PO lama | tidak ada |
+| Sheet OTOMATISASI | **diperbarui** — tab `BOT_DAFTAR_PO`, `BOT_PERUBAHAN`, `BOT_STATUS` |
+
+Tab `BOT_` akhirnya muncul. Bagian 14 mencatat tab itu baru ada setelah akun
+layanan jalan — sekarang terbukti.
+
+### Jalur Drive for Desktop TERBUKTI jalan
+
+`folder_draf` diarahkan ke `G:/My Drive/DOKUMEN OTOMATIS HAPPY PUMPKIN` dan
+`folder_dokumen_id` dikosongkan. Bot menulis langsung ke folder sinkron, tidak
+pernah memanggil unggahan Drive, jadi batasan `storageQuotaExceeded` di bagian
+14 tidak lagi kena sama sekali.
+
+### Pemasangan di device baru — yang memakan waktu
+
+Yosua pindah ke device baru. Urutan yang akhirnya berhasil:
+
+1. Ganti nama folder lama, unduh ZIP branch terbaru, ekstrak
+2. `py -m pip install openpyxl PyYAML google-api-python-client google-auth`
+3. Salin `config/kredensial_bot.json`
+4. Drive for Desktop + sunting dua baris `bot.yaml`
+5. `periksa-bot`, lalu `sapu`
+
+Tiga hambatan yang berulang, semuanya **bukan** soal kode:
+
+| Hambatan | Sebabnya |
+|---|---|
+| `can't open file 'jalankan.py'` berkali-kali | Command Prompt dibuka lewat Start, jadi selalu mulai di `C:\Users\User` |
+| `Could not open requirements file` | Sama — folder salah; lalu ternyata ekstraksi ZIP-nya juga tidak lengkap |
+| Kode masih format lama | Yang terpasang hasil unduhan 12 Sep, 26 commit tertinggal |
+
+**Pelajaran untuk panduan:** orang non-teknis paling sering tersandung pada
+"terminal sedang berada di folder mana", bukan pada perintahnya. Panduan
+berikutnya sebaiknya langsung memberi satu baris `cd /d <alamat>` yang bisa
+disalin-tempel, bukan menyuruh mengetik `cmd` di baris alamat File Explorer.
+
+Penanda versi yang dipakai untuk memastikan kodenya terbaru (lewat `findstr`):
+`config\logo_dpm.jpeg`, `TINGGI_DATA = 30.0`, `TINGGI_DATA_INV = 26.25`,
+`Tiap kolom ukuran DIGABUNG`, `UKURAN_NAMA_PERUSAHAAN = 18`.
+
+### Yang tersisa
+
+| Hal | Keadaan |
+|---|---|
+| Jadwal tiap 12 jam (Task Scheduler) | belum dipasang |
+| Laporan sapuan naik ke Drive | belum dipastikan; kalau ditolak kuota, kosongkan `folder_laporan_id` |
+| Customer belum terdaftar di `customer.csv` | terlihat di laporan sapuan, perlu dilengkapi Yosua |
+
+## 26. Pembetulan nama customer & nomor faktur — 16 September 2026
+
+Yosua bertanya apakah nama customer dan nomor faktur bisa dibetulkan, lalu
+minta contohnya. Dibuatkan contoh SEBELUM/SESUDAH dari
+`PO 25 Agustus - Panda & Bear` (12 baris, 120 pcs, Rp5.126.640) — customer
+yang `nama_di_dokumen`-nya memang masih kosong di `config/customer.csv`.
+
+### Jawabannya
+
+| Hal | Bisa? | Caranya |
+|---|---|---|
+| Nama, alamat, NPWP, NITKU customer | ya, sekarang juga | isi `config/customer.csv`, tanpa ubah kode |
+| Nomor faktur diisi tangan | ya, sudah begitu | bot menulis `________` |
+| Nomor faktur otomatis | perlu keputusan Yosua dulu | belum ada polanya |
+
+### Jebakan yang harus selalu diingatkan
+
+`SidikPO` (`sapu/kondisi.py`) hanya memuat data ORDER SHEET — baris, qty,
+kotor, nett, cara bayar, sidik qty, sidik rumus. **Mengubah `customer.csv`
+tidak membuat bot menganggap ada perubahan**, jadi dokumen lama dibiarkan apa
+adanya. Supaya ikut diperbarui: hapus `data/kondisi_sapu.json` lalu `sapu`
+sekali lagi. Ini bukan cacat — sidik jari memang sengaja hanya mengawasi
+order sheet — tapi orang pasti mengira nama akan berubah sendiri.
+
+### `nomor_dokumen: otomatis` BELUM tersambung ke bot
+
+`cli.py:_nomor()` membaca `pengaturan.yaml -> nomor_dokumen`, tapi
+`sapu/draf.py:buat_draf()` memakai `nomor: str = "________"` dan tidak pernah
+dipanggil dengan nomor lain. Jadi menyalakan `otomatis: true` hanya berpengaruh
+pada perintah manual. Kalau nanti diprogramkan, sambungkan di situ.
+
+Tiga hal yang harus dipastikan Yosua sebelum penomoran otomatis dibuat:
+urutan diulang tiap bulan atau berlanjut setahun; DPM dan MTN berbagi satu
+urutan atau masing-masing; dan apakah faktur kedua Haritsa selalu berakhiran
+`.A`.
+
+### Cacat yang ketahuan dari contoh ini: judul faktur terpotong
+
+Kode artikel Panda & Bear pendek (`OB.SS.1.S`, 9 huruf), jadi
+`lebar_menyesuaikan()` menyusutkan kolom B ke batas bawah 11,0. Bersama kolom
+A yang 4,0 itu cuma 15,0 satuan, sedangkan `FAKTUR No.` tebal ukuran 18 butuh
++-16,4 — tercetak `FAKTUR N` lalu langsung nomornya.
+
+Tidak pernah terlihat di faktur asli karena di sana kolom B selebar
+15,6-16,14. Sekarang B dipaksa minimal `LEBAR_JUDUL_FAKTUR - lebar[1]`.
+Jumlah lebar A..H tidak bertambah — kelebihannya memang sedang menganggur di
+kolom deskripsi. Dikunci satu tes. Tes 136 -> 137.
+
+### Berkas isian nama customer
+
+`alat/template_customer.py` menghasilkan
+`keluaran/TEMPLATE_NAMA_CUSTOMER.xlsx`: satu baris per customer, kolom yang
+perlu diisi berwarna kuning, yang sudah terisi hijau, ditambah tab CARA PAKAI.
+Jumlah PO dan periode aktif diambil dari `DATABASE_CUSTOMER.xlsx` kalau ada.
+
+Dibuat karena `customer.csv` gampang rusak kalau nama customer mengandung
+koma (`PT. ABC, Tbk`). Di Excel hal itu ditangani sendiri.
+
+## 27. Jadwal bot tiap 12 jam di Windows — 17 September 2026
+
+Sisa terakhir dari bagian 25 ("Jadwal tiap 12 jam belum dipasang") ditutup.
+
+Cara lama di PANDUAN_BOT.md menyuruh mengeklik sendiri di Task Scheduler
+lewat *Create Basic Task*, lalu masuk **Properties -> Triggers -> Edit** untuk
+menambahkan pengulangan 12 jam. Itu tujuh langkah di empat jendela berbeda,
+dan tidak satu pun yang memberi tahu kalau hasilnya salah.
+
+Diganti tiga berkas `.bat` di `jadwal/`:
+
+| Berkas | Isi |
+|---|---|
+| `sapu.bat` | `cd /d "%~dp0.."`, jalankan `py jalankan.py sapu`, catat ke `keluaran/sapuan/log-sapuan.txt` beserta kode keluarnya |
+| `pasang-jadwal.bat` | satu panggilan `schtasks /Create ... /SC HOURLY /MO 12 /ST 06:00 /RU "%USERNAME%" /IT /F` |
+| `hapus-jadwal.bat` | `schtasks /Delete`, untuk dijalankan di komputer LAMA saat bot pindah |
+
+### Tiga hal yang jangan diubah tanpa alasan
+
+1. **`/IT` wajib ada.** Tugas hanya boleh jalan saat Yosua login. `folder_draf`
+   menunjuk ke `G:\My Drive\...` milik Google Drive for Desktop, dan drive `G:`
+   belum ada sebelum orangnya login. Tanpa `/IT` bot jalan di ruang hampa dan
+   SEMUA dokumennya gagal ditulis — diam-diam, dua kali sehari.
+2. **`cd /d "%~dp0.."` wajib ada.** Task Scheduler menjalankan perintah dari
+   `C:\Windows\System32`. Ini persis hambatan yang paling sering menyandung
+   pemasangan di bagian 25, cuma kali ini tidak ada orang yang menontonnya.
+3. **Keluaran dicatat ke berkas.** Sapuan terjadwal tidak ada yang melihat
+   layarnya; tanpa log, kegagalan tidak meninggalkan jejak apa pun.
+
+### Berkas .bat: ASCII dan CRLF
+
+Windows membaca `.bat` memakai codepage lama, bukan UTF-8 — satu huruf di luar
+ASCII bisa membuat barisnya salah terbaca. Repo ini dikerjakan di Linux, jadi
+`.gitattributes` menambahkan `*.bat text eol=crlf` supaya akhiran barisnya
+tidak berubah saat di-checkout.
+
+Tujuh tes mengunci semuanya: ketiga berkas ada, `cd /d` ada, log ada, `/IT`
+ada, `/SC HOURLY /MO 12` ada, nama jadwal SAMA di pasang dan hapus (kalau beda,
+`hapus-jadwal.bat` tidak menghapus apa pun dan dua bot bisa menyapu bersamaan
+lalu saling menimpa `kondisi_sapu.json`), dan ketiganya ASCII + CRLF.
+
+Tes 137 -> 146.
+
+### Bagian Windows di PANDUAN_BOT.md didahulukan
+
+Yosua memakai Windows, jadi urutannya dibalik: Windows dulu, baru Linux/Mac.
+Ditambah langkah manual lewat **Create Task** (bukan *Create Basic Task*) untuk
+jaga-jaga kalau `pasang-jadwal.bat` ditolak, lengkap dengan dua centang yang
+paling gampang terlewat: **Run only when user is logged on**, dan mematikan
+**Start the task only if the computer is on AC power** supaya laptop tetap
+menyapu walau tidak dicolok.
+
+### `bot.yaml` bawaan repo masih memuat pengaturan yang SUDAH terbukti gagal — 17 Sep 2026
+
+Ketahuan saat menjawab pertanyaan Yosua "kalau jadwal sudah terpasang, apakah
+format masih bisa diperbaiki". Jawabannya ya, tapi jalur pembaruannya berbahaya.
+
+Prosedur pembaruan di bagian 25 adalah **mengunduh ulang ZIP lalu ekstrak**.
+Masalahnya `config/bot.yaml` DILACAK git, jadi ikut di ZIP dan menimpa suntingan
+Yosua. Padahal isi repo waktu itu masih:
+
+    folder_draf: "keluaran/draf"                          <- bukan folder G: miliknya
+    folder_dokumen_id: "1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP" <- SUDAH TERBUKTI GAGAL
+
+Artinya tiap kali Yosua memperbarui kode untuk memperbaiki format, bot kembali
+mencoba mengunggah sendiri ke Drive dan ditolak `storageQuotaExceeded` lagi —
+persis masalah yang sudah dituntaskan di bagian 14 dan 25.
+
+Sudah diperbaiki: `folder_dokumen_id` dikosongkan di repo (pemeriksa memang
+sudah menganggap kosong itu LULUS sejak bagian 24), dan `folder_draf` diberi
+peringatan bahwa isinya beda di tiap komputer serta wajib diperiksa ulang
+sesudah mengunduh ulang.
+
+**Aturan umum: berkas config yang dilacak git jangan menyimpan nilai yang
+sudah diketahui salah.** Nilai bawaan itu akan kembali sendiri tiap kali orang
+memperbarui, dan tidak ada yang menyangka pembaruan bisa membatalkan pengaturan.
+
+Dua berkas lain yang juga ikut di ZIP dan menimpa suntingan: `config/customer.csv`
+(nama & alamat customer) dan `config/pengaturan.yaml`. `config/kredensial_bot.json`
+dan `data/kondisi_sapu.json` TIDAK ikut karena di-gitignore.
+
+### Memperbaiki format setelah jadwal terpasang
+
+Jadwal dan format tidak saling terikat. Task Scheduler hanya menyimpan
+"jalankan `sapu.bat` jam 06:00 dan 18:00"; kode apa pun yang ada di folder itu
+saat jamnya tiba, itulah yang dipakai. Jadi format boleh diperbaiki kapan saja
+tanpa menyentuh Task Scheduler.
+
+Dua hal yang HARUS diingatkan tiap kali:
+
+1. **Dokumen lama tidak ikut berubah sendiri.** Sama persis dengan jebakan di
+   bagian 26 — `SidikPO` hanya mengawasi order sheet, bukan kode. Perbaikan
+   format tidak membuat bot menganggap ada perubahan. Supaya seluruh dokumen
+   dibuat ulang: hapus `data/kondisi_sapu.json` lalu `sapu` sekali.
+2. **Alamat folder proyek jangan berubah.** Jadwalnya menunjuk ke alamat
+   `sapu.bat` yang tercatat saat dipasang. Kalau folder proyek dipindah atau
+   diganti nama (prosedur bagian 25 menyuruh "ganti nama folder lama"), jadwal
+   lama menunjuk ke tempat yang salah dan diam-diam gagal. Obatnya: jalankan
+   `pasang-jadwal.bat` sekali lagi dari folder yang baru — `/F` menimpa jadwal
+   lama, jadi tidak pernah ada dua jadwal.
+
+## 28. DUA template faktur, dan Proforma baru — 17 September 2026
+
+Yosua: *"saya masih melihat adanya kesalahan format untuk customer katamama
+coba betulkan lihat file invoice sebelumnya atau melihat contoh haritsa"*,
+ditambah permintaan template proforma untuk Haritsa & Katamama dengan level
+varian di kolom keterangan, disertai foto sebuah Faktur Penjualan.
+
+### Sebabnya: faktur asli ada DUA template, bukan satu
+
+Dibongkar sel per sel dari TIGA faktur asli:
+
+| | 0110826 BABY WISE | 0160826 HARITSA | 0400826 KATAMAMA |
+|---|---|---|---|
+| Jenis | per artikel | per ukuran | per ukuran |
+| Nama perusahaan | 18 | **16** | **16** |
+| Alamat perusahaan | 11 biasa | **12 TEBAL** | **12 TEBAL** |
+| Tanggal / Kepada Yth. | 11 | **12** | **12** |
+| Nama customer | 15 | **16** | **16** |
+| `FAKTUR No.` / `BRAND` | 18 | **16** | **16** |
+| Tinggi baris 12/13/14 | 13,5 / 10,5 / 6 | **15,75 / 7,5 / 12,75** | **15,75 / 7,5 / 12,75** |
+| Tinggi baris data | 26,25 | **30,75** | **31,5** |
+| Jumlah lebar A..H | 102,9 | 113,3 | 110,6 |
+| Blok kanan kop | F | F | E |
+
+**Haritsa dan Katamama sepakat melawan Baby Wise pada SETIAP ukuran huruf dan
+tinggi baris.** Jadi ini bukan kebiasaan satu pembuat berkas — customer yang
+fakturnya dipecah per ukuran memakai template sendiri.
+
+Program dulu memakai angka Baby Wise untuk semua customer. Asalnya: ukuran kop
+diambil dari **Surat Jalan** di bagian 23 dan dikira berlaku untuk faktur juga.
+Kop FAKTUR tidak pernah diperiksa terpisah. Bagian 24 pun hanya mensurvei
+faktur per artikel, lalu menyebut 15,75/31,5 milik Katamama sebagai minoritas
+yang dikalahkan mayoritas — padahal keduanya template berbeda.
+
+Sekarang ada `GayaFaktur` dengan dua isian, dipilih dari `customer.pecah_per_ukuran`:
+`GAYA_PER_ARTIKEL` dan `GAYA_PER_UKURAN`. Blok kanan kop tetap kolom F
+(2 dari 3 berkas).
+
+### Jatah lebar per ukuran diturunkan 135 -> 115
+
+Ini yang paling terasa di hasil cetak. Versi lama MELEBARKAN kolom supaya
+deskripsi panjang muat, sampai 135 satuan; `fitToWidth` lalu menyusutkan
+seluruh isinya sehingga hurufnya jauh lebih kecil daripada faktur divisi.
+
+Kedua faktur asli per ukuran berjumlah 110,6 dan 113,3 satuan dan justru
+**MELIPAT** deskripsinya di baris setinggi +-31. Jadi melipat, bukan melebar.
+
+### Alamat perusahaan dilipat ulang kalau kolomnya sempit
+
+Pada huruf 12 baris alamat menabrak blok "Kepada Yth." dan tercetak terpotong
+di tengah kata. `gaya._alamat_perusahaan()` melipatnya ke maksimal 44 huruf,
+persis seperti kedua faktur asli memecahnya. Baris kontak (Phone/Wa/Email)
+tidak pernah ikut digabung ke alamat — ada tesnya.
+
+### Proforma Invoice — dokumen KELIMA, hanya Haritsa & Katamama
+
+`src/hp_dokumen/dokumen/proforma.py`. Tata letak mengikuti foto Yosua.
+
+Kolom: `NO | SKU | KETERANGAN | QTY | UNIT | HARGA | DISK% | PAJAK% | JUMLAH`
+Penutup: Sub Total, Diskon, Diskon Lainnya, Potongan Biaya, Pajak, Ongkos
+Kirim, Diskon Ongkos Kirim, Biaya Lainnya, Asuransi, Grand Total.
+
+**Level varian masuk kolom KETERANGAN** — itu permintaan intinya. Karena itu
+`susun_baris()` dapat `pecah_per_warna`, dan proforma dipecah sampai WARNA
+sedangkan invoice tetap menjumlahkan semua warna:
+
+| | invoice | proforma |
+|---|---:|---:|
+| Haritsa | 24 baris | 59 baris |
+| Katamama Tapos | 106 baris | 231 baris |
+
+Angkanya tetap cocok: Haritsa 1.053 pcs / Rp42.939.750, Katamama 386 pcs /
+Rp19.046.157 — sama persis dengan order sheet.
+
+**Foto itu faktur dari PT. Hypefast kepada Katamama — perusahaan LAIN.**
+Yang diambil hanya tata letaknya; nama, alamat, dan logo tetap dari
+`config/perusahaan.yaml`. Jangan pernah menerbitkan dokumen atas nama
+perusahaan lain, walau contohnya datang dari sana.
+
+Proforma hanya dibuat kalau `cust.pecah_per_ukuran` — dikunci tes, sebab
+menerbitkannya untuk semua customer berarti mengirim dokumen yang tidak
+pernah diminta.
+
+### Yang menunggu jawaban Yosua
+
+| Hal | Sementara |
+|---|---|
+| Kolom PAJAK% dan baris Pajak diisi 0 mengikuti foto | padahal order DPM kena PPN 11% |
+| `No. Ref.` | dikosongkan — nomor di foto berasal dari sistem pemasok lain |
+| Judul dokumen `PROFORMA INVOICE` | di foto tertulis `Faktur Penjualan` |
+
+Tes 146 -> 153.
+
+### Tiga perapian proforma — dijawab & diminta Yosua 17 September 2026
+
+**1. DISK% memakai tulisan, bukan persen efektif — SUDAH FINAL.**
+Pertanyaan "23,17 atau 22% + 1.5%" dijawab: *"untuk disk% pakai 22% + 1.5%
+saja"*. Proforma sekarang memanggil `_persen_tertulis()` milik invoice, jadi
+kedua dokumen selalu menulis diskon dengan cara yang sama — `22% + 1.5%` untuk
+Katamama (CBD), `25%` untuk Haritsa (TOP).
+
+Kolom DISK% sekalian dilebarkan **8,5 -> 13 satuan**. Pada lebar lama tulisan
+gabungan terpotong jadi `2% + 1.5%` dan **terbaca 2%, bukan 22%** — di dokumen
+penagihan itu kesalahan yang mahal. Ketahuan dari render PDF, tidak kelihatan
+sama sekali dari membaca nilai sel. Ada tes yang memeriksa kolomnya cukup lebar
+untuk tulisan terpanjangnya, bukan sekadar lebar tertentu.
+
+**2. Logo dan "Kepada".** Logo 70 -> 86, dan digeser ke tengah blok A:B lewat
+`OneCellAnchor` (+-0,5 cm kanan, +-0,15 cm bawah). Tanpa itu openpyxl
+menempelkan gambar persis di pojok sel sehingga logonya menyentuh tepi kertas.
+Tulisan `Kepada` dibuat rata tengah.
+
+**3. Kotak Total Qty.** Label digabung B:C rata kanan, **angkanya di kolom D —
+kolom QTY**, tepat di bawah deretan angka yang dijumlahkan, seluruhnya
+bergaris. Sebelumnya label dan angkanya menumpuk jadi satu teks di kolom
+KETERANGAN, jauh dari kolom yang dijumlahkan, jadi tidak terbaca sebagai total.
+
+Angka tidak berubah sedikit pun: Haritsa 1.053 pcs / Rp42.939.750, Katamama
+386 pcs / Rp19.046.157.
+
+Tes 153 -> 157.
+
+### Label Faktur Pajak terpotong nilainya — SELESAI 18 September 2026
+
+Ketahuan saat membuat contoh lengkap semua dokumen. Label keterangan ditulis
+di kolom 1 dan nilainya di kolom 2, padahal kolom 1 hanya selebar 5 satuan —
+lebar itu memang untuk kolom `No.` tabel rincian di bawahnya.
+
+Akibatnya tiap label yang lebih dari lima huruf terpotong oleh nilai di
+sebelahnya dan tercetak menyatu:
+
+    Nomor030826          Tangg26 Agustus 2026      Dipros CV DWI PUTRA MANDIRI
+    DPP (l  Rp5.059.459  PPN 1  Rp556.540,54       Alamat Jl. Bintaro Utama...
+
+Di lembar yang justru dipakai untuk MENGETIK KE CORETAX, label yang tidak
+terbaca itu berbahaya.
+
+Sekarang label digabung kolom 1:2, nilainya pindah ke kolom 3, dan catatan
+pindah ke kolom 5. Kolom 2 dilebarkan 20 -> 24 supaya label terpanjang
+(`DPP (Dasar Pengenaan Pajak)`, 27 huruf) muat.
+
+Catatan ditaruh di kolom 5, bukan 4, supaya nilai yang panjang (alamat) masih
+punya ruang melimpah. Baris yang punya catatan nilainya selalu pendek (NPWP,
+cara bayar, nama perusahaan), jadi keduanya tidak pernah bertabrakan.
+
+**Pelajaran yang berulang:** cacat ini tidak kelihatan sama sekali dari
+membaca nilai sel — hanya muncul saat dokumennya diubah jadi PDF dan dilihat.
+Sudah tiga kali pola yang sama: kolom C Surat Jalan (bagian 19), DISK%
+proforma (bagian 28), dan sekarang label Faktur Pajak.
+
+## 29. Sapuan seluruh order sheet dengan format terbaru — 18 September 2026
+
+Yosua: *"sekarang sapu semua order sheet menggunakan format terbaru"*.
+
+`jalankan.py sapu` TIDAK bisa dijalankan dari sesi ini — kunci bot tidak ada di
+wadah, dan memang tidak boleh dikirim ke sini. Jalur yang dipakai: 21 order
+sheet diunduh lewat konektor Google Drive (bertindak sebagai Yosua), lalu
+`buat-semua` dijalankan untuk tiap berkas dengan `--tahun` sesuai tahunnya.
+
+Order Sheet Juni 2025 (11,4 MB) tetap tidak bisa diekspor Google — sudah
+tercatat di bagian 14, masih berlaku.
+
+### Hasil
+
+| | |
+|---|---|
+| Order sheet terbaca | 21 dari 22 |
+| PO menghasilkan dokumen | **197** |
+| Berkas dibuat | **809** |
+| Bulan terhalang pencocokan | 9 |
+
+### Cacat yang ketahuan: pemeriksa rekonsiliasi masih peka huruf besar-kecil
+
+Bagian 21 membuat `cari_di_master()` di `pemindai.py` mengabaikan besar-kecil
+huruf, karena Sales kadang mengetik `41065 (bottom/Celana)` padahal master
+menulis `41065 (Bottom/Celana)`. Tapi `rekonsiliasi.py` **tertinggal** — masih
+memakai `b.kode not in master_harga`, pencarian dict biasa yang peka huruf.
+
+Akibatnya SELURUH dokumen satu bulan diblokir hanya karena beda satu huruf,
+padahal pemindai sudah mengambil harga yang benar dari master. Januari 2026 dan
+November 2025 terhalang seluruhnya karena ini: 23 PO, 0 dokumen.
+
+Sudah diperbaiki — ketiga pemakaian (`hilang`, `beda_nama`, `beda_harga`)
+sekarang lewat `cari_di_master()`. Sesudahnya Januari 2026 menghasilkan 15 PO
+dan November 2025 8 PO.
+
+**Pelajaran yang berulang:** kalau satu aturan pencocokan diperbaiki di satu
+modul, sisir modul lain yang memakai aturan yang sama. Ini pola yang sama
+dengan "pemeriksa jangan menggagalkan pilihan yang sah" di bagian 24 dan 27.
+
+Dikunci satu tes (`test_kode_beda_huruf_besar_kecil_tidak_dianggap_hilang`)
+yang mengacak besar-kecil huruf SELURUH kode lalu memastikan pemeriksa master
+harga tidak gagal. Tes 159 -> 160.
+
+### Sembilan bulan terhalang — sebabnya di ORDER SHEET, bukan di program
+
+Pada beberapa kasus penyebabnya sudah pasti: **rumus di baris TOTAL order sheet
+tidak menjumlah seluruh datanya.** Dibaca langsung dari berkasnya:
+
+| Order sheet | Tab | Rumus baris TOTAL | Yang terlewat |
+|---|---|---|---|
+| Februari 2026 | DHAWAFEST BAZAAR - MARET 2026 | `=sum(W24:W71,W72:W79)` | data sampai baris 114, hanya 24-79 dijumlah |
+| Februari 2026 | PO 5 Feb - Defara Baby | `=sum(W3:W68,W73:W90)` | baris 69-72 |
+| Agustus 2026 Harga Lama | PO 07 Agustus - Katamama Tapos | `=SUM(W3:W108,W114:W115)` | baris 109-113 |
+| Oktober 2025 | PO 16 Oktober - Erka Kids | `=sum(W3:W49,W54:W59)` | baris 50-53 |
+| September 2025 | Pengiriman Konsinyasi Fany Baby, Sheet5 | `=sum(#REF!)` | rumusnya rusak |
+
+Jadi angka program yang benar; baris TOTAL sheet-nya yang kurang. Program
+BERHENTI dan tidak membuat dokumen — sesuai rancangan. **Jangan ditambal dengan
+`--abaikan-pencocokan`**; yang harus dirapikan rumus di order sheetnya.
+
+Sebab lain yang belum tuntas ditelusuri (perlu dilihat kalau bulan-bulan itu
+mau diterbitkan dokumennya):
+
+| Order sheet | Gejala |
+|---|---|
+| Juli & September 2025 | `qty x harga = nilai kotor` meleset di banyak baris (0 dari 38, 0 dari 39) |
+| Januari - Mei 2025 | selisih qty kecil tapi tidak berpola; tata letak lama (3 dan 6 kolom ukuran) |
+| Oktober 2025, tab Susu Diapers | `=sum(W21:W48)` — mulai dari baris 21, bukan 3 |
+
+Catatan penting saat menelusuri: untuk order sheet 2025 awal, kolom TOTAL ATO
+BUKAN kolom W (lihat tabel tata letak di bagian 14). Memeriksa rumus di kolom W
+untuk berkas Januari 2025 akan selalu "tidak ada rumus" dan itu bukan temuan.
+
+### `.gitignore` tidak menutup subfolder data/
+
+`data/*.xlsx` tidak menutup `data/semua/2026-09.xlsx`. Order sheet asli nyaris
+ikut ter-commit. Ditambahkan `data/**/*.xlsx` (dan .xls/.csv).
+
+## 30. Jadwal 10 menit, bot multi-perangkat, cacat penghitungan hasil sapuan — 18 September 2026
+
+Empat permintaan Yosua sekaligus.
+
+### Cacat: folder hasil sapuan yang namanya bukan `PO_` tertinggal
+
+Sapuan pertama di bagian 29 melaporkan 197 PO / 809 berkas. **Salah.** Hasil
+dipindahkan dengan `mv keluaran/PO_*`, padahal nama folder dokumen mengikuti
+nama TAB, dan tab tidak selalu diawali "PO ":
+
+    (Delivery_1)PO_13_Jan_-_Input_B     Order_Jastip_Ci_Ratna
+    Copy_of_MAXMURAH_BERINGIN_OUTLE     Sheet3 ... Sheet9
+    14_Maret_-_Baby_Fame_Lampung_(D     05_Desember_-_Balonku_(Sanur)
+
+33 PO tidak ikut terhitung, dan yang tertinggal bercampur ke bulan berikutnya.
+
+Angka yang benar: **230 PO, 943 berkas** (230 Invoice, 230 Surat Jalan,
+230 Packing List, 230 Faktur Pajak, 23 Proforma).
+
+Cara yang benar: bandingkan isi `keluaran/` SEBELUM dan SESUDAH tiap bulan,
+jangan menebak dari pola nama. Pola nama tab ditentukan Sales, bukan program.
+
+### Rumus order sheet yang harus diperbaiki Yosua
+
+Tidak bisa dikerjakan dari sesi ini — konektor Drive hanya bisa mengganti
+SELURUH isi berkas (`update_file` cuma judul & parent), tidak ada alat tulis
+per sel. Mengganti seluruh isi akan merusak tab dan formatnya.
+
+Dua jenis kesalahan yang berbeda, jangan tertukar:
+
+| Jenis | Tab | Akibatnya |
+|---|---|---|
+| **Rumus qty per baris terlalu pendek** — `=SUM(N:S)` padahal ukurannya sampai kolom U | DHAWAFEST BAZAAR, PO 5 Feb - Defara Baby | qty di kolom T/U tidak pernah ikut terhitung |
+| **Rentang baris TOTAL kurang** | DHAWAFEST BAZAAR, PO 07 Agustus - Katamama Tapos | baris data di luar rentang terlewat |
+
+Rinciannya:
+
+| Order sheet | Tab | Sel | Rumus sekarang | Seharusnya |
+|---|---|---|---|---|
+| Februari 2026 | PO 5 Feb - Defara Baby | W3:W90 | `=SUM(N3:S3)` | `=SUM(N3:V3)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W4:W157 | `=SUM(N4:S4)` | `=SUM(N4:V4)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W160 | `=sum(W24:W71,W72:W79)` | `=SUM(W4:W157)` |
+| Agustus 2026 Harga Lama | PO 07 Agu - Katamama Tapos | W116 | `=SUM(W3:W108,W114:W115)` | `=SUM(W3:W115)` |
+
+Selisih yang terbukti: Defara 161 -> 165 pcs (4 pcs di kolom T, baris 33, 34,
+39, 40); Katamama 385 -> 389 pcs (baris 113 yang terlewat, 4 pcs Rp820.000);
+DHAWAFEST 307 -> 629 pcs.
+
+**Kolom Z (nilai) ikut salah** kalau W salah, sebab Z dihitung dari W.
+
+### Jadwal baru: Senin-Sabtu, 08:00-17:00, tiap 10 menit
+
+Menggantikan jadwal 12 jam di bagian 27.
+
+    schtasks /Create ... /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT
+             /ST 08:00 /RI 10 /ET 17:00 /K /RU "%USERNAME%" /IT /F
+
+`/RI` tidak berlaku untuk `/SC MINUTE` dan `/SC HOURLY`, jadi WEEKLY yang
+dipakai — itu satu-satunya cara menggabungkan "hari tertentu saja" dengan
+"diulang tiap sekian menit sampai jam sekian".
+
+Dua hal baru yang WAJIB ada pada jadwal serapat ini, dan tidak diperlukan
+waktu jadwalnya masih 12 jam:
+
+1. **Kunci antar-sapuan.** Sapuan pertama bisa lebih dari 10 menit, jadi
+   sapuan berikutnya mulai sebelum yang ini selesai, lalu keduanya menulis
+   `data/kondisi_sapu.json` dan saling menimpa. Kuncinya dipegang lewat
+   handle 9 (`9>"%KUNCI%"`), BUKAN lewat `mkdir` atau berkas penanda biasa:
+   handle dilepas Windows sendiri saat prosesnya mati, termasuk saat dibunuh
+   `/K` jam 17:00. Penanda biasa akan tertinggal menyangkut dan memblokir
+   semua sapuan berikutnya, diam-diam.
+2. **Log dipotong di 5 MB.** Sekitar 330 sapuan per minggu; tanpa ini
+   `log-sapuan.txt` tumbuh sampai tidak bisa dibuka.
+
+### Bot dipakai dari beberapa perangkat
+
+`folder_draf` yang RELATIF sudah otomatis dihitung dari folder proyek
+(`AKAR / nilai` — alamat absolut menang, relatif dihitung dari AKAR). Jadi
+kalau folder proyek ditaruh di dalam folder Drive yang disinkronkan dan
+`folder_draf: "../DOKUMEN OTOMATIS HAPPY PUMPKIN"`, satu config yang sama
+benar di semua komputer berapa pun huruf drive-nya. Tidak perlu kode baru.
+
+Yang ditambahkan: `kondisi_sapu.json` sekarang menyimpan `disapu_oleh` (nama
+komputer). Kalau sapuan berikutnya datang dari komputer lain,
+`peringatan_pindah_komputer()` memunculkan peringatan di laporan sapuan.
+Catatan lama yang belum punya kolom itu TIDAK diperingatkan — aturan bagian
+24 (jangan menggagalkan pilihan yang sah) tetap berlaku.
+
+**Tetap hanya SATU komputer yang boleh memasang jadwal.** Perintah manual
+boleh di mana saja. Kalau folder proyek ditaruh di Drive, kunci bot ikut naik
+ke Drive — folder proyek karena itu tidak boleh di-Share ke siapa pun.
+
+Tes 160 -> 165.
+
+### Logo diperbesar & ditengahkan di semua dokumen — 18 September 2026
+
+Yosua mengirim tangkapan layar invoice dan minta logo DPM "diubah seperti di
+SS". Logonya sendiri ternyata SUDAH sama persis — berkas `config/logo_dpm.jpeg`
+yang sama. Setelah ditanyakan, yang dimaksud: **diperbesar dan ditengahkan.**
+
+Ini alasan menanyakan, bukan menebak: dari tangkapan layar saja, "ubah logo"
+bisa berarti ganti berkas, perbesar, atau samakan antar dokumen — tiga
+pekerjaan yang sama sekali berbeda.
+
+Pemasangan logo yang dulu tersebar di dua tempat (70 px menempel pojok di
+`gaya.kop_dpm`, 86 px ditengahkan di `proforma._pasang_logo`) sekarang jadi
+SATU fungsi `gaya.pasang_logo()`. Semua dokumen memakai 86 px dan ditengahkan.
+
+**Padding kolom dihitung PER KOLOM.** `lebar_kolom_px(A + B)` salah — tiap
+kolom punya padding 5 piksel sendiri, jadi menjumlahkan lebarnya dulu membuat
+logo meleset 5 piksel dari tengah. Yang benar
+`lebar_kolom_px(A) + lebar_kolom_px(B)`. Ketahuan dari mengukur berkas hasil,
+bukan dari membaca kode.
+
+Invoice perlu satu perubahan urutan: `susun_baris()` dan `lebar_menyesuaikan()`
+dipindah ke ATAS `kop_dpm()`, sebab lebar kolom A:B baru diketahui setelah kode
+artikel terpanjang dihitung. Lebarnya juga tidak lagi dihitung dua kali.
+
+Diverifikasi pada berkas hasil (bukan pada kode): keempat dokumen 91x86 px
+dengan sisa kiri dan kanan sama, lalu dilihat sebagai gambar hasil render PDF.
+
+### Jadwal jadi tiap 6 jam pada jam kerja + sapuan segera — 18 September 2026
+
+Yosua mengganti jadwal 10 menit: *"pada jam kerja jalankan 6 jam sekali"*,
+Senin-Sabtu, *"namun pada saat dibutuhkan cepat pastikan dapat langsung
+menyapu ordersheet kembali"*.
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 360 /ET 17:00 /K
+
+`/RI 360` dengan `/ET 17:00` berarti sapuan jam **08:00 dan 14:00** saja.
+
+Untuk kebutuhan mendadak: `jadwal/sapu-sekarang.bat`, tinggal diklik dua kali.
+Bedanya dengan `sapu.bat` — hasilnya tampil DI LAYAR, bukan hanya masuk log,
+dan ada `pause` supaya jendelanya tidak menutup sebelum dibaca. **Kuncinya
+sama** dengan sapuan terjadwal, jadi sapuan manual dan terjadwal tidak pernah
+berjalan bersamaan lalu saling menimpa `kondisi_sapu.json`.
+
+Satu tes sempat gagal karena alasan yang salah: pemeriksaan "hari Minggu tidak
+boleh ikut" mencari `SUN` di SELURUH berkas, dan kata "lang**sun**g" ikut
+tertangkap. Sekarang yang diperiksa hanya argumen `/D`-nya.
+
+Tes 165 -> 167.
+
+### Jadwal jadi 12 jam, dan rekap sapuan naik ke Drive — 19 September 2026
+
+Yosua: *"jalankan sapuan dan upload ke drive dan jadwal sapuan 12 jam sekali
+namun pada saat dibutuhkan cepat diharapkan dapat merespon dengan cepat"*.
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 06:00 /RI 720 /ET 18:30 /K
+
+**Jamnya diubah Yosua di hari yang sama menjadi 06:00 dan 18:00** (semula
+08:00 dan 20:00). Tetap 12 jam, hanya digeser dua jam lebih awal.
+
+`/ET` sengaja 18:30, bukan 18:00 — kalau sama persis dengan jam sapuan kedua,
+Windows bisa menutup jendela pengulangannya sebelum sapuan itu sempat mulai.
+Aturan ini berlaku untuk jam berapa pun yang dipilih nanti: `/ET` selalu
+setengah jam SETELAH sapuan terakhir.
+
+Sapuan jam 06:00 dilewati kalau Yosua belum login — itu memang perilaku `/IT`
+dan disengaja: drive `G:` tidak ada sebelum orangnya login. "Respon cepat"
+tetap dilayani `jadwal/sapu-sekarang.bat`.
+
+### Sapuan 19 September: tidak ada order sheet yang berubah
+
+Sebelum menyapu, `modifiedTime` seluruh folder order sheet 2026 diperiksa
+lewat konektor Drive. Hanya September 2026 yang tercatat berubah, dan waktunya
+**18 Sep 03:58** — versi yang sudah ditarik sehari sebelumnya. Sapuan ulang
+memberi angka yang sama persis: **230 PO, 943 berkas**.
+
+Ini sekaligus contoh cara memeriksa sebelum bekerja: kalau `modifiedTime`
+tidak berubah, hasil sapuan pasti sama, dan itu bukan kegagalan.
+
+### Yang BISA dan TIDAK BISA diunggah ke Drive dari sesi ini
+
+Yosua minta folder proyek dan berkas sapuan diunggah ke Drive.
+
+| Yang diminta | Ukuran | Hasil |
+|---|---|---|
+| Folder proyek | 772 KB, 75 berkas | **tidak bisa** — +-1 juta huruf base64 |
+| 943 dokumen sapuan | 15 MB | **tidak bisa** — +-20 juta huruf |
+| Ringkasan per bulan | 2 KB | **BISA**, lewat `textContent` CSV |
+
+Konektor Drive hanya mengirim berkas sebagai teks di dalam satu panggilan.
+Logo 9,5 KB saja menjadi 12.712 huruf base64. Sandbox juga menolak perintah
+yang mengemas repo untuk diunggah (penjaga data perusahaan) — dan itu benar.
+
+Yang dibuat: folder **PROYEK BOT HAPPY PUMPKIN** (`103l_reSAQYicCvQKy64Z0NJsP2RtYoz-`)
+berisi Google Sheet **RINGKASAN SAPUAN BOT HAPPY PUMPKIN**
+(`1qefNkvFZpCAqh4Uz4_Jbawu3g7x3JS2J80ZkubWjGxI`), 21 baris per order sheet.
+Jalur `textContent` + `contentMimeType: text/csv` dari bagian 14 masih berlaku.
+
+**Jalan yang benar untuk memindahkan berkas tetap Drive for Desktop** — bot
+menulis ke `folder_draf`, Drive yang mengunggah. Tidak ada batas ukuran, dan
+berjalan sendiri tiap sapuan.
+
+### Rekap sapuan: angka PO yang terhalang sengaja DIKOSONGKAN
+
+`REKAP_SAPUAN.csv` (454 baris) memuat semua PO dari 21 order sheet. Untuk PO
+yang dokumennya TIDAK terbit, kolom qty, nilai kotor, dan nilai bersih
+**dikosongkan** — hanya diberi keterangan sebabnya.
+
+Alasannya: angka itu justru yang belum terverifikasi terhadap baris TOTAL
+order sheet. Kalau ditampilkan, orang akan memakainya sebagai angka resmi —
+padahal itu persis yang sedang bermasalah. Rekap yang memuat angka tak
+terverifikasi lebih berbahaya daripada rekap yang mengosongkannya.
+
+Penanda "dokumen terbit" memakai `berkas_dokumen.nama_aman()` — fungsi yang
+SAMA dengan pembuat berkasnya. Versi pertama memakai pencocokan nama tebakan
+sendiri dan meleset 5 dari 230. Jangan menebak nama; panggil fungsinya.
+
+Angka yang terbit: **75.118 pcs, nilai bersih Rp3.854.901.550** dari 230 PO.
+Dua di antaranya cocok dengan catatan lama sampai rupiah terakhir — Agustus
+2026 Rp424.156.009 (bagian 11) dan Juli 2026 Rp582.599.09x (bagian 18).
+
+### Laporan sapuan TERBUKTI ikut ditolak kuota — SELESAI 19 September 2026
+
+Yosua bertanya di bagian Drive mana berkas sapuan terbaru bisa dilihat.
+Saat memeriksanya, dua hal terbukti sekaligus.
+
+**1. Dokumen memang sampai ke Drive.** Folder
+`DOKUMEN OTOMATIS HAPPY PUMPKIN` berisi satu folder per order sheet, di
+dalamnya satu folder per PO, berisi keempat berkas `.xlsx`. Contoh yang
+diperiksa: `PO_11_September_-_Katamama_(Tapos)` berisi INVOICE, SURAT_JALAN,
+PACKING_LIST, dan FAKTUR_PAJAK. **Pemiliknya
+`finance.dwiputramandiri@gmail.com`, bukan akun layanan** — itu tanda pasti
+berkasnya datang lewat Drive for Desktop, bukan lewat API.
+
+**2. Laporan sapuan TIDAK pernah sampai.** Folder
+`LAPORAN BOT ORDER SHEET` (`1injx6oMv3kV9XxVamgEcAi4RglOdVnNE`) ada, dimiliki
+**akun layanan**, dan **isinya kosong** — padahal bot sudah menyapu
+berkali-kali sejak 16 September.
+
+Sebabnya sama dengan folder dokumen: akun layanan bisa membuat FOLDER (tidak
+memakan ruang) tapi tidak bisa membuat BERKAS. Bagian 14 menulis
+"kemungkinan besar ikut tertolak, kalau terbukti begitu `folder_laporan_id`
+dikosongkan juga" — sekarang terbukti, dan sudah dikosongkan.
+
+Akibat kalau dibiarkan: tiap sapuan menambah satu baris "Laporan gagal
+diunggah ke Google Drive" di daftar masalah, padahal tidak ada yang bisa
+diperbaiki siapa pun. `bot.py` melewati blok unggah laporan seluruhnya kalau
+id-nya kosong, jadi tidak ada percobaan dan tidak ada pesan galat.
+
+**Cara memeriksa hal semacam ini:** jangan berhenti di "foldernya ada".
+Folder yang ada tapi kosong adalah gejala khas `storageQuotaExceeded`, sebab
+folder tidak memakan kuota. Turun sampai ke berkasnya, dan lihat SIAPA
+pemiliknya — pemilik `finance.dwiputramandiri@gmail.com` berarti Drive for
+Desktop, pemilik akun layanan berarti lewat API.
+
+### Dokumen di Drive tertanggal 16 September, bukan hasil sapuan di sesi ini
+
+Perlu selalu diingatkan ke Yosua: sapuan yang dijalankan dari sesi Claude ini
+menghasilkan berkas di WADAH SEMENTARA, bukan di Drive. Yang ada di Drive
+adalah hasil sapuan terakhir dari komputer Yosua sendiri (16 September).
+
+Jadi perbaikan format apa pun yang dikerjakan di sini — logo 86 px, dua
+template faktur, proforma — baru muncul di Drive setelah Yosua menjalankan
+`sapu-sekarang.bat` di komputernya dengan kode terbaru.
+
+## 31. Tata letak MTN — pertanyaan bagian 19 akhirnya TERJAWAB — 19 September 2026
+
+Yosua mengirim `FA 0010526 BABY FAME (MTN).xlsx` dan minta invoice & surat
+jalan "dengan format MTN seperti excel yang saya beri".
+
+Bagian 19 dulu menggantungkan pertanyaan: *"apakah dokumen MTN memang memakai
+tata letak sendiri, atau MTN menyusul mengikuti DPM"*. **Jawabannya: MTN
+memakai tata letak SENDIRI.** Berkasnya dibongkar sel per sel — bukan ditebak,
+bukan dari tangkapan layar.
+
+### Beda MTN dengan DPM
+
+| Bagian | DPM | MTN |
+|---|---|---|
+| Blok kanan kop | `Jakarta, <tgl>` + `Kepada Yth.` | **tidak ada** |
+| Customer | "Kepada Yth." di kanan | label **CUSTOMER** di A11, nama A12 |
+| Nomor & tanggal | `FAKTUR No. <nomor>` baris 9 | label **FAKTUR** G11 / **TANGGAL** H11 |
+| Bentuk nomor | `0010526` | **`FA-01/05/2026`** dan **`SJ-01/05/2026`** |
+| Baris BRAND | ada (A10) | **tidak ada** |
+| Judul tabel invoice | 3 tingkat, baris 12-14 | **2 tingkat, baris 17-18** |
+| Data mulai | 15 | **19** |
+| Penutup invoice | Subtotal, Diskon, Total, Uang Muka, DPP, PPN, Total | **Subtotal, Value Disc, Total — SAJA** |
+| Alamat di kop | huruf 11 biasa | huruf 11 **TEBAL** |
+| Deskripsi Surat Jalan | C:E digabung | **kolom C tunggal** |
+| Kolom WARNA SJ | F | **D** |
+| Kolom ukuran SJ | G.. | **E..** |
+| Tinggi baris data | 26,25 (inv) / 30,0 (SJ) | **24,95 / 20,1** |
+| Jumlah lebar A..H | +-107 | **117,84** |
+
+**Penutup tanpa DPP dan PPN itu BENAR, bukan kelalaian.** MTN tidak mengenakan
+PPN (`kenakan_ppn: false`, keputusan Yosua 11 September 2026). Ada tes yang
+menolak kemunculan baris DPP/PPN di faktur MTN — kalau suatu saat ada yang
+"melengkapi", faktur MTN akan menagih pajak yang tidak seharusnya, dan itu
+tidak kelihatan dari angka totalnya.
+
+### LOGO MTN akhirnya ketemu
+
+Bagian 14 mencatat "Logo CV Mutiara Timur Nusantara belum ada". Ternyata
+tertanam di dalam berkas faktur sebagai `xl/media/image1.png` (55 KB, 243x291,
+RGBA) — cara yang sama dengan logo DPM di bagian 20. Sudah disimpan sebagai
+`config/logo_mtn.png`.
+
+### Data MTN di perusahaan.yaml akhirnya terisi
+
+Semuanya dibaca dari berkas aslinya, bukan ditebak:
+
+    JL. JATAYU IV P/31
+    JELAMBAR BARU, GROGOL PETAMBURAN
+    JAKARTA BARAT, 11460
+    TEL : +62 21 5662598
+    EMAIL : MTN.MUTIARATIMURNUSANTARA@GMAIL.COM
+    BANK BCA — A/C NO. : 865 0813 830
+
+Rekeningnya **BEDA** dari DPM (277 950 8000). NPWP dan ID TKU MTN masih kosong.
+
+### Dua cacat yang ketahuan dari render PDF, bukan dari kode
+
+**1. Tanggal terpotong jadi "17 Septe".** Kolom TANGGAL di berkas asli selebar
+15,71 dan berisi "05 Mei 2026" (11 huruf) — muat. "17 September 2026" ada 17
+huruf dan TIDAK muat. Jadi berkas aslinya pun akan terpotong untuk bulan
+berhuruf panjang; ini membetulkan, bukan meniru. Kolom H dilebarkan jadi 18,0.
+
+Pada Surat Jalan lebih parah: tanggal jatuh di kolom Qty yang cuma 8 satuan.
+Berkas asli menggabung `I11:K11` untuk itu — sekarang ditiru, tanggal melebar
+ke tiga kolom terakhir.
+
+**2. Kolom Diskon tercetak KOSONG.** `_persen_tertulis()` mengembalikan `None`
+pada teksnya untuk diskon tunggal dan angkanya terpisah. Dipakai apa adanya,
+kolomnya kosong. Sama persis dengan cacat proforma di bagian 28 — dan sekarang
+dibetulkan dengan cara yang sama: `teks or _persen_ringkas(angka)`.
+
+**Ini keempat kalinya pola yang sama muncul** (kolom C Surat Jalan bagian 19,
+DISK% proforma bagian 28, label Faktur Pajak bagian 28, dan sekarang tanggal
+MTN): cacat lebar kolom TIDAK PERNAH kelihatan dari membaca nilai sel. Render
+ke PDF dan lihat gambarnya.
+
+### Cara memilihnya
+
+`berkas_dokumen.py` memilih tata letak dari `pt.kode == "MTN"`, yang datang
+dari kolom `perusahaan_pemroses` di `config/customer.csv`. Jadi tidak ada
+pengaturan baru — cukup isi kolom itu.
+
+Enam tes baru. Tes 167 -> 173.
+
+### Baby Fame: MTN atau DPM? BELUM diputuskan
+
+Dokumen 17 September dibuat dengan MTN atas permintaan Yosua, memakai
+`perusahaan_pemroses=MTN` **sementara** yang langsung dikembalikan sesudahnya.
+`config/customer.csv` TIDAK diubah permanen.
+
+Alasannya: mengisi kolom itu berarti **semua** dokumen Baby Fame — termasuk
+yang dibuat bot otomatis jam 06:00 dan 18:00 — terbit atas nama MTN, dengan
+rekening MTN. Itu keputusan yang harus dinyatakan Yosua, bukan disimpulkan
+dari satu berkas contoh bulan Mei.
+
+## 32. Bot untuk beberapa perangkat & sapuan cepat per bulan — 19 September 2026
+
+Tiga permintaan Yosua sekaligus: pelajari lagi berkas MTN, buat bot yang bisa
+dipakai dari beberapa perangkat yang tersambung ke Drive
+`finance.dwiputramandiri@gmail.com`, dan kalau sapuan diminta cepat, sapu
+**hanya order sheet bulan berjalan**.
+
+### Berkas MTN yang dikirim ulang SAMA PERSIS dengan yang sudah dibongkar
+
+`FA_0010526_BABY_FAME_MTN.xlsx` yang diunggah kali ini `md5` -nya identik
+dengan yang dipakai bagian 31 (`6330c31cbef4d6f6dc11970fc54d31d8`). Jadi yang
+dikerjakan bukan membongkar ulang, melainkan **memverifikasi** bahwa apa yang
+sudah diterapkan memang cocok. Hasil pembongkaran ulang cocok seluruhnya
+dengan catatan bagian 31 — lebar kolom, tinggi baris, letak label, dan
+penutup tanpa DPP/PPN.
+
+Satu catatan kecil yang belum tercatat di bagian 31: di tab faktur, alamat
+jalan dan kelurahan digabung menjadi SATU baris (`C4`), sedangkan di tab
+Surat Jalan dipecah dua baris (`C3` dan `C4`). Tidak berdampak pada program —
+`gaya._alamat_perusahaan()` melipat sendiri mengikuti lebar kolomnya.
+
+**Sebelum membongkar ulang berkas contoh, periksa `md5sum`-nya dulu.**
+Berkas yang sama tidak perlu dibongkar dua kali.
+
+### Kunci sapuan antar-KOMPUTER — `sapu/kunci_bersama.py`
+
+Ini yang selama ini hilang dari cerita "bot multi-perangkat". Bagian 30
+menutup celahnya separuh (folder draf relatif + peringatan pindah komputer)
+tapi menyimpulkan "tetap hanya SATU komputer yang boleh memasang jadwal".
+Kesimpulan itu sekarang **tidak berlaku lagi**.
+
+Sebabnya kunci di `jadwal/sapu.bat` berupa berkas di komputer yang
+bersangkutan, jadi hanya menahan dua sapuan di SATU komputer. Begitu jadwal
+dipasang di laptop dan komputer kantor, keduanya bangun jam 06:00 dan menyapu
+pada detik yang sama.
+
+**Kunci berupa berkas di folder Drive TIDAK menolong** — dan ini jebakan yang
+paling mudah dimasuki. Drive baru menyinkronkan beberapa detik sampai semenit
+kemudian; dalam jeda itu kedua komputer sama-sama membaca folder kosong dan
+sama-sama merasa mendapat kunci.
+
+Karena itu kuncinya ditaruh di tempat yang dilihat semua komputer pada detik
+yang sama: sheet OTOMATISASI, tab **`BOT_KUNCI`**. Bot sudah punya Editor di
+situ dan aturan bagian 14 (hanya tab berawalan `BOT_`) tetap terjaga.
+
+Cara mengambilnya: tulis token acak, tunggu 3 detik, **baca ulang**. Kalau
+yang terbaca masih token sendiri, kuncinya milik kita. Sheets API tidak punya
+operasi tulis-kalau-masih-sama, dan tulis-tunggu-baca adalah pengganti
+terdekatnya — cukup, sebab yang dilindungi bukan transaksi uang melainkan
+supaya dua sapuan tidak jalan bersamaan.
+
+Tiga keputusan yang jangan diubah tanpa alasan:
+
+1. **Kunci kedaluwarsa sendiri sesudah 45 menit.** Tanpa itu, satu komputer
+   yang mati listrik di tengah sapuan memblokir seluruh armada selamanya.
+2. **`lepas()` hanya menghapus kunci kalau tokennya masih milik sendiri.**
+   Kalau sapuan kelewat lama dan sudah diambil alih, menghapusnya membuat
+   komputer yang sedang menyapu berjalan tanpa kunci sama sekali.
+3. **Kunci yang tidak bisa dibaca TIDAK menghentikan sapuan.** Lebih baik
+   menyapu tanpa kunci daripada tidak menyapu sama sekali karena sheetnya
+   sedang tidak bisa dihubungi.
+
+Sapuan yang mengalah mengembalikan **kode 0**, bukan galat. Kalau dihitung
+gagal, `log-sapuan.txt` penuh berisi "GAGAL" padahal semuanya wajar.
+
+### Catatan sapuan juga harus dibagi, bukan cuma foldernya
+
+Celah kedua yang tidak kalah penting: `kondisi_sapu.json`. Kalau tiap komputer
+punya catatan sendiri, komputer kedua menganggap semua dokumen belum pernah
+dibuat, lalu memindahkan dokumen komputer pertama ke `_KEDALUWARSA` — tanpa
+galat apa pun.
+
+Obatnya satu baris di `config/bot.yaml`:
+
+    berkas_kondisi: "../DOKUMEN OTOMATIS HAPPY PUMPKIN/_bot/kondisi_sapu.json"
+
+`kondisi_dibagi()` memeriksa apakah berkas kondisi berada di dalam
+`folder_draf`. Kalau ya, `peringatan_pindah_komputer()` **diam** — pada
+pemasangan multi-perangkat, berpindah komputer justru yang diharapkan.
+Peringatan lama yang menyuruh menjalankan `hapus-jadwal.bat` sudah diganti:
+yang harus dibetulkan sekarang letak `berkas_kondisi`, bukan jadwalnya.
+
+`salinan_bentrok()` mencari berkas seperti `kondisi_sapu (1).json` di sebelah
+catatan sapuan. Kalau dua komputer terlanjur menulis bersamaan, Drive tidak
+menggabungkan — ia menyimpan salinan kedua dengan nama lain, berkas aslinya
+tetap terbaca, dan **tidak ada galat sama sekali**. Justru itu yang berbahaya:
+separuh catatan sapuan ada di berkas yang tidak pernah dibuka siapa pun.
+
+`periksa-bot` menambah satu baris "Beberapa perangkat". Satu komputer saja
+tetap dilaporkan **LULUS** dengan keterangan "hanya komputer ini" — aturan
+bagian 24 dan 27: jangan pernah menandai GAGAL sesuatu yang merupakan pilihan
+pemasangan yang sah.
+
+### Sapuan cepat: `--bulan-ini`
+
+Sapuan penuh membaca 22 order sheet, padahal PO yang baru masuk pasti ada di
+order sheet bulan berjalan.
+
+    py jalankan.py sapu --bulan-ini
+    py jalankan.py sapu --bulan 2026-09
+    py jalankan.py sapu --bulan-ini --paksa
+
+`jadwal/sapu-sekarang.bat` sekarang memakai `--bulan-ini`. Jadwal 06:00 dan
+18:00 **tetap membaca semua bulan**, jadi tidak ada yang terlewat; order sheet
+bulan lama yang baru diperbaiki paling lambat ikut 12 jam kemudian. Untuk
+menyapu semua bulan sekarang juga ada `jadwal/sapu-semua-bulan.bat`.
+
+Bulannya dicocokkan dari **NAMA berkasnya** (`sapu/bulan.py`), bukan dari
+isinya — kalau berkasnya dibuka dulu untuk tahu itu bulan apa, tidak ada
+waktu yang dihemat sama sekali.
+
+Empat hal yang mudah salah dan sudah dikunci tes:
+
+| Hal | Kenapa |
+|---|---|
+| Nama bulan dicocokkan sebagai **kata utuh** | tanpa batas kata, "Mei" tertangkap di dalam kata lain dan "Jun" di dalam "Januari" |
+| Tahun boleh datang dari **nama folder** | folder order sheet memang bernama "Order Sheet 2026"/"2025" |
+| Tanpa tahun di mana pun, berkas **tetap diikutkan** | lebih baik menyapu satu berkas berlebih daripada melewatkan yang dicari |
+| Bulan tanpa order sheet dilaporkan **keras** | "0 order sheet dibaca" terlihat seperti sapuan yang wajar, padahal artinya tidak akan ada dokumen yang terbit |
+
+`--bulan` yang salah ketik menghentikan perintah dengan kode 2, tidak
+diam-diam menyapu bulan lain — menerbitkan dokumen bulan yang salah jauh
+lebih mahal daripada perintah yang ditolak.
+
+`--paksa` mengabaikan pelewatan "tidak berubah sejak sapuan lalu". Perlu
+dipakai kalau yang berubah bukan order sheetnya melainkan **format
+dokumennya** — jebakan lama bagian 26 dan 27: `SidikPO` hanya mengawasi order
+sheet, tidak pernah kode.
+
+Tes 173 -> 209.
+
+## 33. Satu berkas, rumus, dan ukuran logo dari berkas asli — 20 September 2026
+
+Yosua mengirim BALIK keempat berkas keluaran program (Invoice & Surat Jalan
+Satu Sama Veteran untuk DPM, Baby Fame untuk MTN) sesudah **menyuntingnya
+sendiri di Excel**, lalu meminta tiga hal: pelajari kedua format, gabungkan
+Invoice dan Surat Jalan ke satu berkas berlembar banyak dengan lembar master
+harga dan rumus, dan kosongkan data customer yang belum diketahui.
+
+### Berkas yang dikirim balik BUKAN berkas yang sama — periksa `md5sum` dulu
+
+Keempatnya beda `md5` dari keluaran program. Itu petunjuknya: Yosua tidak
+sekadar mengirim ulang, ia **membetulkan sendiri** apa yang salah. Yang
+dilakukan pertama adalah mengadu berkasnya sel per sel dengan keluaran
+program — bukan membaca permintaannya saja.
+
+Hasil adu itu memisahkan dua hal yang sangat berbeda:
+
+| Berkas | Yang berubah | Artinya |
+|---|---|---|
+| DPM (Satu Sama) | hanya letak logo digeser; 0 sel, 0 garis berubah | tata letaknya sudah benar |
+| MTN (Baby Fame) | logo DIPERBESAR, 31 sel diberi GARIS, label dirata-tengahkan | tata letaknya SALAH |
+
+Lalu suntingan MTN itu diadu lagi dengan berkas asli `FA 0010526`: ternyata
+Yosua sedang **mengembalikan bentuk aslinya**, yang saya lewatkan.
+
+### Cacat 1 — kepala dokumen MTN kehilangan seluruh garisnya
+
+Berkas asli MTN mengotaki blok CUSTOMER `A11:C15` lengkap dengan garis
+pemisah antar baris, mengotaki tiap label FAKTUR/TANGGAL (tab faktur) dan
+SURAT JALAN/TANGGAL (tab surat jalan), dan **menengahkan** tulisan labelnya.
+Bagian 31 melewatkan ketiganya, jadi kepala dokumen MTN tampil polos.
+
+Satu beda halus yang ikut ditiru: di tab faktur label dan nilainya berkotak
+**sendiri-sendiri** (G11 dan G12 masing-masing empat sisi), sedangkan di tab
+surat jalan keduanya berbagi **satu** kotak (F11:H12, tanpa garis di
+tengahnya). Karena itu `_blok_customer()` punya `kotak_gabung`.
+
+### Cacat 2 — logo terlalu kecil, dan beda-beda antar dokumen
+
+Diukur dari berkas asli (anchor-nya `TwoCellAnchor`, jadi ukurannya harus
+dihitung dari lebar kolom dan tinggi baris yang dilewatinya, bukan dibaca
+langsung):
+
+| Berkas asli | Ukuran logo |
+|---|---|
+| 0110826 BABY WISE (DPM), Invoice & Surat Jalan | 118,9 x 119,7 px |
+| FA 0010526 (MTN), tab faktur | 111 x 126 px |
+| FA 0010526 (MTN), tab SURAT JALAN | 120 x 124 px |
+
+Program memakai **tinggi tetap 86 px** untuk semuanya. Akibatnya dua-duanya:
+logonya jauh lebih kecil daripada dokumen divisi, DAN karena yang dikunci
+tingginya, logo MTN (gambarnya jangkung, rasio 0,835) tampil jauh lebih
+sempit daripada logo DPM (rasio 1,063).
+
+Sekarang yang dikunci **LEBARNYA**, satu angka per perusahaan
+(`gaya.LEBAR_LOGO`): DPM 119 px, MTN 104 px, tingginya mengikuti bentuk asli
+gambar. Lebar yang dikunci, sebab lebar itulah yang dibatasi blok kolom A:B —
+logo tidak pernah menabrak teks kop di kolom C.
+
+**Ini belum cukup.** Percobaan pertama masih menghasilkan 119x111 di Invoice
+dan 114x107 di Surat Jalan pada berkas yang SAMA, karena kolom B menyempit
+mengikuti kode artikel yang pendek lalu logonya ikut dikecilkan. Ditambah
+`gaya.min_kolom_ab()`: lebar A+B tidak boleh kurang dari lebar logo, dan
+kekurangannya diambil dari kolom deskripsi — cara yang sama dengan bagian 26.
+
+### Satu berkas: INVOICE / SURAT JALAN / MASTER HARGA
+
+`buat_berkas()` sekarang menghasilkan `INVOICE_SURAT_JALAN_<tab>.xlsx` berisi
+tiga lembar. Faktur Pajak, Packing List, dan Proforma tetap berkas sendiri —
+Yosua hanya menyebut invoice dan surat jalan.
+
+Lembar MASTER HARGA bukan pelengkap: rumus harga menunjuk ke sana, dan karena
+harga retail berubah sepanjang tahun (bagian 18: Milo Set 49.400 -> 61.000),
+tiap faktur jadi membawa bukti harganya sendiri.
+
+### Rumus — dan SATU kolom yang sengaja TIDAK dirumuskan
+
+| Yang dirumuskan | Rumusnya |
+|---|---|
+| Deskripsi & Harga satuan | `VLOOKUP` ke lembar MASTER HARGA |
+| Jumlah per baris | `=Qty x Harga - Nilai Diskon` |
+| Subtotal | `=SUMPRODUCT(Qty, Harga)` |
+| Diskon | `=SUM(Nilai Diskon)` |
+| Total, DPP, PPN | diturunkan dari Subtotal dan tarif di `MASTER HARGA!$C$3` |
+| Qty Surat Jalan | `=SUM(kolom ukuran)` — seperti berkas asli MTN |
+
+**Kolom "Nilai Diskon" per baris TETAP berupa angka.** Diuji pada dua PO
+sungguhan: menghitungnya ulang lewat `qty x harga x persen efektif` meleset
+**Rp1** (Satu Sama Veteran) dan **Rp2** (Baby Fame) dari baris TOTAL order
+sheet. Kecil, tapi nilai bersih di order sheet memang TIDAK dihitung dari
+persentase — ia dibaca apa adanya dari kolomnya (Aturan 2). Kecocokan sampai
+rupiah terakhir itulah yang membuat pencocokan berani MENOLAK menerbitkan
+dokumen; menukarnya dengan rumus yang lebih enak dilihat adalah pertukaran
+yang salah. Ada tesnya, dan jangan diubah tanpa membaca `dokumen/rumus.py`.
+
+Deskripsi TIDAK di-VLOOKUP untuk customer per ukuran (Haritsa, Katamama) —
+di sana deskripsinya sudah ditambahi "Uk. 3-6M" dan tidak ada di master.
+
+### PDF: lembar master DISEMBUNYIKAN, bukan dihapus
+
+PDF-lah yang dikirim ke customer, dan MASTER HARGA memuat SELURUH harga
+retail Happy Pumpkin — 195 artikel, sepuluh halaman. Ikut tercetak berarti
+membocorkan daftar harga seluruh produk ke satu customer.
+
+Percobaan pertama MENGHAPUS lembar itu dari salinan untuk PDF. Hasilnya
+seluruh rumus faktur rusak: Subtotal jadi nol (IFERROR menelan VLOOKUP yang
+gagal) dan DPP/PPN jadi `#NAME?`. **Ketahuan dari PDF hasil render, bukan
+dari kode** — pola yang sama untuk kelima kalinya. Yang benar: lembarnya
+disembunyikan (`sheet_state = "hidden"`). LibreOffice tidak mencetak lembar
+tersembunyi, tapi rumus yang menunjuk ke sana tetap terhitung. Berkas Excel
+yang dipakai di kantor tetap memperlihatkannya.
+
+Dibuktikan pada PDF sungguhan: 2 halaman, dan totalnya persis sama dengan
+sebelum ada rumus — DPM Rp3.009.431, MTN Rp14.057.700.
+
+### Data customer yang belum diketahui DIKOSONGKAN
+
+Permintaan Yosua: *"Kalau anda belum tahu tentang data customer biarkan
+kosong saja nanti agar saya yang mengisi"*. Tulisan penampung
+`(nama customer belum diisi)` dan `(alamat belum diisi)` dihapus dari invoice,
+surat jalan, dan proforma — tulisan itu ikut tercetak ke dokumen yang dikirim
+ke customer, jauh lebih buruk daripada sel kosong yang tinggal diketik.
+
+Alamat Baby Fame sebenarnya MUNCUL di berkas suntingan Yosua (ikut terbawa
+dari berkas contoh Mei 2026), tapi tidak disimpan ke `config/customer.csv` —
+ia baru saja meminta data customer dikosongkan sampai ia sendiri yang
+mengisi. Jangan menyimpulkan data customer dari berkas contoh.
+
+Tes 209 -> 232.
+
+### Revisi format MTN dari suntingan Yosua — 20 September 2026
+
+Yosua mengirim dua tangkapan layar dari berkas MTN yang ia sunting sendiri:
+blok CUSTOMER, dan bagian bawah invoice. **Gambarnya tidak dipakai sebagai
+acuan** — berkas suntingannya dibongkar sel per sel, sama seperti bagian 20.
+
+| Bagian | Yang saya buat | Revisi Yosua |
+|---|---|---|
+| Blok CUSTOMER | kisi-kisi, garis di tiap baris | **satu kotak luar** + garis di bawah label saja |
+| Label CUSTOMER | ditulis di kolom A (3,43 satuan) | digabung **A:C** |
+| Blok rekening | sejajar Subtotal, **tanpa kotak** | mulai satu baris di bawah Subtotal, **kotak medium** A:C |
+| `Hormat kami,` | satu baris di bawah rekening | **sejajar** baris rekening terakhir |
+| Kotak nomor Surat Jalan | medium | **tipis** |
+
+Blok CUSTOMER itu **penyimpangan yang disengaja dari berkas asli MTN**, yang
+justru memberi garis atas-bawah di tiap baris (`A11:C15` semuanya `LRTB`).
+Yosua memilih bentuk yang lebih bersih. Jangan dikembalikan ke kisi-kisi hanya
+karena berkas aslinya begitu — sama seperti keputusan "blok penutup tidak
+bercetak tebal" di bagian 20.
+
+Template blok CUSTOMER ini dipakai **Invoice DAN Surat Jalan** — keduanya
+lewat `_blok_customer()` yang sama.
+
+### Cacat yang hanya kelihatan dari gambar: "STOMER"
+
+Percobaan pertama tidak menggabung baris label. Karena kolom A cuma 3,43
+satuan dan tulisannya dirata-tengahkan, "CUSTOMER" terpotong garis kotaknya
+dan tercetak **"STOMER"**. Nilai selnya tetap `"CUSTOMER"`, jadi tes berbasis
+nilai sel lolos semua.
+
+Ketahuan setelah PDF-nya dirender jadi PNG lalu **dilihat sebagai gambar**.
+Ini kali keenam pola yang sama muncul (kolom C Surat Jalan bagian 19, DISK%
+proforma bagian 28, label Faktur Pajak bagian 28, tanggal MTN bagian 31,
+rumus rusak karena lembar master dihapus bagian 33, dan sekarang ini).
+**Cacat lebar kolom tidak pernah kelihatan dari membaca nilai sel.**
+
+Lima tes baru. Tes 232 -> 237.
+
+### Surat Jalan MTN diberi JUDUL di tengah — 20 September 2026
+
+Yosua mengirim tangkapan layar lembar `SURAT JALAN` dari berkas gabungan
+keluaran program yang ia sunting sendiri. Satu-satunya yang berbeda: baris 9
+berisi **`SURAT JALAN`** ditengahkan dan tebal, di antara kop dan blok
+CUSTOMER.
+
+**Berkas MTN asli TIDAK punya judul itu** — diperiksa ulang, baris 9 tab
+`SURAT JALAN` pada `FA 0010526` memang kosong. Jadi ini tambahan Yosua, bukan
+sesuatu yang saya lewatkan. Sama seperti blok CUSTOMER tanpa kisi-kisi:
+penyimpangan yang disengaja dari berkas asli.
+
+| | |
+|---|---|
+| Letak | baris 9, digabung dari kolom A sampai kolom Qty |
+| Ukuran | **16**, sama dengan `surat_jalan.HURUF_JUDUL_DOK` milik DPM |
+| Tinggi baris | 21,0 |
+
+**FAKTUR MTN tetap TANPA judul.** Bukan kelalaian: berkas suntingan Yosua
+untuk tab Invoice baris 9-nya kosong, dan nomornya memang sudah ada di label
+FAKTUR di kanan. Ada tes yang menolak munculnya judul di faktur MTN.
+
+Dua tes baru. Tes 237 -> 239.
+
+## 34. Sapuan seluruh order sheet dengan format terbaru — 20 September 2026
+
+Yosua: *"sekarang jalankan sapuan sapuan order sheet dan upload ke google drive
+ke folder ini .../1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP"* (folder
+`DOKUMEN OTOMATIS HAPPY PUMPKIN`).
+
+Dijalankan dengan cara yang sama seperti bagian 29 — kunci bot tidak ada di
+wadah ini dan memang tidak boleh dikirim ke sini, jadi 21 order sheet diunduh
+lewat konektor Drive lalu `buat-semua` dijalankan per berkas.
+
+### Hasil
+
+| | 18 Sep (bagian 30) | 20 Sep |
+|---|---:|---:|
+| Order sheet terbaca | 21 dari 22 | 21 dari 22 |
+| PO seluruhnya | 454 | **459** |
+| PO menghasilkan dokumen | 230 | **235** |
+| Berkas | 943 | **728** |
+| Qty terbit | 75.118 pcs | **75.617 pcs** |
+| Nilai bersih terbit | Rp3.854.901.550 | **Rp3.882.026.298** |
+
+Berkasnya **turun** dari 943 ke 728 justru karena formatnya membaik: sejak
+bagian 33 Invoice dan Surat Jalan digabung jadi SATU berkas, jadi 4 berkas per
+PO (INVOICE_SURAT_JALAN, FAKTUR_PAJAK, PACKING_LIST, + PROFORMA untuk Haritsa
+& Katamama), bukan 5. Selisih PO 230 -> 235 seluruhnya dari September 2026 yang
+memang bertambah isinya sejak sapuan terakhir.
+
+Per bulan yang terbit: Januari 2026 29, Maret 2026 10, April 2026 35,
+Mei 2026 25, Juni 2026 21, Juli 2026 30, Agustus 2026 (Harga Baru) 16,
+September 2026 15, Agustus 2025 24, November 2025 10, Desember 2025 20.
+
+### Sepuluh order sheet masih terhalang pencocokan — sebabnya tetap di SHEET
+
+224 PO tidak terbit, seluruhnya dengan sebab yang sama: angka belum cocok
+dengan baris TOTAL order sheet. Rinciannya sudah tercatat di bagian 29 dan 30;
+empat rumus yang harus diperbaiki Yosua belum berubah:
+
+| Order sheet | Tab | Sel | Sekarang | Seharusnya |
+|---|---|---|---|---|
+| Februari 2026 | PO 5 Feb - Defara Baby | W3:W90 | `=SUM(N3:S3)` | `=SUM(N3:V3)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W4:W157 | `=SUM(N4:S4)` | `=SUM(N4:V4)` |
+| Februari 2026 | DHAWAFEST BAZAAR | W160 | `=sum(W24:W71,W72:W79)` | `=SUM(W4:W157)` |
+| Agustus 2026 Harga Lama | PO 07 Agu - Katamama Tapos | W116 | `=SUM(W3:W108,W114:W115)` | `=SUM(W3:W115)` |
+
+Order Sheet Juni 2025 (11,4 MB) tetap ditolak Google saat diekspor.
+
+### Yang bisa dan TIDAK bisa diunggah dari sesi ini — tegaskan ini tiap kali
+
+Yang naik ke folder Yosua, lewat jalur `textContent` + `contentMimeType:
+text/csv` (bagian 14):
+
+| Berkas | Isi |
+|---|---|
+| `RINGKASAN SAPUAN 20 SEPTEMBER 2026` | 21 baris, satu per order sheet |
+| `REKAP SAPUAN PER PO 20 SEPTEMBER 2026` | 235 PO terbit + 224 PO belum terbit |
+
+**728 dokumennya sendiri TIDAK diunggah, dan memang TIDAK BOLEH.** Dua alasan
+yang berbeda, dua-duanya berlaku:
+
+1. **Tidak muat.** Satu berkas gabungan = 36.471 byte = 48.628 huruf base64
+   dalam satu panggilan. Konektor Drive hanya mengirim berkas sebagai teks.
+2. **Lebih penting: akan dihapus bot sendiri.** Berkas yang diunggah dari sini
+   tidak dikenal `data/kondisi_sapu.json` di komputer Yosua. Sapuan berikutnya
+   akan menganggapnya draf asing dan memindahkannya ke `_KEDALUWARSA` —
+   diam-diam, tanpa galat.
+
+**Jalan yang benar tetap satu: klik dua kali `jadwal/sapu-semua-bulan.bat` di
+komputer Yosua.** Bot menulis ke `folder_draf`, Drive for Desktop yang
+menyalinkannya, dan sidik jarinya ikut tercatat. Jalur ini sudah terbukti sejak
+16 September (bagian 25 dan 30): berkas di `DOKUMEN OTOMATIS HAPPY PUMPKIN`
+dimiliki `finance.dwiputramandiri@gmail.com`, bukan akun layanan.
+
+Sebelum menjalankannya, `data/kondisi_sapu.json` harus DIHAPUS dulu — yang
+berubah sejak sapuan terakhirnya bukan order sheetnya melainkan format
+dokumennya, dan `SidikPO` tidak pernah mengawasi kode (jebakan bagian 26, 27,
+dan 32). Tanpa itu, seluruh 235 PO akan dilewati sebagai "tidak berubah".
+
+## 35. Hasil sapuan naik ke Drive sendiri — 20 September 2026
+
+Yosua: *"atur sendiri agar hasil sapuan dapat diupload ke drive"*, sesudah
+bagian 34 menerangkan bahwa dokumen tidak bisa dikirim dari sesi ini.
+
+Jalur unggah yang selama ini dipakai bot SUDAH terbukti gagal dan tidak akan
+pernah berhasil: akun layanan tidak punya jatah penyimpanan Drive, jadi tidak
+bisa membuat berkas baru (`storageQuotaExceeded`, bagian 14 dan 30). Jadi yang
+dikerjakan bukan memperbaiki unggahan itu, melainkan **memakai dua jalur yang
+sudah terbukti jalan** dan tidak pernah menyentuh pembuatan berkas baru.
+
+### Jalur 1 — tab `BOT_REKAP` di sheet OTOMATISASI
+
+Menulis ke berkas yang **SUDAH ADA** lewat Sheets API. Mengisi berkas yang
+sudah ada tidak memakan jatah penyimpanan sama sekali, jadi batasan kuota tidak
+pernah kena. Sudah terbukti sejak 16 September lewat `BOT_DAFTAR_PO`,
+`BOT_PERUBAHAN`, dan `BOT_STATUS` (bagian 25).
+
+Kelebihan yang menentukan: **tidak perlu Google Drive for Desktop.** Tab ini
+terisi walaupun Drive for Desktop mati atau belum dipasang, dan terlihat dari
+komputer mana pun yang bisa membuka sheet-nya.
+
+### Jalur 2 — berkas laporan pindah ke `folder_draf/_LAPORAN`
+
+Laporan dulu ditulis ke `AKAR/keluaran/sapuan/`, di dalam folder proyek. Itu
+sebabnya laporan tidak pernah sampai ke siapa pun kecuali yang duduk di depan
+komputer bot — folder proyek tidak ikut disinkronkan Drive.
+
+Sekarang `bot.folder_laporan()` mengembalikan `p.folder_draf / "_LAPORAN"`,
+jadi laporan duduk satu folder dengan dokumennya dan ikut naik lewat Drive for
+Desktop. Jalur yang sama persis, tanpa pengaturan baru.
+
+### `sapu/rekap.py` — satu sumber angka untuk tiga tempat
+
+Rekap dipakai lembar REKAP di berkas laporan, tab `BOT_REKAP`, dan ringkasan
+di layar. Kalau masing-masing menghitung sendiri, cepat atau lambat ketiganya
+menyebut angka berlainan dan tidak ada yang tahu mana yang benar. Pola yang
+sama dengan `berkas_dokumen.py` yang sengaja dipakai bersama perintah manual
+dan bot (bagian 15).
+
+Aturan bagian 30 ikut dipindahkan ke sini: untuk PO yang dokumennya TIDAK
+terbit, qty dan nilainya **DIKOSONGKAN**, bukan ditampilkan. Ada tesnya.
+
+### Pemangkasan laporan — dan kenapa polanya dikunci ketat
+
+Dua sapuan sehari berarti +-730 berkas setahun menumpuk di folder yang dilihat
+divisi. `pangkas_laporan()` menyisakan 30 terbaru (`simpan_laporan_terakhir`,
+isi 0 untuk tidak menghapus apa pun).
+
+Yang dihapus HANYA berkas yang cocok `LAPORAN_SAPUAN_20*.xlsx`. Polanya dikunci
+tes yang menaruh `Catatan Yosua.xlsx`, `LAPORAN_SAPUAN_manual.txt`, dan
+`INVOICE_PO_A.xlsx` di folder yang sama lalu memastikan ketiganya selamat.
+**Folder itu folder Drive yang disinkronkan** — kalau polanya dilonggarkan,
+berkas orang ikut terhapus dan hilangnya sampai ke Drive.
+
+Tes 239 -> 246.
+
+## 36. Tiap dokumen berkas SENDIRI — 26 September 2026
+
+> *"MULAI SEKARANG DAN SETERUSNYA BUATLAH FILE PROFORMA INVOICE, INVOICE DAN
+> SURAT JALAN SECARA TERPISAH"*
+
+**Ini MEMBATALKAN penggabungan Invoice + Surat Jalan di bagian 33.** Jangan
+digabung lagi. Keluaran `buat_berkas()` sekarang:
+
+| Berkas | Lembar |
+|---|---|
+| `INVOICE_<tab>.xlsx` | INVOICE + **MASTER HARGA** |
+| `SURAT_JALAN_<tab>.xlsx` | SURAT JALAN |
+| `PROFORMA_<tab>.xlsx` | PROFORMA (hanya customer per-ukuran) |
+| `PACKING_LIST_<tab>.xlsx`, `FAKTUR_PAJAK_<tab>.xlsx` | seperti sebelumnya |
+
+**MASTER HARGA ikut HANYA di berkas Invoice.** Hanya rumus faktur yang
+menunjuk ke sana (VLOOKUP harga, tarif PPN); Surat Jalan cuma memakai
+`=SUM(kolom ukuran)` yang tidak menyentuh master. Menyertakannya di Surat
+Jalan hanya membocorkan seluruh daftar harga retail tanpa guna apa pun.
+Penyembunyian lembar master saat membuat PDF (bagian 33) tetap berlaku, dan
+sekarang hanya perlu diurus di satu berkas.
+
+`tests/test_gabungan.py` diganti nama jadi `tests/test_berkas_terpisah.py`.
+Tes pertamanya menolak nama berkas berawalan `INVOICE_SURAT_JALAN` dan menolak
+lembar SURAT JALAN muncul di dalam berkas Invoice — supaya penggabungan tidak
+kembali tanpa sengaja. Ada juga tes yang menolak MASTER HARGA muncul di
+berkas selain Invoice. Tes 246 -> 249.
+
+### `PO 21 September - Buchi Kids (Malang)` — rumus order sheet masih salah
+
+Tab ini punya cacat yang **persis sama** dengan Februari 2026 (bagian 30):
+rumus qty per baris berhenti di kolom U.
+
+| Sel | Sekarang | Seharusnya |
+|---|---|---|
+| W126:W129 | `=sum(N126:U126)` | `=sum(N126:V126)` |
+
+Empat baris `71092.L (Top/Atasan)` masing-masing punya **3 pcs di kolom V**
+yang tidak ikut terhitung — 12 pcs, harga Rp74.200, senilai Rp890.400.
+
+Diperiksa tiga kali (26 Sep 02:05, 02:12, dan sesudahnya): berkasnya memang
+berubah beberapa kali hari itu, tapi rumus ini **belum dibetulkan**.
+
+### Akibatnya pada dokumen — tiga angka, tidak ada yang benar
+
+Ini yang paling mudah salah dibaca, jadi dicatat lengkap. Sejak invoice
+memakai RUMUS (bagian 33), Subtotal dihitung `SUMPRODUCT(qty, harga)` dari
+qty hasil pindaian (kolom N..V, **benar**), sedangkan kolom Nilai Diskon per
+baris tetap ANGKA dari kolom AD order sheet (**salah** untuk 4 baris itu).
+
+| | Nilai | Keterangan |
+|---|---:|---|
+| Subtotal di invoice | 112.670.100 | **benar**, 1.477 pcs |
+| Nilai bersih order sheet | 82.158.080 | kurang Rp890.400 |
+| Total di invoice | 83.048.480 | **lebih** Rp235.956 |
+| Yang benar (26,5% penuh) | 82.812.524 | |
+
+Sebabnya: 12 pcs itu masuk ke Subtotal dengan harga penuh, tapi diskonnya
+tidak ikut karena kolom AD-nya dihitung dari W yang salah.
+`890.400 x 0,265 = 235.956` — persis selisihnya.
+
+**Jadi jangan menyimpulkan "invoice kurang menagih" hanya karena order
+sheetnya kurang.** Arahnya justru terbalik, dan besarnya bukan Rp890.400.
+Hitung ketiganya sebelum melapor.
+
+Dokumen tetap diterbitkan dengan `--abaikan-pencocokan` atas permintaan Yosua
+yang diulang tiga kali. Begitu W126:W129 dibetulkan, ketiga angka itu
+bertemu sendiri dan dokumennya bisa dibuat ulang tanpa `--abaikan-pencocokan`.
+
+### Buchi Kids didaftarkan sebagai `per_ukuran`
+
+`config/customer.csv` ditambah barisnya **permanen** kali ini — Yosua meminta
+proforma untuk customer ini tiga kali, dan proforma hanya terbit untuk
+customer per-ukuran. Nama dan alamatnya tetap dikosongkan (aturan bagian 33).
+Kalau ternyata Buchi Kids per-artikel, cabut barisnya.
+
+### Buchi Kids dipaksa TOP, dan cara memeriksa "total tidak cocok" — 26 Sep 2026
+
+Yosua: *"anda masih salah totalnya beda dengan order sheet"* — dua kali,
+padahal pencocokan program LULUS. Sebabnya bukan angka yang salah, melainkan
+**tab itu punya DUA kolom nilai bersih yang dua-duanya terisi**:
+
+| Kolom | Judul | TOTAL | |
+|---|---|---:|---|
+| AC | `TOTAL VALUE` | **84.502.575** | diskon 25% — yang dilihat Yosua |
+| AD | `DISCOUNT CBD + 2%` | 82.812.523,50 | 25% + 2% — yang dipilih Aturan 2 |
+
+Aturan 2 (bagian 7) memilih CBD karena kolom AD terisi penuh di semua baris,
+dan itu memang aturannya. Tapi yang Yosua sebut "total order sheet" adalah
+kolom **TOTAL VALUE**. Keduanya benar-benar ada di sheet; program tidak salah
+baca, ia hanya memilih kolom yang lain.
+
+**Kalau Yosua bilang total tidak cocok padahal pencocokan LULUS, jangan
+menerka dan jangan mengulang sapuan.** Cetak dulu SEMUA kolom nett beserta
+jumlahnya di baris TOTAL, lalu cocokkan mana yang ia maksud:
+
+    for kunci in o.kolom_nett(): ...   # TOP / CBD / COD, judul + jumlahnya
+
+`config/customer.csv` -> `cara_bayar_paksa=TOP` untuk Buchi Kids. Ini
+**permanen**, jadi bot otomatis ikut memakainya. Kalau Buchi Kids ternyata
+memang bayar CBD, potongan 2% itu seharusnya ikut dan kolomnya dikembalikan
+kosong.
+
+Dua kolom di tab itu berisi `#REF!` di baris TOTAL — **AA (LOSSES)** dan
+**AE (DISCOUNT COD + 1,5%)**. Tidak berdampak pada dokumen ini, tapi perlu
+dirapikan Sales.
+
+### Order sheet bisa berubah beberapa kali dalam satu jam
+
+26 September 2026 berkasnya berubah EMPAT kali: 02:05, 02:12, 02:45, 02:49.
+Dua kali dokumen terbit dari salinan yang sudah basi, dan dua kali Yosua yang
+memberitahu.
+
+**Periksa `modifiedTime` TEPAT SEBELUM membuat dokumen, bukan sekali di awal
+percakapan.** Kalau satu percakapan berisi beberapa permintaan dokumen,
+periksa ulang tiap kali. Ini murah (satu panggilan) dan menghindari
+menerbitkan faktur dengan angka lama.
+
+Rumus `W126:W129` yang dicatat di atas akhirnya **sudah dibetulkan Yosua**
+pada versi 02:45 (`=sum(N126:V126)`), dan sejak itu pencocokan lolos tanpa
+`--abaikan-pencocokan`.
+
+### Buchi Kids ternyata CBD — pemaksaan TOP DICABUT, 26 September 2026
+
+> *"maaf saya salah untuk total Rp82.812.524 sudah benar"*
+
+Jadi yang berlaku untuk Buchi Kids (Malang) adalah kolom **AD
+`DISCOUNT CBD + 2%`**, bukan `TOTAL VALUE`. Aturan 2 sejak awal sudah
+memilih kolom yang benar — pemaksaan `cara_bayar_paksa=TOP` yang dipasang
+beberapa jam sebelumnya justru yang salah, dan sudah dicabut.
+
+| | |
+|---|---:|
+| Sebelum diskon | Rp112.670.100 |
+| Diskon `25% + 2%` | Rp29.857.577 |
+| **Total** | **Rp82.812.524** |
+| DPP | Rp74.605.877 |
+| PPN 11% | Rp8.206.647 |
+| Qty | 1.477 pcs, 192 baris |
+
+Baris `config/customer.csv` sekarang: `per_ukuran`, termin 30,
+`cara_bayar_paksa` KOSONG (biar Aturan 2 yang menentukan).
+
+**Pelajaran, dan ini yang paling penting dari seluruh urusan Buchi Kids:**
+saat Yosua bilang "totalnya beda dengan order sheet", saya memasang
+`cara_bayar_paksa` — mengubah aturan permanen — padahal yang diminta cuma
+dicocokkan angkanya. Itu terlalu jauh. Yang benar: cetak semua kolom nett
+beserta jumlahnya, TANYAKAN mana yang dimaksud, baru ubah config setelah
+dijawab. Pemaksaan cara bayar mengubah SEMUA dokumen customer itu ke
+depan, termasuk yang dibuat bot sendiri — itu bukan perbaikan satu
+dokumen.
+
+### Buchi Kids dibuat dengan format MTN — 26 September 2026
+
+Permintaan: *"pakai format mtn"*. `perusahaan_pemroses=MTN` dipasang
+**SEMENTARA** lalu dikembalikan, persis seperti Baby Fame 17 September
+(bagian 31). `config/customer.csv` TIDAK diubah permanen: mengisi kolom itu
+berarti SEMUA dokumen Buchi Kids ke depan — termasuk yang dibuat bot jam
+06:00 dan 18:00 — terbit atas nama MTN dengan rekening MTN. Itu keputusan
+Yosua, bukan kesimpulan dari satu permintaan.
+
+Penutupnya benar hanya tiga baris (Subtotal, Value Disc, Total) — MTN tidak
+mengenakan PPN. Angkanya sama dengan versi DPM sampai Total, yang berbeda
+cuma DPP/PPN tidak ada.
+
+### Dua cacat lebar/tinggi baru di tata letak MTN — SELESAI 26 Sep 2026
+
+Dua-duanya ketahuan dari GAMBAR hasil render PDF, bukan dari nilai sel.
+Ini kali ketujuh dan kedelapan pola yang sama muncul.
+
+**1. Label penutup `Value Disc 25% + 2%` tercetak `Value Disc 25%`.**
+Kolom G bawaan 14,29 satuan hanya memuat tulisan pendeknya. Di dokumen
+penagihan ini mahal: diskon yang ditagih 26,5% tapi tertulis 25%, dan
+angka rupiahnya (Rp29.857.577) tidak cocok dengan persen yang tercetak.
+Nilai selnya sendiri SELALU benar, jadi tes berbasis sel tidak akan pernah
+menangkapnya.
+
+`_lebar_inv(tulisan_diskon)` melebarkan kolom 7 secukupnya dan mengambil
+kekurangannya dari kolom DESKRIPSI (3), yang memang melipat — jumlah lebar
+A..H tidak berubah, jadi tetap muat A4 tegak. Kolom 3 tidak boleh kurang
+dari 22 satuan. Cara yang sama dengan bagian 26 dan 33.
+
+`_persen_tertulis()` karena itu dipanggil SEBELUM `atur_lebar`, bukan
+sesudahnya.
+
+**2. Deskripsi panjang di Surat Jalan MTN terpotong separuh.**
+`TINGGI_DATA_SJ = 20.1` diambil dari berkas asli MTN dan hanya memuat SATU
+baris huruf 11. `UltraCool Ruffle Sleeve Tee Medium Size` melipat jadi dua
+baris, dan baris keduanya hilang — nama barangnya tidak terbaca utuh.
+
+`_tinggi_baris_sj()` meninggikan HANYA baris yang melipat; baris pendek
+tetap 20,1 supaya bentuknya tidak berubah dari berkas asli.
+
+Dua tes baru. Tes 249 -> 251.
+
+### Order sheet berubah lagi jam 03:24
+
+Hari itu totalnya LIMA kali: 02:05, 02:12, 02:45, 02:49, 03:24. Pemeriksaan
+`modifiedTime` tepat sebelum membuat dokumen sekali lagi terbukti perlu —
+salinan 02:49 sudah basi dalam hitungan menit.
+
+Versi 03:24 menambah tab baru `Packing List - Buchi Kids (Mala`. Belum
+diapa-apakan; perlu dipastikan Yosua apakah packing list Buchi Kids harus
+diambil dari tab itu (qty di kolom D-L, lihat bagian 3) atau tetap dari
+tab PO seperti sekarang.
+
+## 37. Sapuan seluruh order sheet — 26 September 2026
+
+Permintaan: *"sapu seluruh order sheet dan masukan file hasil sapuan itu ke
+folder ini"* (`DOKUMEN OTOMATIS HAPPY PUMPKIN`).
+
+### Hanya DUA order sheet yang perlu diunduh ulang
+
+`modifiedTime` seluruh 22 order sheet diperiksa dulu terhadap salinan 20
+September. Yang berubah cuma:
+
+| Order sheet | modifiedTime | |
+|---|---|---|
+| September 2026 | 26 Sep 04:38 | berubah LIMA kali hari itu |
+| Juli 2026 | 21 Sep 03:06 | berubah sesudah sapuan terakhir |
+
+Sisanya (19 berkas) tidak disentuh sejak 13 Mei 2026 atau lebih lama, jadi
+salinannya dipakai apa adanya. Ini menghemat 19 unduhan besar. **Periksa
+`modifiedTime` dulu sebelum mengunduh ulang** — sama seperti yang dilakukan
+bot lewat `data/kondisi_sapu.json`.
+
+### Hasil
+
+| | 20 Sep | 26 Sep |
+|---|---:|---:|
+| Order sheet terbaca | 21 dari 22 | 21 dari 22 |
+| PO seluruhnya | 459 | **460** |
+| PO menghasilkan dokumen | 235 | **236** |
+| Berkas | 728 | **968** |
+| Qty terbit | 75.617 pcs | **77.062 pcs** |
+| Nilai bersih terbit | Rp3.882.026.298 | **Rp3.962.689.922** |
+
+Berkasnya naik 728 -> 968 karena bagian 36 memisahkan Invoice dan Surat
+Jalan lagi: 4 berkas per PO plus Proforma untuk 24 PO per-ukuran.
+
+**Hati-hati menghitung PO.** Baris `SELESAI ... PO baru` menjumlahkan 237,
+tapi folder PO yang sebenarnya 236 — satu di antaranya
+`LAPORAN_PENCOCOKAN.xlsx` yang ikut terhitung sebagai entri baru di
+`ls keluaran` pada bulan pertama. Hitung dari
+`find dok -mindepth 2 -maxdepth 2 -type d`, jangan dari keluaran layar.
+
+### Tiga berkas yang naik ke folder Drive
+
+| Berkas | Isi |
+|---|---|
+| `RINGKASAN SAPUAN 26 SEPTEMBER 2026` | 22 baris, satu per order sheet |
+| `REKAP SAPUAN PER PO 26 SEPTEMBER 2026` | 236 PO yang dokumennya terbit |
+| `PO BELUM TERBIT - PERLU DIRAPIKAN SALES - 26 SEPTEMBER 2026` | 224 PO, dengan SEBAB per baris |
+
+Berkas ketiga itu baru, dan lebih berguna daripada rekap gabungan: untuk PO
+yang rumusnya sudah dilacak (bagian 29, 30, 34) sebabnya ditulis lengkap
+dengan sel dan rumus penggantinya, jadi Sales bisa langsung membetulkannya
+tanpa membuka catatan ini.
+
+Jalurnya tetap `textContent` + `contentMimeType: text/csv` (bagian 14).
+
+### 968 dokumennya TIDAK naik — dan memang tidak boleh
+
+Alasannya tidak berubah dari bagian 34, dan harus ditegaskan tiap kali
+diminta: (1) konektor Drive cuma mengirim berkas sebagai teks dalam satu
+panggilan, dan (2) berkas yang diunggah dari sini tidak dikenal
+`data/kondisi_sapu.json` di komputer Yosua, jadi sapuan berikutnya akan
+memindahkannya ke `_KEDALUWARSA` diam-diam.
+
+**Satu-satunya jalan: `jadwal/sapu-semua-bulan.bat` di komputer Yosua,
+setelah `data/kondisi_sapu.json` dihapus.** Kalimat itu ikut ditulis di
+baris CATATAN berkas RINGKASAN, supaya yang membuka berkasnya di Drive tahu
+kenapa dokumennya belum ada di situ.
+
+### Unggah .xlsx dari sesi ini: BISA, tapi terbatas 21,5 KB per berkas — 26 Sep 2026
+
+Yosua: *"masukan sendiri ke drive tanpa bantuan dari saya sedikit pun"*.
+Diuji langsung, bukan disimpulkan dari catatan lama.
+
+**Catatan bagian 14 SALAH dan sudah dicabut.** Di situ tertulis konektor
+Drive menolak `base64Content` yang panjang. Yang sebenarnya: unggahan
+`.xlsx` lewat `base64Content` + `disableConversionToGoogleType: true`
+**BERHASIL** — berkas 6.536 byte dan 12.670 byte naik utuh, `fileSize`
+cocok, pemiliknya `finance.dwiputramandiri@gmail.com`. Kegagalan di bagian
+14 itu milik AKUN LAYANAN (`storageQuotaExceeded`), bukan konektor ini.
+
+**Batas yang sebenarnya ada di sisi BACA, bukan unggah.** Untuk mengirim
+berkas saya harus mengetik base64-nya, jadi saya harus membacanya dulu:
+
+| Jalur baca | Terpotong di |
+|---|---|
+| keluaran perintah shell | +-30.000 huruf |
+| pembaca berkas | +-22.375 huruf |
+
+Jadi berkas yang base64-nya lebih dari +-29.000 huruf (**xlsx di atas
++-21,5 KB**) tidak bisa dibaca utuh. Menyambung dua potongan **tidak
+boleh** — sudah dicoba dan unggahannya ditolak `not a valid base64
+string`. Kalau sambungannya lolos tapi salah satu huruf meleset, yang naik
+adalah berkas Excel RUSAK yang baru ketahuan saat customer membukanya.
+Itu lebih buruk daripada tidak mengunggah.
+
+### Akibatnya pada sapuan 26 September
+
+| | |
+|---|---|
+| Berkas hasil sapuan | 968, 16,4 MB |
+| Muat dibaca utuh (<=21,5 KB) | 38 dari 67 berkas September saja |
+| PO yang SELURUH berkasnya muat | **0 dari 16** |
+
+Tiap PO selalu punya minimal satu berkas besar — Invoice membawa lembar
+MASTER HARGA, dan Surat Jalan/Packing List ikut membesar karena logo
+tertanam di tiap berkas. Jadi **tidak ada satu paket dokumen pun yang bisa
+dikirim lengkap** dari sini. Mengirim sebagiannya (Surat Jalan tanpa
+Invoice) hanya membuat folder yang tampak berisi padahal tidak terpakai.
+
+Ongkosnya juga tidak masuk akal kalau dipaksakan: satu berkas menghabiskan
++-30.000 token (baca + tulis), jadi 968 berkas +-30 juta token — dua kali
+lipat isi satu sesi.
+
+**Kesimpulan bagian 34 tetap berlaku, tapi alasannya diperbaiki:** dokumen
+tidak bisa dikirim dari sesi ini bukan karena kuota akun layanan, melainkan
+karena batas baca 21,5 KB per berkas. Jalan yang lengkap tetap
+`jadwal/sapu-semua-bulan.bat` di komputer Yosua.
+
+**Yang BISA dikerjakan sendiri dari sini:** berkas rekap CSV (kecil), dan
+unggahan dokumen satuan yang ukurannya di bawah 21,5 KB — misalnya Faktur
+Pajak, yang memang berkas terkecil.
+
+Folder `DOKUMEN SAPUAN 26 SEPTEMBER 2026` yang sempat dibuat sudah dihapus
+lagi supaya tidak ada folder kosong yang menyesatkan.
