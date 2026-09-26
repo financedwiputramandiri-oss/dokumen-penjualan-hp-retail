@@ -3220,3 +3220,79 @@ tes yang menaruh `Catatan Yosua.xlsx`, `LAPORAN_SAPUAN_manual.txt`, dan
 berkas orang ikut terhapus dan hilangnya sampai ke Drive.
 
 Tes 239 -> 246.
+
+## 36. Tiap dokumen berkas SENDIRI — 26 September 2026
+
+> *"MULAI SEKARANG DAN SETERUSNYA BUATLAH FILE PROFORMA INVOICE, INVOICE DAN
+> SURAT JALAN SECARA TERPISAH"*
+
+**Ini MEMBATALKAN penggabungan Invoice + Surat Jalan di bagian 33.** Jangan
+digabung lagi. Keluaran `buat_berkas()` sekarang:
+
+| Berkas | Lembar |
+|---|---|
+| `INVOICE_<tab>.xlsx` | INVOICE + **MASTER HARGA** |
+| `SURAT_JALAN_<tab>.xlsx` | SURAT JALAN |
+| `PROFORMA_<tab>.xlsx` | PROFORMA (hanya customer per-ukuran) |
+| `PACKING_LIST_<tab>.xlsx`, `FAKTUR_PAJAK_<tab>.xlsx` | seperti sebelumnya |
+
+**MASTER HARGA ikut HANYA di berkas Invoice.** Hanya rumus faktur yang
+menunjuk ke sana (VLOOKUP harga, tarif PPN); Surat Jalan cuma memakai
+`=SUM(kolom ukuran)` yang tidak menyentuh master. Menyertakannya di Surat
+Jalan hanya membocorkan seluruh daftar harga retail tanpa guna apa pun.
+Penyembunyian lembar master saat membuat PDF (bagian 33) tetap berlaku, dan
+sekarang hanya perlu diurus di satu berkas.
+
+`tests/test_gabungan.py` diganti nama jadi `tests/test_berkas_terpisah.py`.
+Tes pertamanya menolak nama berkas berawalan `INVOICE_SURAT_JALAN` dan menolak
+lembar SURAT JALAN muncul di dalam berkas Invoice — supaya penggabungan tidak
+kembali tanpa sengaja. Ada juga tes yang menolak MASTER HARGA muncul di
+berkas selain Invoice. Tes 246 -> 249.
+
+### `PO 21 September - Buchi Kids (Malang)` — rumus order sheet masih salah
+
+Tab ini punya cacat yang **persis sama** dengan Februari 2026 (bagian 30):
+rumus qty per baris berhenti di kolom U.
+
+| Sel | Sekarang | Seharusnya |
+|---|---|---|
+| W126:W129 | `=sum(N126:U126)` | `=sum(N126:V126)` |
+
+Empat baris `71092.L (Top/Atasan)` masing-masing punya **3 pcs di kolom V**
+yang tidak ikut terhitung — 12 pcs, harga Rp74.200, senilai Rp890.400.
+
+Diperiksa tiga kali (26 Sep 02:05, 02:12, dan sesudahnya): berkasnya memang
+berubah beberapa kali hari itu, tapi rumus ini **belum dibetulkan**.
+
+### Akibatnya pada dokumen — tiga angka, tidak ada yang benar
+
+Ini yang paling mudah salah dibaca, jadi dicatat lengkap. Sejak invoice
+memakai RUMUS (bagian 33), Subtotal dihitung `SUMPRODUCT(qty, harga)` dari
+qty hasil pindaian (kolom N..V, **benar**), sedangkan kolom Nilai Diskon per
+baris tetap ANGKA dari kolom AD order sheet (**salah** untuk 4 baris itu).
+
+| | Nilai | Keterangan |
+|---|---:|---|
+| Subtotal di invoice | 112.670.100 | **benar**, 1.477 pcs |
+| Nilai bersih order sheet | 82.158.080 | kurang Rp890.400 |
+| Total di invoice | 83.048.480 | **lebih** Rp235.956 |
+| Yang benar (26,5% penuh) | 82.812.524 | |
+
+Sebabnya: 12 pcs itu masuk ke Subtotal dengan harga penuh, tapi diskonnya
+tidak ikut karena kolom AD-nya dihitung dari W yang salah.
+`890.400 x 0,265 = 235.956` — persis selisihnya.
+
+**Jadi jangan menyimpulkan "invoice kurang menagih" hanya karena order
+sheetnya kurang.** Arahnya justru terbalik, dan besarnya bukan Rp890.400.
+Hitung ketiganya sebelum melapor.
+
+Dokumen tetap diterbitkan dengan `--abaikan-pencocokan` atas permintaan Yosua
+yang diulang tiga kali. Begitu W126:W129 dibetulkan, ketiga angka itu
+bertemu sendiri dan dokumennya bisa dibuat ulang tanpa `--abaikan-pencocokan`.
+
+### Buchi Kids didaftarkan sebagai `per_ukuran`
+
+`config/customer.csv` ditambah barisnya **permanen** kali ini — Yosua meminta
+proforma untuk customer ini tiga kali, dan proforma hanya terbit untuk
+customer per-ukuran. Nama dan alamatnya tetap dikosongkan (aturan bagian 33).
+Kalau ternyata Buchi Kids per-artikel, cabut barisnya.

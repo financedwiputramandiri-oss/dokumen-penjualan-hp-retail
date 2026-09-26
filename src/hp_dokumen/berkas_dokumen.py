@@ -48,13 +48,19 @@ def buat_berkas(
     selama `sertakan_packing_list` masih True, karena belum dipastikan apakah
     masih dipakai.
 
-    SATU BERKAS UNTUK INVOICE + SURAT JALAN (permintaan Yosua 20 Sep 2026).
-    Keduanya jadi dua lembar di berkas yang sama, ditambah lembar MASTER HARGA
-    berisi salinan tab "Harga Retail" sebagaimana adanya saat dokumen itu
-    dibuat. Lembar itu bukan pelengkap: rumus harga di faktur menunjuk ke
-    sana, dan karena harga retail berubah sepanjang tahun (Milo Set 49.400 ->
-    61.000 pada Agustus 2026), tiap faktur jadi membawa bukti harganya
-    sendiri.
+    TIAP DOKUMEN BERKAS SENDIRI (permintaan Yosua 26 September 2026):
+    *"MULAI SEKARANG DAN SETERUSNYA BUATLAH FILE PROFORMA INVOICE, INVOICE
+    DAN SURAT JALAN SECARA TERPISAH"*. Ini MEMBATALKAN penggabungan Invoice +
+    Surat Jalan yang diminta 20 September 2026 — jangan digabung lagi.
+
+    Lembar MASTER HARGA ikut HANYA di berkas Invoice, sebab hanya rumus
+    faktur yang menunjuk ke sana (VLOOKUP harga dan tarif PPN). Surat Jalan
+    cuma memakai `=SUM(kolom ukuran)` yang tidak menyentuh master, jadi
+    menyertakannya di situ hanya akan membocorkan daftar harga tanpa guna.
+
+    Lembar itu bukan pelengkap: karena harga retail berubah sepanjang tahun
+    (Milo Set 49.400 -> 61.000 pada Agustus 2026), tiap faktur jadi membawa
+    bukti harganya sendiri.
 
     `master` boleh None — dokumennya tetap terbit, hanya tanpa lembar MASTER
     HARGA dan tanpa rumus. Dokumen yang tidak terbit jauh lebih merugikan
@@ -91,9 +97,17 @@ def buat_berkas(
                                       cfg.pengaturan, nomor))
         )
 
+    # Surat Jalan berkas SENDIRI, tanpa MASTER HARGA — rumusnya tidak
+    # menunjuk ke sana.
+    tugas.insert(0, ("SURAT_JALAN", lambda ws: (
+        buat_surat_jalan_mtn(ws, order, cust, pt, nomor, pakai_rumus=pakai_rumus)
+        if pakai_mtn else
+        buat_surat_jalan(ws, order, cust, pt, nomor, pakai_rumus=pakai_rumus)
+    )))
+
     dibuat: list[Path] = []
 
-    # ---- satu berkas: INVOICE + SURAT JALAN + MASTER HARGA --------------
+    # ---- berkas INVOICE (+ lembar MASTER HARGA kalau ada) ---------------
     wb = Workbook()
     ws_inv = wb.active
     ws_inv.title = rms.TAB_INVOICE
@@ -107,20 +121,11 @@ def buat_berkas(
     # lembarnya sama untuk DPM maupun MTN, sebab rumus menunjuk ke nama itu.
     ws_inv.title = rms.TAB_INVOICE
 
-    ws_sj = wb.create_sheet(rms.TAB_SURAT_JALAN)
-    if pakai_mtn:
-        buat_surat_jalan_mtn(ws_sj, order, cust, pt, nomor,
-                             pakai_rumus=pakai_rumus)
-    else:
-        buat_surat_jalan(ws_sj, order, cust, pt, nomor,
-                         pakai_rumus=pakai_rumus)
-    ws_sj.title = rms.TAB_SURAT_JALAN
-
     if master:
         tarif = cfg.pengaturan.tarif_ppn if pt.kenakan_ppn else 0.0
         rms.tulis_master(wb.create_sheet(rms.TAB_MASTER), master, pt, tarif,
                          order.tanggal_po)
-    berkas_utama = folder / f"INVOICE_SURAT_JALAN_{aman}.xlsx"
+    berkas_utama = folder / f"INVOICE_{aman}.xlsx"
     wb.save(berkas_utama)
     dibuat.append(berkas_utama)
 
