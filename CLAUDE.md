@@ -3494,3 +3494,60 @@ memindahkannya ke `_KEDALUWARSA` diam-diam.
 setelah `data/kondisi_sapu.json` dihapus.** Kalimat itu ikut ditulis di
 baris CATATAN berkas RINGKASAN, supaya yang membuka berkasnya di Drive tahu
 kenapa dokumennya belum ada di situ.
+
+### Unggah .xlsx dari sesi ini: BISA, tapi terbatas 21,5 KB per berkas — 26 Sep 2026
+
+Yosua: *"masukan sendiri ke drive tanpa bantuan dari saya sedikit pun"*.
+Diuji langsung, bukan disimpulkan dari catatan lama.
+
+**Catatan bagian 14 SALAH dan sudah dicabut.** Di situ tertulis konektor
+Drive menolak `base64Content` yang panjang. Yang sebenarnya: unggahan
+`.xlsx` lewat `base64Content` + `disableConversionToGoogleType: true`
+**BERHASIL** — berkas 6.536 byte dan 12.670 byte naik utuh, `fileSize`
+cocok, pemiliknya `finance.dwiputramandiri@gmail.com`. Kegagalan di bagian
+14 itu milik AKUN LAYANAN (`storageQuotaExceeded`), bukan konektor ini.
+
+**Batas yang sebenarnya ada di sisi BACA, bukan unggah.** Untuk mengirim
+berkas saya harus mengetik base64-nya, jadi saya harus membacanya dulu:
+
+| Jalur baca | Terpotong di |
+|---|---|
+| keluaran perintah shell | +-30.000 huruf |
+| pembaca berkas | +-22.375 huruf |
+
+Jadi berkas yang base64-nya lebih dari +-29.000 huruf (**xlsx di atas
++-21,5 KB**) tidak bisa dibaca utuh. Menyambung dua potongan **tidak
+boleh** — sudah dicoba dan unggahannya ditolak `not a valid base64
+string`. Kalau sambungannya lolos tapi salah satu huruf meleset, yang naik
+adalah berkas Excel RUSAK yang baru ketahuan saat customer membukanya.
+Itu lebih buruk daripada tidak mengunggah.
+
+### Akibatnya pada sapuan 26 September
+
+| | |
+|---|---|
+| Berkas hasil sapuan | 968, 16,4 MB |
+| Muat dibaca utuh (<=21,5 KB) | 38 dari 67 berkas September saja |
+| PO yang SELURUH berkasnya muat | **0 dari 16** |
+
+Tiap PO selalu punya minimal satu berkas besar — Invoice membawa lembar
+MASTER HARGA, dan Surat Jalan/Packing List ikut membesar karena logo
+tertanam di tiap berkas. Jadi **tidak ada satu paket dokumen pun yang bisa
+dikirim lengkap** dari sini. Mengirim sebagiannya (Surat Jalan tanpa
+Invoice) hanya membuat folder yang tampak berisi padahal tidak terpakai.
+
+Ongkosnya juga tidak masuk akal kalau dipaksakan: satu berkas menghabiskan
++-30.000 token (baca + tulis), jadi 968 berkas +-30 juta token — dua kali
+lipat isi satu sesi.
+
+**Kesimpulan bagian 34 tetap berlaku, tapi alasannya diperbaiki:** dokumen
+tidak bisa dikirim dari sesi ini bukan karena kuota akun layanan, melainkan
+karena batas baca 21,5 KB per berkas. Jalan yang lengkap tetap
+`jadwal/sapu-semua-bulan.bat` di komputer Yosua.
+
+**Yang BISA dikerjakan sendiri dari sini:** berkas rekap CSV (kecil), dan
+unggahan dokumen satuan yang ukurannya di bawah 21,5 KB — misalnya Faktur
+Pajak, yang memang berkas terkecil.
+
+Folder `DOKUMEN SAPUAN 26 SEPTEMBER 2026` yang sempat dibuat sudah dihapus
+lagi supaya tidak ada folder kosong yang menyesatkan.
