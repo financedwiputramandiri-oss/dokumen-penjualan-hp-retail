@@ -3296,3 +3296,49 @@ bertemu sendiri dan dokumennya bisa dibuat ulang tanpa `--abaikan-pencocokan`.
 proforma untuk customer ini tiga kali, dan proforma hanya terbit untuk
 customer per-ukuran. Nama dan alamatnya tetap dikosongkan (aturan bagian 33).
 Kalau ternyata Buchi Kids per-artikel, cabut barisnya.
+
+### Buchi Kids dipaksa TOP, dan cara memeriksa "total tidak cocok" — 26 Sep 2026
+
+Yosua: *"anda masih salah totalnya beda dengan order sheet"* — dua kali,
+padahal pencocokan program LULUS. Sebabnya bukan angka yang salah, melainkan
+**tab itu punya DUA kolom nilai bersih yang dua-duanya terisi**:
+
+| Kolom | Judul | TOTAL | |
+|---|---|---:|---|
+| AC | `TOTAL VALUE` | **84.502.575** | diskon 25% — yang dilihat Yosua |
+| AD | `DISCOUNT CBD + 2%` | 82.812.523,50 | 25% + 2% — yang dipilih Aturan 2 |
+
+Aturan 2 (bagian 7) memilih CBD karena kolom AD terisi penuh di semua baris,
+dan itu memang aturannya. Tapi yang Yosua sebut "total order sheet" adalah
+kolom **TOTAL VALUE**. Keduanya benar-benar ada di sheet; program tidak salah
+baca, ia hanya memilih kolom yang lain.
+
+**Kalau Yosua bilang total tidak cocok padahal pencocokan LULUS, jangan
+menerka dan jangan mengulang sapuan.** Cetak dulu SEMUA kolom nett beserta
+jumlahnya di baris TOTAL, lalu cocokkan mana yang ia maksud:
+
+    for kunci in o.kolom_nett(): ...   # TOP / CBD / COD, judul + jumlahnya
+
+`config/customer.csv` -> `cara_bayar_paksa=TOP` untuk Buchi Kids. Ini
+**permanen**, jadi bot otomatis ikut memakainya. Kalau Buchi Kids ternyata
+memang bayar CBD, potongan 2% itu seharusnya ikut dan kolomnya dikembalikan
+kosong.
+
+Dua kolom di tab itu berisi `#REF!` di baris TOTAL — **AA (LOSSES)** dan
+**AE (DISCOUNT COD + 1,5%)**. Tidak berdampak pada dokumen ini, tapi perlu
+dirapikan Sales.
+
+### Order sheet bisa berubah beberapa kali dalam satu jam
+
+26 September 2026 berkasnya berubah EMPAT kali: 02:05, 02:12, 02:45, 02:49.
+Dua kali dokumen terbit dari salinan yang sudah basi, dan dua kali Yosua yang
+memberitahu.
+
+**Periksa `modifiedTime` TEPAT SEBELUM membuat dokumen, bukan sekali di awal
+percakapan.** Kalau satu percakapan berisi beberapa permintaan dokumen,
+periksa ulang tiap kali. Ini murah (satu panggilan) dan menghindari
+menerbitkan faktur dengan angka lama.
+
+Rumus `W126:W129` yang dicatat di atas akhirnya **sudah dibetulkan Yosua**
+pada versi 02:45 (`=sum(N126:V126)`), dan sejak itu pencocokan lolos tanpa
+`--abaikan-pencocokan`.
