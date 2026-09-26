@@ -18,13 +18,46 @@ ikut berubah setiap order sheet diperbarui.
 
 ## 2. Berkas
 
+### ORDER SHEET YANG BERLAKU — ditegaskan Yosua 26 September 2026
+
+> *"INGAT LINK INI SEBAGAI LINK ORDER SHEET"*
+
+    https://docs.google.com/spreadsheets/d/1PNWs_o9DQR8jiRC9XzNbaqSTMz3-OLjIfUbPEjG2GYw/edit
+
+| | |
+|---|---|
+| ID | `1PNWs_o9DQR8jiRC9XzNbaqSTMz3-OLjIfUbPEjG2GYw` |
+| Judul | `9. (External) Order Sheet - Happy Pumpkin September 2026` |
+| Folder induk | `1RDH_C3ygjlTwgrxyiTlGtsp3zjTccNTB` (Order Sheet 2026) |
+| Pemilik | `happypumpkinkids.id@gmail.com` |
+
+**Inilah berkas yang dipakai kalau Yosua menyebut "order sheet" tanpa
+menyebut bulan.** Mulai dari sini, jangan mencari-cari lagi.
+
+Dua hal yang harus diingat tiap kali memakainya:
+
+1. **Periksa `modifiedTime` dulu, jangan langsung memakai salinan lama.**
+   Berkas ini berubah beberapa kali sehari. Pada 26 September saja tercatat
+   berubah jam 02:05 lalu 02:12 — dan PO baru (`PO 21 September - Buchi Kids`)
+   memang belum ada di salinan tanggal 20 September.
+2. **Ini berkas BULANAN.** Isinya September 2026; bulan berikutnya akan
+   berupa berkas lain di folder `1RDH...` yang sama. Jadi kalau bulan sudah
+   berganti dan tab yang dicari tidak ketemu di sini, cari berkas bulan itu
+   di folder induknya — jangan menyimpulkan tabnya tidak ada.
+
+ID `1yBWhMTFY8pLEhvEVFHI2hhrOouUx36aGjaE83ApcNhw` yang dulu tercatat di sini
+adalah order sheet **Agustus 2026**, dan sudah TIDAK dipakai lagi sebagai
+acuan "order sheet" begitu saja.
+
+### Berkas lain
+
 | Berkas | ID |
 |---|---|
-| Order sheet (sumber data) | `1yBWhMTFY8pLEhvEVFHI2hhrOouUx36aGjaE83ApcNhw` |
+| Order sheet Agustus 2026 (acuan lama) | `1yBWhMTFY8pLEhvEVFHI2hhrOouUx36aGjaE83ApcNhw` |
 | OTOMATISASI (versi lama, tanpa sambungan) | `1poWqdvKjJ3gwixtBg2oeZgjhhtUn6ytum2pM297wBUs` |
 | OTOMATISASI_HAPPY_PUMPKIN_SINKRON | `1lL-AXy2Th369iC4IJiS1-pM8BQGRnhCPZ5igL9oNpUM` |
 
-Order sheet dimiliki `happypumpkinkids.id@gmail.com`, dibagikan ke
+Seluruh order sheet dimiliki `happypumpkinkids.id@gmail.com`, dibagikan ke
 `finance.dwiputramandiri@gmail.com`.
 
 Faktur dan surat jalan lama ada di folder Drive `DPM - INVOICE / SURAT JALAN`,
