@@ -3342,3 +3342,33 @@ menerbitkan faktur dengan angka lama.
 Rumus `W126:W129` yang dicatat di atas akhirnya **sudah dibetulkan Yosua**
 pada versi 02:45 (`=sum(N126:V126)`), dan sejak itu pencocokan lolos tanpa
 `--abaikan-pencocokan`.
+
+### Buchi Kids ternyata CBD — pemaksaan TOP DICABUT, 26 September 2026
+
+> *"maaf saya salah untuk total Rp82.812.524 sudah benar"*
+
+Jadi yang berlaku untuk Buchi Kids (Malang) adalah kolom **AD
+`DISCOUNT CBD + 2%`**, bukan `TOTAL VALUE`. Aturan 2 sejak awal sudah
+memilih kolom yang benar — pemaksaan `cara_bayar_paksa=TOP` yang dipasang
+beberapa jam sebelumnya justru yang salah, dan sudah dicabut.
+
+| | |
+|---|---:|
+| Sebelum diskon | Rp112.670.100 |
+| Diskon `25% + 2%` | Rp29.857.577 |
+| **Total** | **Rp82.812.524** |
+| DPP | Rp74.605.877 |
+| PPN 11% | Rp8.206.647 |
+| Qty | 1.477 pcs, 192 baris |
+
+Baris `config/customer.csv` sekarang: `per_ukuran`, termin 30,
+`cara_bayar_paksa` KOSONG (biar Aturan 2 yang menentukan).
+
+**Pelajaran, dan ini yang paling penting dari seluruh urusan Buchi Kids:**
+saat Yosua bilang "totalnya beda dengan order sheet", saya memasang
+`cara_bayar_paksa` — mengubah aturan permanen — padahal yang diminta cuma
+dicocokkan angkanya. Itu terlalu jauh. Yang benar: cetak semua kolom nett
+beserta jumlahnya, TANYAKAN mana yang dimaksud, baru ubah config setelah
+dijawab. Pemaksaan cara bayar mengubah SEMUA dokumen customer itu ke
+depan, termasuk yang dibuat bot sendiri — itu bukan perbaikan satu
+dokumen.
