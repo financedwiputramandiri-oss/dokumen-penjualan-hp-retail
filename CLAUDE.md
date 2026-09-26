@@ -3426,3 +3426,71 @@ Versi 03:24 menambah tab baru `Packing List - Buchi Kids (Mala`. Belum
 diapa-apakan; perlu dipastikan Yosua apakah packing list Buchi Kids harus
 diambil dari tab itu (qty di kolom D-L, lihat bagian 3) atau tetap dari
 tab PO seperti sekarang.
+
+## 37. Sapuan seluruh order sheet — 26 September 2026
+
+Permintaan: *"sapu seluruh order sheet dan masukan file hasil sapuan itu ke
+folder ini"* (`DOKUMEN OTOMATIS HAPPY PUMPKIN`).
+
+### Hanya DUA order sheet yang perlu diunduh ulang
+
+`modifiedTime` seluruh 22 order sheet diperiksa dulu terhadap salinan 20
+September. Yang berubah cuma:
+
+| Order sheet | modifiedTime | |
+|---|---|---|
+| September 2026 | 26 Sep 04:38 | berubah LIMA kali hari itu |
+| Juli 2026 | 21 Sep 03:06 | berubah sesudah sapuan terakhir |
+
+Sisanya (19 berkas) tidak disentuh sejak 13 Mei 2026 atau lebih lama, jadi
+salinannya dipakai apa adanya. Ini menghemat 19 unduhan besar. **Periksa
+`modifiedTime` dulu sebelum mengunduh ulang** — sama seperti yang dilakukan
+bot lewat `data/kondisi_sapu.json`.
+
+### Hasil
+
+| | 20 Sep | 26 Sep |
+|---|---:|---:|
+| Order sheet terbaca | 21 dari 22 | 21 dari 22 |
+| PO seluruhnya | 459 | **460** |
+| PO menghasilkan dokumen | 235 | **236** |
+| Berkas | 728 | **968** |
+| Qty terbit | 75.617 pcs | **77.062 pcs** |
+| Nilai bersih terbit | Rp3.882.026.298 | **Rp3.962.689.922** |
+
+Berkasnya naik 728 -> 968 karena bagian 36 memisahkan Invoice dan Surat
+Jalan lagi: 4 berkas per PO plus Proforma untuk 24 PO per-ukuran.
+
+**Hati-hati menghitung PO.** Baris `SELESAI ... PO baru` menjumlahkan 237,
+tapi folder PO yang sebenarnya 236 — satu di antaranya
+`LAPORAN_PENCOCOKAN.xlsx` yang ikut terhitung sebagai entri baru di
+`ls keluaran` pada bulan pertama. Hitung dari
+`find dok -mindepth 2 -maxdepth 2 -type d`, jangan dari keluaran layar.
+
+### Tiga berkas yang naik ke folder Drive
+
+| Berkas | Isi |
+|---|---|
+| `RINGKASAN SAPUAN 26 SEPTEMBER 2026` | 22 baris, satu per order sheet |
+| `REKAP SAPUAN PER PO 26 SEPTEMBER 2026` | 236 PO yang dokumennya terbit |
+| `PO BELUM TERBIT - PERLU DIRAPIKAN SALES - 26 SEPTEMBER 2026` | 224 PO, dengan SEBAB per baris |
+
+Berkas ketiga itu baru, dan lebih berguna daripada rekap gabungan: untuk PO
+yang rumusnya sudah dilacak (bagian 29, 30, 34) sebabnya ditulis lengkap
+dengan sel dan rumus penggantinya, jadi Sales bisa langsung membetulkannya
+tanpa membuka catatan ini.
+
+Jalurnya tetap `textContent` + `contentMimeType: text/csv` (bagian 14).
+
+### 968 dokumennya TIDAK naik — dan memang tidak boleh
+
+Alasannya tidak berubah dari bagian 34, dan harus ditegaskan tiap kali
+diminta: (1) konektor Drive cuma mengirim berkas sebagai teks dalam satu
+panggilan, dan (2) berkas yang diunggah dari sini tidak dikenal
+`data/kondisi_sapu.json` di komputer Yosua, jadi sapuan berikutnya akan
+memindahkannya ke `_KEDALUWARSA` diam-diam.
+
+**Satu-satunya jalan: `jadwal/sapu-semua-bulan.bat` di komputer Yosua,
+setelah `data/kondisi_sapu.json` dihapus.** Kalimat itu ikut ditulis di
+baris CATATAN berkas RINGKASAN, supaya yang membuka berkasnya di Drive tahu
+kenapa dokumennya belum ada di situ.
