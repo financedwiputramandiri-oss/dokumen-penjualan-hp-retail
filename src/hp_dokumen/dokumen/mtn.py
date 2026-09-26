@@ -46,6 +46,32 @@ LEBAR_INV = {1: 3.43, 2: 17.86, 3: 34.43, 4: 6.14,
              5: 12.86, 6: 13.14, 7: 14.29, 8: 18.0}
 KOL_AKHIR_INV = 8
 
+# Kolom 7 memuat label penutup, yang terpanjang "Value Disc 25% + 2%".
+# Lebar bawaan 14,29 hanya cukup untuk "Value Disc 25%", jadi tulisan
+# gabungan CBD/COD terpotong dan diskonnya terbaca lebih kecil daripada
+# yang sebenarnya ditagih.
+AWALAN_LABEL_DISKON = "Value Disc "
+HURUF_PER_SATUAN = 1.05   # +-lebar satu huruf pada kolom Excel
+
+
+def _lebar_inv(tulisan_diskon: str) -> dict[int, float]:
+    """LEBAR_INV dengan kolom 7 dilebarkan supaya label penutup tidak terpotong.
+
+    Tambahan lebarnya diambil dari kolom DESKRIPSI (3), yang teksnya memang
+    melipat, sehingga jumlah lebar A..H tidak berubah dan dokumennya tetap
+    muat satu halaman A4 tegak.
+    """
+    lebar = dict(LEBAR_INV)
+    perlu = len(AWALAN_LABEL_DISKON + tulisan_diskon) * HURUF_PER_SATUAN
+    kurang = perlu - lebar[7]
+    if kurang > 0:
+        # Kolom deskripsi tidak boleh menyusut habis; sisakan minimal 22
+        # satuan seperti aturan lebar faktur DPM.
+        ambil = min(kurang, max(0.0, lebar[3] - 22.0))
+        lebar[7] += ambil
+        lebar[3] -= ambil
+    return lebar
+
 BARIS_KOP_INV = 2       # nama perusahaan di C2
 BARIS_LABEL_INV = 11    # CUSTOMER / FAKTUR / TANGGAL
 BARIS_NILAI_INV = 12    # nama customer / nomor / tanggal
@@ -94,6 +120,25 @@ BARIS_DATA_SJ = 21
 
 TINGGI_JUDUL_SJ = 14.45
 TINGGI_DATA_SJ = 20.1
+
+# Tinggi 20,1 dari berkas asli MTN hanya memuat SATU baris teks. Deskripsi
+# yang lebih panjang daripada kolomnya melipat, lalu baris keduanya
+# TERPOTONG - nama barangnya tidak terbaca utuh oleh customer. Ketahuan dari
+# gambar hasil render PDF, bukan dari nilai selnya.
+TINGGI_BARIS_TEKS = 14.4     # +-tinggi satu baris huruf 11
+
+
+def _tinggi_baris_sj(deskripsi: str, lebar_kolom: float) -> float:
+    """Tinggi baris Surat Jalan MTN, ditambah kalau deskripsinya melipat.
+
+    Baris berdeskripsi pendek TETAP 20,1 supaya bentuknya tidak berubah dari
+    berkas asli; yang ditinggikan hanya baris yang memang butuh.
+    """
+    muat = max(1, int(lebar_kolom / 1.05))
+    baris = max(1, -(-len(deskripsi or "") // muat))
+    if baris <= 1:
+        return TINGGI_DATA_SJ
+    return TINGGI_DATA_SJ + (baris - 1) * TINGGI_BARIS_TEKS
 
 KALIMAT_SJ = "Diterima dengan baik barang-barang tersebut dibawah ini :"
 
@@ -221,7 +266,16 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
     tanggal = tanggal_dokumen or order.tanggal_po or date.today()
     ws.title = "Invoice"
 
-    gaya.atur_lebar(ws, LEBAR_INV)
+    # Tulisan diskon dihitung DULU, sebelum lebar kolom disetel: label
+    # penutup "Value Disc 25% + 2%" lebih panjang daripada kolom G bawaan
+    # (14,29) dan tercetak terpotong jadi "Value Disc 25%" — terbaca sebagai
+    # diskon 25%, padahal potongan yang ditagih 26,5%. Cacat lebar kolom
+    # semacam ini tidak pernah terlihat dari nilai selnya; lihat CLAUDE.md
+    # bagian 19, 28, 31 dan 33.
+    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
+    tulisan_diskon = teks_persen or _persen_ringkas(angka_persen or 0.0)
+
+    gaya.atur_lebar(ws, _lebar_inv(tulisan_diskon))
     _kop(ws, perusahaan, BARIS_KOP_INV)
 
     nama_tampil = (cust.nama_di_dokumen if cust else "") or order.customer_kunci
@@ -237,11 +291,6 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
         pecah_per_ukuran=per_ukuran,
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
-    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
-    # Untuk diskon tunggal (TOP) _persen_tertulis mengembalikan None pada
-    # teksnya dan angkanya terpisah - kalau dipakai apa adanya, kolom Diskon
-    # tercetak KOSONG. Sama seperti proforma (CLAUDE.md bagian 28).
-    tulisan_diskon = teks_persen or _persen_ringkas(angka_persen or 0.0)
 
     # ---- judul tabel: DUA tingkat (17-18), bukan tiga seperti DPM --------
     j = BARIS_JUDUL_INV
@@ -433,7 +482,8 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
                          if (pakai_rumus and kol_qty > KOL_UKURAN_MULAI_SJ)
                          else qty,
                          rata="center", ukuran=HURUF_ISI)
-            ws.row_dimensions[r].height = TINGGI_DATA_SJ
+            ws.row_dimensions[r].height = _tinggi_baris_sj(
+                b.nama, lebar[KOL_DESK_SJ])
             r += 1
         gaya.beri_garis(ws, awal, 1, r - 1, kol_qty)
         r += 1

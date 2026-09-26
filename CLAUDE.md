@@ -3372,3 +3372,57 @@ beserta jumlahnya, TANYAKAN mana yang dimaksud, baru ubah config setelah
 dijawab. Pemaksaan cara bayar mengubah SEMUA dokumen customer itu ke
 depan, termasuk yang dibuat bot sendiri — itu bukan perbaikan satu
 dokumen.
+
+### Buchi Kids dibuat dengan format MTN — 26 September 2026
+
+Permintaan: *"pakai format mtn"*. `perusahaan_pemroses=MTN` dipasang
+**SEMENTARA** lalu dikembalikan, persis seperti Baby Fame 17 September
+(bagian 31). `config/customer.csv` TIDAK diubah permanen: mengisi kolom itu
+berarti SEMUA dokumen Buchi Kids ke depan — termasuk yang dibuat bot jam
+06:00 dan 18:00 — terbit atas nama MTN dengan rekening MTN. Itu keputusan
+Yosua, bukan kesimpulan dari satu permintaan.
+
+Penutupnya benar hanya tiga baris (Subtotal, Value Disc, Total) — MTN tidak
+mengenakan PPN. Angkanya sama dengan versi DPM sampai Total, yang berbeda
+cuma DPP/PPN tidak ada.
+
+### Dua cacat lebar/tinggi baru di tata letak MTN — SELESAI 26 Sep 2026
+
+Dua-duanya ketahuan dari GAMBAR hasil render PDF, bukan dari nilai sel.
+Ini kali ketujuh dan kedelapan pola yang sama muncul.
+
+**1. Label penutup `Value Disc 25% + 2%` tercetak `Value Disc 25%`.**
+Kolom G bawaan 14,29 satuan hanya memuat tulisan pendeknya. Di dokumen
+penagihan ini mahal: diskon yang ditagih 26,5% tapi tertulis 25%, dan
+angka rupiahnya (Rp29.857.577) tidak cocok dengan persen yang tercetak.
+Nilai selnya sendiri SELALU benar, jadi tes berbasis sel tidak akan pernah
+menangkapnya.
+
+`_lebar_inv(tulisan_diskon)` melebarkan kolom 7 secukupnya dan mengambil
+kekurangannya dari kolom DESKRIPSI (3), yang memang melipat — jumlah lebar
+A..H tidak berubah, jadi tetap muat A4 tegak. Kolom 3 tidak boleh kurang
+dari 22 satuan. Cara yang sama dengan bagian 26 dan 33.
+
+`_persen_tertulis()` karena itu dipanggil SEBELUM `atur_lebar`, bukan
+sesudahnya.
+
+**2. Deskripsi panjang di Surat Jalan MTN terpotong separuh.**
+`TINGGI_DATA_SJ = 20.1` diambil dari berkas asli MTN dan hanya memuat SATU
+baris huruf 11. `UltraCool Ruffle Sleeve Tee Medium Size` melipat jadi dua
+baris, dan baris keduanya hilang — nama barangnya tidak terbaca utuh.
+
+`_tinggi_baris_sj()` meninggikan HANYA baris yang melipat; baris pendek
+tetap 20,1 supaya bentuknya tidak berubah dari berkas asli.
+
+Dua tes baru. Tes 249 -> 251.
+
+### Order sheet berubah lagi jam 03:24
+
+Hari itu totalnya LIMA kali: 02:05, 02:12, 02:45, 02:49, 03:24. Pemeriksaan
+`modifiedTime` tepat sebelum membuat dokumen sekali lagi terbukti perlu —
+salinan 02:49 sudah basi dalam hitungan menit.
+
+Versi 03:24 menambah tab baru `Packing List - Buchi Kids (Mala`. Belum
+diapa-apakan; perlu dipastikan Yosua apakah packing list Buchi Kids harus
+diambil dari tab itu (qty di kolom D-L, lihat bagian 3) atau tetap dari
+tab PO seperti sekarang.

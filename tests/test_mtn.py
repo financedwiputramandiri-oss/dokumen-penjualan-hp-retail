@@ -224,3 +224,32 @@ def test_invoice_mtn_TIDAK_berjudul(order, cfg, daftar, mtn):
         assert ws.cell(BARIS_JUDUL_SJ_DOK, c).value in (None, ""), (
             "faktur MTN tidak boleh punya judul dokumen"
         )
+
+
+def test_label_penutup_mtn_muat_di_kolomnya():
+    """`Value Disc 25% + 2%` pernah tercetak jadi `Value Disc 25%`.
+
+    Kolom G bawaan 14,29 satuan hanya memuat tulisan pendeknya, jadi diskon
+    gabungan CBD/COD terbaca lebih kecil daripada yang benar-benar ditagih.
+    Cacat semacam ini tidak kelihatan dari nilai selnya.
+    """
+    from hp_dokumen.dokumen.mtn import (AWALAN_LABEL_DISKON, HURUF_PER_SATUAN,
+                                        LEBAR_INV, _lebar_inv)
+
+    for tulisan in ("25%", "22% + 1.5%", "25% + 2%"):
+        lebar = _lebar_inv(tulisan)
+        perlu = len(AWALAN_LABEL_DISKON + tulisan) * HURUF_PER_SATUAN
+        assert lebar[7] >= perlu, f"label '{tulisan}' tidak muat di kolom G"
+        assert lebar[3] >= 22.0, "kolom deskripsi tidak boleh menyusut habis"
+        assert round(sum(lebar.values()), 2) == round(sum(LEBAR_INV.values()), 2)
+
+
+def test_baris_surat_jalan_mtn_meninggi_kalau_deskripsi_melipat():
+    """Tinggi asli 20,1 cuma memuat SATU baris; deskripsi panjang terpotong."""
+    from hp_dokumen.dokumen.mtn import (LEBAR_SJ_TETAP, TINGGI_DATA_SJ,
+                                        KOL_DESK_SJ, _tinggi_baris_sj)
+
+    lebar = LEBAR_SJ_TETAP[KOL_DESK_SJ]
+    assert _tinggi_baris_sj("Ziggy Set", lebar) == TINGGI_DATA_SJ
+    panjang = "UltraCool Ruffle Sleeve Tee Medium Size"
+    assert _tinggi_baris_sj(panjang, lebar) > TINGGI_DATA_SJ
