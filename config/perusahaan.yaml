@@ -23,7 +23,7 @@ perusahaan:
       - Phone. +62 (021) 22561723
       - "Wa:(+62) 0877 7950 0992"
       - "Email : DPMTEX@yahoo.com"
-    logo: "logo_dpm.jpeg"
+    logo: "logo_dpm_kecil.png"
     # NITKU 22 digit, WAJIB untuk faktur pajak Coretax.
     # Lihat di Coretax: menu Profil Wajib Pajak -> Tempat Kegiatan Usaha.
     id_tku: ""
@@ -47,7 +47,7 @@ perusahaan:
       - "JAKARTA BARAT, 11460"
       - "TEL : +62 21 5662598"
       - "EMAIL : MTN.MUTIARATIMURNUSANTARA@GMAIL.COM"
-    logo: "logo_mtn.png"
+    logo: "logo_mtn_kecil.png"
     id_tku: ""
     rekening:
       - "PEMBAYARAN DITRANSFER KE REKENING :"

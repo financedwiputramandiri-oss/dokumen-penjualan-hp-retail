@@ -3551,3 +3551,105 @@ Pajak, yang memang berkas terkecil.
 
 Folder `DOKUMEN SAPUAN 26 SEPTEMBER 2026` yang sempat dibuat sudah dihapus
 lagi supaya tidak ada folder kosong yang menyesatkan.
+
+## 38. Logo diperkecil & unggahan .xlsx ke Drive dari sesi ini — 28 September 2026
+
+Yosua: *"mengapa file hasil sapuan tidak bisa masuk ke drive, paksakan agar
+format code terbaru bisa masuk"*.
+
+### Sebab sebenarnya — bagian 37 SALAH mendiagnosis
+
+Bagian 37 menyimpulkan batasnya ada di **membaca** (±22.375 huruf lewat
+pembaca berkas, ±30.000 lewat keluaran shell) dan menyatakan menyambung
+potongan pasti gagal. Itu hanya separuh benar, dan sebab utamanya terlewat.
+
+Diuji langsung 28 September, empat unggahan:
+
+| Berkas | Ukuran | Huruf b64 | Hasil |
+|---|---:|---:|---|
+| FAKTUR_PAJAK Satu Sama (Ve) | 6.827 | 9.104 | **COCOK** |
+| FAKTUR_PAJAK Buchi Kids | 12.670 | 16.896 | **COCOK** |
+| SURAT_JALAN (dibaca ulang dari disk) | 12.113 | 16.152 | **COCOK** |
+| SURAT_JALAN (disalin dari keluaran saya sendiri) | 12.113 | 16.152 | **GAGAL, 12.110** |
+
+**Aturannya: base64 harus DIBACA ULANG dari disk tiap kali hendak diunggah.**
+Menyalin base64 dari pesan saya sendiri yang sebelumnya menghasilkan berkas
+kurang 3 byte — dan karena salinannya sama, kesalahannya terulang persis sama
+dua kali sehingga sempat terlihat seperti cacat konektor. Bukan.
+
+### Cara memastikan — WAJIB, jangan dilewati
+
+`create_file` mengembalikan `fileSize`. Angka itu **harus sama persis** dengan
+ukuran berkas asal. Kalau beda, berkasnya RUSAK: hapus (`trash_file`), baca
+ulang base64-nya dari disk, unggah lagi. Jangan pernah membiarkan berkas yang
+`fileSize`-nya meleset — Excel rusak baru ketahuan saat customer membukanya.
+
+### Logo diperkecil — berkas dokumen turun 30-45%
+
+Logo adalah bagian terbesar tiap dokumen: pada Surat Jalan 9.202 dari 16.078
+byte terkompresi (**57%**).
+
+| Logo | Sebelum | Sesudah | Beda gambar (RMS pada ukuran cetak) |
+|---|---:|---:|---:|
+| DPM `logo_dpm.jpeg` -> `logo_dpm_kecil.png` | 9.533 | **3.931** | 1,46 |
+| MTN `logo_mtn.png` -> `logo_mtn_kecil.png` | 55.113 | **5.885** | 1,29 |
+
+Keduanya PNG 256 warna. RMS di bawah 2 pada skala 0-255 artinya **tidak
+terlihat bedanya** — sudah dibuktikan dengan merender Surat Jalan ke PDF lalu
+melihat gambarnya, bukan dari membaca nilai sel.
+
+Logo MTN ternyata disimpan RGBA 55 KB padahal **alpha-nya 255 di seluruh
+70.713 piksel** — tidak ada transparansi sama sekali. Itu pemborosan murni.
+
+Berkas lama TIDAK dihapus (`config/logo_dpm.jpeg`, `config/logo_mtn.png` tetap
+ada); `config/perusahaan.yaml` hanya diarahkan ke berkas baru. Kalau suatu saat
+Yosua ingin logo resolusi penuh, tinggal kembalikan nama lamanya.
+
+Akibatnya pada September 2026 (67 berkas):
+
+| | Sebelum | Sesudah |
+|---|---:|---:|
+| Berkas yang base64-nya <= 29.000 huruf | 38 dari 67 | **60 dari 67** |
+| PO yang SELURUH berkasnya muat | **0 dari 16** | **13 dari 16** |
+| Total ukuran | ±1,4 MB | 1.041.479 byte |
+
+Yang masih kelewat besar: Invoice + Proforma milik tiga customer per-ukuran
+(Katamama Tapos, Katamama Cikarang, Buchi Kids) — Invoice membawa lembar
+MASTER HARGA 195 artikel.
+
+251 tes tetap lolos.
+
+### Keadaan unggahan saat dihentikan Yosua
+
+Folder tujuan di Drive, di dalam `DOKUMEN OTOMATIS HAPPY PUMPKIN`:
+
+| | ID |
+|---|---|
+| `SEPTEMBER 2026 - FORMAT TERBARU 28 SEPTEMBER` | `1ZGsjB3LJTdjg8Dw-g1fr820pcDt-90TR` |
+| `PO_17_September_-_Satu_Sama_(Ve` | `1vOwwrIQWDZ3fqoOUMY-57Y4elRmNgjkk` |
+
+Sudah naik dan terverifikasi: `FAKTUR_PAJAK` (6.827) dan `SURAT_JALAN`
+(12.113) untuk PO 17 September - Satu Sama (Ve). Sisanya 65 berkas belum.
+
+Nama folder sengaja BUKAN nama order sheet, supaya bot tidak mengenalinya
+sebagai draf dan memindahkannya ke `_KEDALUWARSA` (jebakan bagian 34).
+
+### Cara melanjutkan — kode perintah Yosua: "lanjutkan proses sapu ke drive"
+
+Dokumennya ada di `keluaran/` yang di-gitignore, jadi **hilang begitu wadah
+sesi ini dihapus**. Urutan untuk melanjutkan:
+
+1. Periksa `modifiedTime` order sheet September (`1PNWs_o9DQ...`). Kalau
+   berubah dari 26 Sep 04:38, unduh ulang ke `data/semua/`.
+2. `python3 jalankan.py --berkas "data/semua/<order sheet>.xlsx" --tahun 2026 buat-semua`
+3. Untuk tiap berkas: `base64 -w0 <berkas>` (BACA ULANG, jangan salin dari
+   pesan sendiri) -> `create_file` dengan `disableConversionToGoogleType: true`
+   -> cocokkan `fileSize`.
+4. Lewati berkas yang base64-nya di atas ±29.000 huruf; catat namanya.
+
+Ongkosnya ±15.000 token per berkas, jadi 65 berkas sisa ±1 juta token.
+
+**Jalan yang tetap paling benar dan paling murah**: klik dua kali
+`jadwal/sapu-semua-bulan.bat` di komputer Yosua setelah menghapus
+`data/kondisi_sapu.json`. Unggahan dari sesi ini hanya untuk keadaan ketika
+Yosua tidak bisa menyentuh komputernya sama sekali.
