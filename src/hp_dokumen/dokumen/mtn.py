@@ -54,22 +54,36 @@ AWALAN_LABEL_DISKON = "Value Disc "
 HURUF_PER_SATUAN = 1.05   # +-lebar satu huruf pada kolom Excel
 
 
-def _lebar_inv(tulisan_diskon: str) -> dict[int, float]:
-    """LEBAR_INV dengan kolom 7 dilebarkan supaya label penutup tidak terpotong.
+def _lebar_inv(tulisan_diskon: str, jumlah_baris: int = 0) -> dict[int, float]:
+    """LEBAR_INV dengan kolom 7 dan kolom No. dilebarkan secukupnya.
 
     Tambahan lebarnya diambil dari kolom DESKRIPSI (3), yang teksnya memang
     melipat, sehingga jumlah lebar A..H tidak berubah dan dokumennya tetap
     muat satu halaman A4 tegak.
+
+    Kolom 7 memuat label penutup ("Value Disc 25% + 2%").
+
+    Kolom 1 memuat nomor baris. Lebar bawaan 3,43 hanya cukup untuk dua
+    angka; begitu fakturnya lebih dari 99 baris, Excel mencetak ``###``
+    dan nomor barisnya hilang sama sekali. Ketahuan pada Buchi Kids
+    (159 baris), dan hanya terlihat dari PDF yang dirender jadi gambar.
     """
     lebar = dict(LEBAR_INV)
-    perlu = len(AWALAN_LABEL_DISKON + tulisan_diskon) * HURUF_PER_SATUAN
-    kurang = perlu - lebar[7]
-    if kurang > 0:
+
+    def _lebarkan(kolom: int, perlu: float) -> None:
+        kurang = perlu - lebar[kolom]
+        if kurang <= 0:
+            return
         # Kolom deskripsi tidak boleh menyusut habis; sisakan minimal 22
         # satuan seperti aturan lebar faktur DPM.
         ambil = min(kurang, max(0.0, lebar[3] - 22.0))
-        lebar[7] += ambil
+        lebar[kolom] += ambil
         lebar[3] -= ambil
+
+    _lebarkan(7, len(AWALAN_LABEL_DISKON + tulisan_diskon) * HURUF_PER_SATUAN)
+    if jumlah_baris > 0:
+        # +1 huruf untuk jarak ke garis kotak di kedua sisi.
+        _lebarkan(1, (len(str(jumlah_baris)) + 1) * HURUF_PER_SATUAN)
     return lebar
 
 BARIS_KOP_INV = 2       # nama perusahaan di C2
@@ -275,7 +289,17 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
     teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
     tulisan_diskon = teks_persen or _persen_ringkas(angka_persen or 0.0)
 
-    gaya.atur_lebar(ws, _lebar_inv(tulisan_diskon))
+    # Barisnya disusun DULU juga: lebar kolom No. ikut banyaknya baris, dan
+    # lebar kolom A:B harus sudah final sebelum logo dipasang di _kop()
+    # (logo ditengahkan dari lebar kolom - lihat CLAUDE.md bagian 30 dan 33).
+    per_ukuran = bool(cust and cust.pecah_per_ukuran)
+    baris = susun_baris(
+        order, keputusan,
+        pecah_per_ukuran=per_ukuran,
+        akhiran_y=pengaturan.akhiran_y_untuk_angka,
+    )
+
+    gaya.atur_lebar(ws, _lebar_inv(tulisan_diskon, len(baris)))
     _kop(ws, perusahaan, BARIS_KOP_INV)
 
     nama_tampil = (cust.nama_di_dokumen if cust else "") or order.customer_kunci
@@ -283,13 +307,6 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
         ws, cust, nama_tampil, BARIS_LABEL_INV,
         [(7, 7, "FAKTUR", nomor_mtn("FA", nomor, tanggal)),
          (8, 8, "TANGGAL", gaya.tanggal_indonesia(tanggal))],
-    )
-
-    per_ukuran = bool(cust and cust.pecah_per_ukuran)
-    baris = susun_baris(
-        order, keputusan,
-        pecah_per_ukuran=per_ukuran,
-        akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
 
     # ---- judul tabel: DUA tingkat (17-18), bukan tiga seperti DPM --------

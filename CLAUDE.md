@@ -3653,3 +3653,58 @@ Ongkosnya ±15.000 token per berkas, jadi 65 berkas sisa ±1 juta token.
 `jadwal/sapu-semua-bulan.bat` di komputer Yosua setelah menghapus
 `data/kondisi_sapu.json`. Unggahan dari sesi ini hanya untuk keadaan ketika
 Yosua tidak bisa menyentuh komputernya sama sekali.
+
+### Kolom No. faktur MTN tercetak `###` kalau lebih dari 99 baris — SELESAI 29 Sep 2026
+
+Ketahuan saat membuat faktur MTN untuk `PO 21 September - Buchi Kids (Malang)`
+(159 baris). Mulai nomor 100, kolom No. tercetak **`###`** — nomor barisnya
+hilang sama sekali di tiga halaman terakhir.
+
+Sebabnya `LEBAR_INV[1] = 3.43`, diambil apa adanya dari berkas asli MTN
+`FA 0010526` yang cuma 30-an baris. Faktur DPM tidak kena karena kolom A-nya
+4,0 dan angkanya lebih kecil.
+
+`_lebar_inv()` sekarang menerima `jumlah_baris` dan melebarkan kolom 1
+secukupnya, kekurangannya diambil dari kolom DESKRIPSI (3) yang memang
+melipat — jumlah lebar A..H tidak berubah, jadi tetap muat A4 tegak. Faktur
+di bawah 100 baris bentuknya tidak berubah sama sekali.
+
+`susun_baris()` karena itu dipindah ke ATAS `gaya.atur_lebar()`: jumlah baris
+harus diketahui sebelum lebar disetel, dan lebar kolom A:B harus final
+sebelum `_kop()` memasang logo (logo ditengahkan dari lebar kolom, bagian 30
+dan 33). Pola yang sama persis dengan invoice DPM di bagian 30.
+
+**Ini kali kesembilan pola yang sama muncul** (kolom C Surat Jalan bagian 19,
+DISK% proforma bagian 28, label Faktur Pajak bagian 28, tanggal MTN bagian 31,
+lembar master dihapus bagian 33, "STOMER" bagian 33, label Value Disc dan
+tinggi baris SJ bagian 36, dan sekarang ini). Nilai selnya SELALU benar, jadi
+tes berbasis sel tidak akan pernah menangkapnya. **Render ke PDF, ubah jadi
+gambar, lalu lihat.**
+
+Satu tes baru (`test_kolom_nomor_mtn_melebar_untuk_faktur_ratusan_baris`).
+Tes 251 -> 252.
+
+### Buchi Kids: 25% atau 25% + 2%? BOLAK-BALIK, belum tuntas — 29 Sep 2026
+
+| Tanggal | Yang diminta Yosua | Kolom | Total |
+|---|---|---|---:|
+| 26 Sep pagi | "totalnya beda dengan order sheet" | AC | Rp84.502.575 |
+| 26 Sep siang | *"maaf saya salah, Rp82.812.524 sudah benar"* | AD | Rp82.812.524 |
+| **29 Sep** | *"salah buat total harga menjadi Rp84.502.575"* | **AC** | **Rp84.502.575** |
+
+Kolom AD (`DISCOUNT CBD + 2%`) terisi PENUH di semua 192 baris, jadi Aturan 2
+selalu memilih AD. Untuk menerbitkan versi 25% dipakai `cara_bayar_paksa=TOP`
+**sementara**, lalu dikembalikan — sama seperti Baby Fame (bagian 31) dan
+permintaan MTN Buchi Kids (bagian 36).
+
+`config/customer.csv` TIDAK diubah permanen, dan catatannya sengaja masih
+berbunyi "CBD - dipastikan Yosua 26 Sep 2026". **Jangan diubah sebelum Yosua
+menyatakannya sendiri**, sebab pemaksaan itu mengubah SEMUA dokumen Buchi
+Kids ke depan termasuk yang dibuat bot jam 06:00 dan 18:00.
+
+Kalau nanti Yosua memastikan Buchi Kids memang TOP, mintalah Sales
+MENGOSONGKAN kolom AD di tab itu — selama kolom itu terisi penuh, tiap orang
+yang membuka order sheet akan melihat dua angka dan bingung lagi.
+
+Format MTN juga dipasang sementara (`perusahaan_pemroses=MTN`) lalu
+dikembalikan, dengan alasan yang sama.

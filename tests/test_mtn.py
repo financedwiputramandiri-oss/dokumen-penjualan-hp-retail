@@ -253,3 +253,26 @@ def test_baris_surat_jalan_mtn_meninggi_kalau_deskripsi_melipat():
     assert _tinggi_baris_sj("Ziggy Set", lebar) == TINGGI_DATA_SJ
     panjang = "UltraCool Ruffle Sleeve Tee Medium Size"
     assert _tinggi_baris_sj(panjang, lebar) > TINGGI_DATA_SJ
+
+
+def test_kolom_nomor_mtn_melebar_untuk_faktur_ratusan_baris():
+    """Nomor baris 3 angka tidak boleh tercetak ### di faktur MTN.
+
+    Lebar bawaan kolom No. (3,43) cuma muat dua angka. Ketahuan pada
+    Buchi Kids (159 baris) dari PDF yang dirender jadi gambar - nilai
+    selnya sendiri selalu benar, jadi tes berbasis sel tidak menangkapnya.
+    """
+    from hp_dokumen.dokumen.mtn import (HURUF_PER_SATUAN, LEBAR_INV,
+                                        _lebar_inv)
+
+    jumlah_asli = round(sum(LEBAR_INV.values()), 2)
+    for jumlah_baris in (9, 99, 159, 1200):
+        lebar = _lebar_inv("25%", jumlah_baris)
+        perlu = (len(str(jumlah_baris)) + 1) * HURUF_PER_SATUAN
+        assert lebar[1] >= perlu, jumlah_baris
+        assert lebar[3] >= 22.0, jumlah_baris
+        # jatah A..H tidak boleh bertambah - dokumen harus tetap muat A4
+        assert round(sum(lebar.values()), 2) == jumlah_asli, jumlah_baris
+
+    # faktur pendek tidak berubah bentuknya dari berkas asli MTN
+    assert _lebar_inv("25%", 9)[1] == LEBAR_INV[1]
