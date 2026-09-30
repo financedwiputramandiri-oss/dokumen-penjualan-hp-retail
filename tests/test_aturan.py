@@ -67,7 +67,9 @@ def test_cocok_dengan_baris_total_order_sheet(orders):
 def test_cbd_terisi_penuh_dipakai(orders, daftar):
     cbd = ambil(orders, "CBD")
     k = tentukan_nett(cbd, daftar.cari(cbd.nama_tab))
-    assert k.kolom == "CBD"
+    # Kunci kolom SELALU memuat huruf kolomnya ("CBD@AD"), supaya kolom fisik
+    # yang sama bernama sama di semua blok satu tab. Lihat CLAUDE.md bagian 39.
+    assert k.kolom.startswith("CBD@")
     assert k.cara_bayar == "CBD"
     diharapkan = sum(b.disc_cbd for b in cbd.semua_baris)
     assert abs(k.nett_total - diharapkan) < 0.01
@@ -77,7 +79,7 @@ def test_cbd_terisi_sebagian_diabaikan_seluruhnya(orders, daftar):
     """Satu baris terisi dari tiga -> seluruh kolom diabaikan, order jadi TOP."""
     top = ambil(orders, "TOP")
     k = tentukan_nett(top, daftar.cari(top.nama_tab))
-    assert k.kolom == "TOP"
+    assert k.kolom.startswith("TOP@")
     assert k.cara_bayar == "TOP"
     assert 0 < k.terisi_cbd < k.jumlah_baris
     diharapkan = sum(b.total_value for b in top.semua_baris)
@@ -92,7 +94,7 @@ def test_override_manual_dilaporkan(orders):
     paksa = Customer("Contoh TOP", "PT X", "", "", "per_artikel", 30, "CBD", "", "")
     k = tentukan_nett(top, paksa)
     assert k.dioverride is True
-    assert k.kolom == "CBD"
+    assert k.kolom.startswith("CBD@")
 
 
 # ------------------------------- Aturan 3 & 4: label ukuran & deskripsi
@@ -209,3 +211,44 @@ def test_kode_beda_huruf_besar_kecil_tidak_dianggap_hilang(orders, daftar, conto
 
     gagal_master = [p for p in h.yang_gagal if "master harga" in p.nama.lower()]
     assert not gagal_master, f"kode beda huruf dianggap hilang: {gagal_master}"
+
+
+def test_kunci_kolom_nett_sama_di_semua_blok_satu_tab():
+    """Kolom fisik yang sama wajib bernama sama di tiap blok.
+
+    Dulu kuncinya cuma memakai huruf kolom kalau jenisnya kembar, jadi kolom
+    AD bernama "COD" di blok yang kolom COD-nya tunggal dan "COD@AD" di blok
+    yang punya dua kolom COD. Baris blok kedua lalu tidak pernah ketemu saat
+    Aturan 2 menghitung kelengkapan, ordernya dianggap terisi sebagian, dan
+    nilai bersihnya kurang jutaan rupiah tanpa satu pun peringatan.
+    """
+    from hp_dokumen.tata_letak import kenali
+
+    class SelPalsu:
+        def __init__(self, v): self.value = v
+
+    class LembarPalsu:
+        """Dua blok: yang satu AE berjudul CBD, yang satu AE berjudul COD."""
+        def __init__(self, judul_ae):
+            self.max_column = 32
+            self._judul_ae = judul_ae
+
+        def cell(self, r, c):
+            if r != 1:
+                return SelPalsu(None)
+            return SelPalsu({
+                1: "ARTICLE CODE", 4: "ORIGINAL PO",
+                14: "AVAILABLE TO ORDER (QTY)", 24: "PRICE W/ VAT",
+                25: "TOTAL ORI PO (VALUE)", 26: "TOTAL ATO (VALUE)",
+                27: "LOSSES", 28: "DISC", 29: "TOTAL VALUE",
+                30: "DISCOUNT COD + 1,5%", 31: self._judul_ae,
+            }.get(c))
+
+    kunci_ad = []
+    for judul_ae in ("DISCOUNT CBD + 2%", "DISCOUNT COD + 1,5%"):
+        t = kenali(LembarPalsu(judul_ae), 1)
+        ad = next(k for k in t.nett if k.huruf == "AD")
+        kunci_ad.append(ad.kunci)
+
+    assert kunci_ad[0] == kunci_ad[1], (
+        f"kolom AD bernama beda antar blok: {kunci_ad}")

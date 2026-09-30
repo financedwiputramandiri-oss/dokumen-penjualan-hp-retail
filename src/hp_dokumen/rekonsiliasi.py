@@ -103,7 +103,7 @@ def periksa_order(
     )
 
     # 4. nilai bersih TOP juga harus sama dengan baris TOTAL kolom AC
-    if keputusan.kolom == "TOP" and t and t.total_value:
+    if keputusan.cara_bayar == "TOP" and t and t.total_value:
         hasil.periksa.append(
             Pemeriksaan(
                 "Nilai bersih vs baris TOTAL sheet",
@@ -198,7 +198,7 @@ def periksa_order(
     if len(persen_sheet) == 1:
         satu = persen_sheet.pop()
         # untuk CBD/COD ada tambahan 1,5% di atas diskon dasar, jadi wajar beda
-        dasar_diharapkan = efektif if keputusan.kolom == "TOP" else _diskon_dasar(order, keputusan, efektif)
+        dasar_diharapkan = efektif if keputusan.cara_bayar == "TOP" else _diskon_dasar(order, keputusan, efektif)
         if abs(satu - dasar_diharapkan) > 0.0005:
             hasil.peringatan.append(
                 f"Kolom DISC (AB) di order sheet tertulis {satu:.2%}, tapi nilai bersih "
@@ -228,7 +228,7 @@ def periksa_order(
         )
 
     # 11. tarif tambahan CBD/COD: bandingkan yang sebenarnya dengan judul kolom
-    if keputusan.kolom != "TOP":
+    if keputusan.cara_bayar != "TOP":
         dasar = sum(b.total_value for b in order.semua_baris)
         if dasar > 0:
             rasio = keputusan.nett_total / dasar

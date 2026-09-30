@@ -217,11 +217,24 @@ def kenali(ws, baris_judul: int, kolom_maks: int = 60) -> TataLetak:
     # Satu tab bisa punya DUA kolom dengan jenis sama, contoh Agustus 2026
     # Baby Wise (Surabaya): AD dan AE dua-duanya berjudul COD. Kalau kuncinya
     # sama, yang satu akan menimpa yang lain, jadi kunci dibuat unik.
+    #
+    # Kuncinya SELALU memakai huruf kolom, walau jenisnya cuma satu. Dulu
+    # huruf kolom hanya dipakai kalau jenisnya kembar, dan itu membuat kolom
+    # FISIK YANG SAMA bernama beda antar blok dalam satu tab: di blok yang
+    # kolom COD-nya tunggal namanya "COD", di blok yang punya dua kolom COD
+    # namanya "COD@AD". Nilai bersih baris-baris blok kedua lalu tidak pernah
+    # ketemu saat Aturan 2 menghitung kelengkapan kolom, jadi ordernya
+    # dianggap "terisi sebagian" dan diperlakukan TOP.
+    #
+    # Ketahuan pada `PO 26 September - Katamama (Cik`: blok 1-2 punya AD=COD
+    # dan AE=CBD, blok 3-5 punya AD=COD dan AE=COD. Kolom COD terbaca
+    # 106 dari 130 baris padahal di order sheet terisi penuh, dan nilai
+    # bersihnya kurang Rp4.414.728 dari baris TOTAL order sheet.
     hitung: dict[str, int] = {}
     for k in t.nett:
         hitung[k.jenis] = hitung.get(k.jenis, 0) + 1
     for k in t.nett:
-        k.kunci = k.jenis if hitung[k.jenis] == 1 else f"{k.jenis}@{k.huruf}"
+        k.kunci = f"{k.jenis}@{k.huruf}"
     if any(v > 1 for v in hitung.values()):
         kembar = sorted(j for j, v in hitung.items() if v > 1)
         t.catatan.append(

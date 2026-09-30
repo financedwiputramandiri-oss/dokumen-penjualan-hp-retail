@@ -3708,3 +3708,66 @@ yang membuka order sheet akan melihat dua angka dan bingung lagi.
 
 Format MTN juga dipasang sementara (`perusahaan_pemroses=MTN`) lalu
 dikembalikan, dengan alasan yang sama.
+
+## 39. Nilai bersih kurang jutaan rupiah tanpa peringatan — SELESAI 30 September 2026
+
+Yosua: *"ada yang salah buatkan dengan total Rp 29.610.973"* untuk
+`PO 26 September - Katamama (Cik`. Program menerbitkan **Rp30.061.902** (TOP)
+dan pencocokannya **LULUS** — jadi tidak ada satu pun peringatan yang
+memberitahu bahwa angkanya salah. Ini cacat paling berbahaya yang pernah
+ditemukan di sini: dokumen salah yang lolos seluruh pemeriksaan.
+
+### Sebabnya: kolom FISIK yang sama bernama BEDA antar blok satu tab
+
+Tab itu punya 5 blok, dan judul kolom AE-nya tidak seragam:
+
+| Blok | AD | AE |
+|---|---|---|
+| 1-2 | `DISCOUNT COD + 1,5%` | `DISCOUNT CBD + 2%` |
+| 3-5 | `DISCOUNT COD + 1,5%` | `DISCOUNT COD + 1,5%` |
+
+`tata_letak.kenali()` dulu memberi kunci berhuruf kolom **hanya kalau jenisnya
+kembar di blok itu**. Jadi kolom AD — kolom fisik yang SAMA — bernama `COD` di
+blok 1-2 dan `COD@AD` di blok 3-5.
+
+`model.kolom_nett()` hanya memakai tata letak **blok pertama**, jadi Aturan 2
+mencari kunci `COD`. Baris blok 3-5 menyimpannya dengan nama `COD@AD`, tidak
+pernah ketemu, dan dianggap kosong: kolom COD terbaca **106 dari 130** baris.
+Karena tidak penuh, Aturan 2 melakukan persis yang seharusnya — mengabaikan
+kolom yang terisi sebagian dan memperlakukan order sebagai TOP.
+
+Yang membuatnya lolos pencocokan: pemeriksaan "nilai bersih" membandingkan
+nett dengan jumlah **kolom yang dipilih**, dan kolom TOP-nya memang berjumlah
+Rp30.061.902. Order sheet dan program sama-sama konsisten — cuma kolomnya yang
+salah pilih. Selisihnya Rp450.929, dan 24 baris (Rp4.414.728) dibaca nol.
+
+### Perbaikannya
+
+1. `tata_letak.kenali()` — kunci **SELALU** memuat huruf kolom (`COD@AD`,
+   `TOP@AC`), tidak lagi tergantung ada tidaknya kembaran di blok itu.
+2. `nilai_bersih.tentukan_nett()` — kunci TOP diambil dari tata letaknya
+   (`kunci_top`), tidak lagi ditulis `"TOP"` mentah di tiga tempat. Kalau
+   tidak, `nett_baris()` mencari kunci yang tidak ada dan seluruh nilai
+   bersih jadi **nol**.
+3. `rekonsiliasi.py` — tiga pembandingan `keputusan.kolom == "TOP"` diganti
+   `keputusan.cara_bayar == "TOP"`. Kolomnya sekarang `TOP@AC`, jadi
+   perbandingan lama diam-diam selalu salah.
+
+Sesudahnya tab itu terbaca **COD, 130 dari 130 baris, Rp29.610.973**, cocok
+dengan baris TOTAL order sheet, tanpa `cara_bayar_paksa` sama sekali.
+
+### Pelajaran
+
+**Kunci pengenal jangan pernah dibuat tergantung isi data.** Kunci yang
+berubah bentuk mengikuti "ada kembaran atau tidak" pasti berbeda antar blok
+begitu satu blok punya kembaran dan blok lain tidak. Pakai bentuk yang sama
+selalu, walau kelihatan berlebihan.
+
+Dan: kalau Yosua bilang angkanya salah padahal pencocokan LULUS, **jangan
+berhenti di "program sudah cocok"**. Bagian 36 sudah mengajarkan mencetak
+semua kolom nett; kali ini jumlahnya harus dihitung sendiri dari sel order
+sheet, bukan dari yang dibaca program — karena yang salah justru pembacaannya.
+
+Dikunci satu tes (`test_kunci_kolom_nett_sama_di_semua_blok_satu_tab`) yang
+membuat dua blok dengan judul AE berbeda lalu memastikan kolom AD bernama
+sama di keduanya. Tes 252 -> 253.

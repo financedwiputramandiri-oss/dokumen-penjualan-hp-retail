@@ -47,6 +47,13 @@ def tentukan_nett(order: Order, customer: Customer | None = None) -> KeputusanNe
     n = len(baris)
     kandidat = [k for k in order.kolom_nett() if k.jenis not in ("TOP", "LAIN")]
 
+    # Kunci kolom TOP diambil dari tata letaknya, JANGAN ditulis "TOP" mentah.
+    # Sejak kunci selalu memuat huruf kolom ("TOP@AC"), menuliskan "TOP" begitu
+    # saja membuat `nett_baris()` mencari kunci yang tidak ada di baris mana pun
+    # dan seluruh nilai bersih jadi nol. Lihat CLAUDE.md bagian 39.
+    kol_top = next((k for k in order.kolom_nett() if k.jenis == "TOP"), None)
+    kunci_top = kol_top.kunci if kol_top is not None else "TOP"
+
     terisi = {k.kunci: _terisi(order, k.kunci) for k in kandidat}
     terisi_cbd = max(
         (v for k, v in terisi.items() if k.startswith("CBD")), default=0
@@ -62,14 +69,14 @@ def tentukan_nett(order: Order, customer: Customer | None = None) -> KeputusanNe
     if paksa in ("TOP", "CBD", "COD"):
         dioverride = True
         if paksa == "TOP":
-            kunci, nama = "TOP", "TOP"
+            kunci, nama = kunci_top, "TOP"
         else:
             cocok = [k for k in kandidat if k.jenis == paksa]
             if cocok:
                 dipakai = cocok[0]
                 kunci, nama = dipakai.kunci, paksa
             else:
-                kunci, nama = "TOP", "TOP"
+                kunci, nama = kunci_top, "TOP"
         alasan = (
             f"Dipaksa lewat config/customer.csv (cara_bayar_paksa={paksa}), "
             "bukan dari kelengkapan kolom."
@@ -84,7 +91,7 @@ def tentukan_nett(order: Order, customer: Customer | None = None) -> KeputusanNe
                 lain = ", ".join(f"'{k.judul}'" for k in penuh[1:])
                 alasan += f" (kolom lain yang juga penuh: {lain} — yang kiri dipakai)"
         else:
-            kunci, nama = "TOP", "TOP"
+            kunci, nama = kunci_top, "TOP"
             sebagian = [
                 f"'{k.judul}' {terisi[k.kunci]}/{n}"
                 for k in kandidat
