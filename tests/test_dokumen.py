@@ -572,3 +572,90 @@ def test_surat_jalan_kolom_ukuran_digabung_ke_bawah(bahan, tmp_path):
         "kolom Qty tidak boleh digabung — 'PCS' ada di barisnya sendiri"
     )
     assert ws.cell(j + 1, kolom_qty).value == "PCS"
+
+
+def _blok_ttd(ws):
+    """Letak (baris, kolom) tiap label tanda tangan di lembar ini."""
+    cari = {"Penerima", "Pengirim", "Mengetahui"}
+    return {
+        str(ws.cell(r, c).value).strip().rstrip(":").strip(): (r, c)
+        for r in range(1, ws.max_row + 1)
+        for c in range(1, ws.max_column + 1)
+        if str(ws.cell(r, c).value or "").strip().rstrip(":").strip() in cari
+    }
+
+
+@pytest.mark.parametrize("pembuat", [buat_surat_jalan, buat_packing_list])
+def test_nama_dan_tanggal_di_bawah_tiap_tanda_tangan(bahan, tmp_path, pembuat):
+    """Tiap kolom tanda tangan wajib punya `Nama:` dan `Tanggal:` di bawahnya.
+
+    Permintaan Yosua 1 Oktober 2026, mengikuti berkas Surat Jalan Haritsa yang
+    ia sunting sendiri: label di baris 66, `Nama:` di 70, `Tanggal:` di 71 —
+    jadi berjarak 4 dan 5 baris, pada KOLOM YANG SAMA dengan labelnya. Kalau
+    kolomnya meleset, ketiga nama berkumpul di bawah satu tanda tangan saja.
+    """
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    pembuat(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "001")
+    p = tmp_path / f"{pembuat.__name__}.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    letak = _blok_ttd(ws)
+    assert set(letak) == {"Penerima", "Pengirim", "Mengetahui"}, letak
+    for label, (r, c) in letak.items():
+        assert str(ws.cell(r + 4, c).value or "").strip() == "Nama:", (
+            f"'Nama:' tidak ada di bawah {label} (baris {r + 4}, kolom {c})")
+        assert str(ws.cell(r + 5, c).value or "").strip() == "Tanggal:", (
+            f"'Tanggal:' tidak ada di bawah {label} (baris {r + 5}, kolom {c})")
+
+
+@pytest.mark.parametrize("pembuat", [buat_surat_jalan, buat_packing_list])
+def test_baris_tanggal_ikut_tercetak(bahan, tmp_path, pembuat):
+    """Area cetak harus mencakup baris `Tanggal:`.
+
+    Baris yang ditulis tapi berada di luar `print_area` tidak pernah muncul di
+    kertas maupun PDF, dan itu TIDAK kelihatan dari membaca nilai selnya —
+    persis jebakan angka total qty di CLAUDE.md bagian 20.
+    """
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    pembuat(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "001")
+    p = tmp_path / f"cetak_{pembuat.__name__}.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    baris_tanggal = max(
+        r for r in range(1, ws.max_row + 1)
+        for c in range(1, ws.max_column + 1)
+        if str(ws.cell(r, c).value or "").strip() == "Tanggal:"
+    )
+    akhir = int("".join(ch for ch in str(ws.print_area).split(":")[-1] if ch.isdigit()))
+    assert akhir >= baris_tanggal, (
+        f"print_area berhenti di baris {akhir}, 'Tanggal:' di baris {baris_tanggal}")
+
+
+def test_jarak_tabel_ke_tanda_tangan_satu_baris(bahan, tmp_path):
+    """Tepat SATU baris kosong antara tabel terakhir dan blok tanda tangan.
+
+    Berkas asli 0110826 BABY WISE (tabel berakhir 29, tanda tangan 31) dan
+    berkas Haritsa suntingan Yosua (64 -> 66) sama-sama berjarak satu baris.
+    Versi lama menambah satu baris lagi sehingga jaraknya dua.
+    """
+    orders, daftar, perusahaan, _ = bahan
+    o = next(x for x in orders if "TOP" in x.nama_tab)
+    wb = Workbook()
+    buat_surat_jalan(wb.active, o, daftar.cari(o.nama_tab), perusahaan, "001")
+    p = tmp_path / "jarak_ttd.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    baris_ttd = _blok_ttd(ws)["Penerima"][0]
+    baris_data_akhir = max(
+        r for r in range(1, baris_ttd)
+        if isinstance(ws.cell(r, 1).value, int)
+    )
+    assert baris_ttd - baris_data_akhir == 2, (
+        f"jaraknya {baris_ttd - baris_data_akhir - 1} baris kosong, seharusnya 1")

@@ -276,3 +276,41 @@ def test_kolom_nomor_mtn_melebar_untuk_faktur_ratusan_baris():
 
     # faktur pendek tidak berubah bentuknya dari berkas asli MTN
     assert _lebar_inv("25%", 9)[1] == LEBAR_INV[1]
+
+
+def test_surat_jalan_mtn_nama_tanggal_ikut_tercetak(order, daftar, mtn, tmp_path):
+    """Surat Jalan MTN juga memakai `Nama:` / `Tanggal:`, dan ikut area cetak.
+
+    Permintaan Yosua 1 Oktober 2026 berlaku untuk SEMUA Surat Jalan, bukan
+    hanya yang DPM. Area cetak MTN dulu dipatok `r + 3` secara tetap, yang
+    memotong kedua baris baru ini tanpa gejala apa pun di nilai selnya.
+    """
+    import openpyxl
+    from openpyxl import Workbook
+    from hp_dokumen.dokumen.mtn import buat_surat_jalan_mtn
+
+    wb = Workbook()
+    buat_surat_jalan_mtn(wb.active, order, daftar.cari(order.nama_tab), mtn,
+                         "SJ-01/10/2026")
+    p = tmp_path / "sj_mtn_ttd.xlsx"
+    wb.save(p)
+    ws = openpyxl.load_workbook(p).active
+
+    letak = {
+        str(ws.cell(r, c).value).strip().rstrip(":").strip(): (r, c)
+        for r in range(1, ws.max_row + 1)
+        for c in range(1, ws.max_column + 1)
+        if str(ws.cell(r, c).value or "").strip().rstrip(":").strip()
+        in {"Penerima", "Pengirim", "Mengetahui"}
+    }
+    assert set(letak) == {"Penerima", "Pengirim", "Mengetahui"}, letak
+
+    baris_tanggal = 0
+    for label, (r, c) in letak.items():
+        assert str(ws.cell(r + 4, c).value or "").strip() == "Nama:", label
+        assert str(ws.cell(r + 5, c).value or "").strip() == "Tanggal:", label
+        baris_tanggal = max(baris_tanggal, r + 5)
+
+    akhir = int("".join(ch for ch in str(ws.print_area).split(":")[-1] if ch.isdigit()))
+    assert akhir >= baris_tanggal, (
+        f"print_area MTN berhenti di baris {akhir}, 'Tanggal:' di {baris_tanggal}")

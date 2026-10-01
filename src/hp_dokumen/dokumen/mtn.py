@@ -505,12 +505,15 @@ def buat_surat_jalan_mtn(ws: Worksheet, order: Order, cust, perusahaan,
         gaya.beri_garis(ws, awal, 1, r - 1, kol_qty)
         r += 1
 
-    gaya.blok_tanda_tangan(
+    # Baris `Nama:` dan `Tanggal:` ikut tercetak (permintaan Yosua 1 Okt 2026),
+    # jadi area cetaknya memakai baris terakhir yang DIKEMBALIKAN fungsi itu.
+    # Angka tetap `r + 3` yang dulu dipakai akan memotong kedua baris baru.
+    r_akhir = gaya.blok_tanda_tangan(
         ws, r + 1,
         [KOL_KODE_SJ, KOL_DESK_SJ, max(KOL_WARNA_SJ + 1, KOL_UKURAN_MULAI_SJ + 1)],
         ["Penerima :", "Pengirim :", "Mengetahui :"],
     )
 
     gaya.siapkan_cetak(ws, kol_qty)
-    ws.print_area = f"A1:{gaya.huruf(kol_qty)}{r + 3}"
+    ws.print_area = f"A1:{gaya.huruf(kol_qty)}{r_akhir}"
     return {"qty": total_qty, "kolom_terakhir": kol_qty}

@@ -287,7 +287,12 @@ def _bangun(ws: Worksheet, order: Order, customer, perusahaan, nomor: str,
         if any(b.qty > 0 for b in blok.baris):
             r = _tulis_tabel(ws, blok, r, kolom_gudang, pakai_rumus)
 
-    r += 1
+    # SATU baris kosong saja antara tabel terakhir dan blok tanda tangan.
+    # `_tulis_tabel` sudah mengembalikan baris kosong sesudah tabelnya, jadi
+    # menambah satu lagi membuat jaraknya dua baris. Berkas asli 0110826
+    # BABY WISE (tabel berakhir baris 29, tanda tangan baris 31) dan berkas
+    # Surat Jalan Haritsa yang disunting Yosua 1 Okt 2026 (tabel berakhir
+    # baris 64, tanda tangan baris 66) sama-sama berjarak satu baris.
     # Urutan tanda tangan: PENERIMA dulu, baru Pengirim, lalu Mengetahui.
     # Sama di kedua berkas asli terbaru — 0110826 BABY WISE (B31/F31/K31) dan
     # 0020826 CV. BASA MANDIRI (B27/G27/K27). Versi lama terbalik.

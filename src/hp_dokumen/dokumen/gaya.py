@@ -185,19 +185,30 @@ def siapkan_cetak(ws: Worksheet, kolom_terakhir: int, *, landscape: bool = False
 
 
 def blok_tanda_tangan(ws: Worksheet, baris: int, kolom: list[int], label: list[str],
-                      *, garis_nama: bool = False, size: int = 10) -> int:
+                      *, garis_nama: bool = False, size: int = 10,
+                      nama_tanggal: bool = True) -> int:
     """Blok tanda tangan.
 
     Surat Jalan asli TIDAK memuat baris "(.............)" di bawah labelnya —
     hanya `Penerima :` / `Pengirim :` / `Mengetahui :` saja. Diperiksa pada
     0110826 BABY WISE (B31/F31/K31) dan 0420826 YULIS (B180/F180/K180):
     keempat sel di bawahnya kosong. Karena itu `garis_nama` bawaannya mati.
+
+    `Nama:` dan `Tanggal:` ditambahkan atas permintaan Yosua 1 Oktober 2026,
+    mengikuti berkas Surat Jalan Haritsa yang ia sunting sendiri: label tanda
+    tangan, TIGA baris kosong, lalu `Nama:` dan `Tanggal:` tepat di bawahnya
+    pada kolom yang sama. Tiga baris kosong itu tempat tanda tangan basah —
+    kalau `Nama:` ditaruh terlalu rapat, tidak ada ruang menandatangani.
     """
     for c, teks in zip(kolom, label):
         _tulis(ws, baris, c, teks, size=size)
+        # Keduanya memakai baris yang sama, jadi tidak boleh dipakai bersamaan.
         if garis_nama:
             _tulis(ws, baris + 4, c, "(................................)", size=9)
-    return baris + 5
+        elif nama_tanggal:
+            _tulis(ws, baris + 4, c, "Nama:", size=size)
+            _tulis(ws, baris + 5, c, "Tanggal:", size=size)
+    return baris + (6 if nama_tanggal else 5)
 
 
 def pecah_alamat(alamat: str, maksimal: int = 4) -> list[str]:

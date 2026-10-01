@@ -3771,3 +3771,87 @@ sheet, bukan dari yang dibaca program — karena yang salah justru pembacaannya.
 Dikunci satu tes (`test_kunci_kolom_nett_sama_di_semua_blok_satu_tab`) yang
 membuat dua blok dengan judul AE berbeda lalu memastikan kolom AD bernama
 sama di keduanya. Tes 252 -> 253.
+
+## 40. `Nama:` dan `Tanggal:` di bawah tanda tangan — 1 Oktober 2026
+
+Yosua mengirim BALIK `SURAT_JALAN_PO_28_September_-_Haritsa.xlsx` yang ia
+sunting sendiri, plus tangkapan layar bagian tanda tangannya:
+
+> *"untuk format surat jalan untuk semuannya dan selanjutnya tambahkan nama
+> dan tanggal seperti pada ss yang saya berikan"*
+
+### Berkas yang dikirim balik LEWAT GOOGLE SHEETS — jangan ditiru mentah
+
+`md5` berbeda dari keluaran program, jadi berkasnya memang disentuh. Tapi
+setelah diadu sel per sel, **56 sel dan hampir semua lebar kolom berbeda** —
+dan perbedaannya BUKAN suntingan Yosua:
+
+| Yang berubah | Program | Berkas balik | Artinya |
+|---|---:|---:|---|
+| Lebar kolom D, H..N | 5,57 / 9,0 / 6,86 | **13,0 semua** | lebar bawaan Google Sheets (100 px) |
+| Tinggi baris data | 30,0 | 27,0 / 25,5 | dihitung ulang |
+| Huruf tebal alamat kop, kolom Qty | tebal | **hilang** | tebal tidak terbawa |
+| Nama customer | 15 | 16 | normalisasi |
+| `print_area` | `A1:N67` | `A1:O71` | melebar ke kolom KOSONG |
+
+Ciri khas round-trip Google Sheets: banyak kolom jadi persis 13,0 dan atribut
+tebal rontok. **Kalau ini ditiru, seluruh pekerjaan menyamakan lebar kolom
+dengan faktur asli (bagian 19, 23, 24, 28) hilang dalam satu langkah.**
+
+Jadi yang diambil HANYA yang memang diminta dan terlihat di tangkapan layar:
+
+| Baris | Isi |
+|---|---|
+| 66 | `Penerima :` (B) / `Pengirim :` (F) / `Mengetahui :` (K) |
+| 67-69 | kosong — tempat tanda tangan basah |
+| 70 | `Nama:` di ketiga kolom yang sama |
+| 71 | `Tanggal:` di ketiga kolom yang sama |
+
+**Aturan umum: berkas yang dikirim balik lewat Google Sheets bukan acuan
+format.** Adu sel per sel dulu, pisahkan suntingan orang dari jejak
+perangkatnya, lalu ambil yang disebut sendiri oleh Yosua.
+
+### Jarak tabel ke tanda tangan: SATU baris, bukan dua
+
+Ketahuan saat mengadu letaknya. Program menaruh tanda tangan di baris 67
+(data berakhir 64, dua baris kosong), berkas Yosua di 66.
+
+Ternyata **berkas asli pun satu baris**: `0110826 BABY WISE` tabelnya berakhir
+baris 29 dan tanda tangannya di baris 31. Jadi `r += 1` di `surat_jalan.py`
+itu kelebihan sejak awal — `_tulis_tabel()` sudah mengembalikan baris kosong
+sesudah tabelnya. Sudah dihapus.
+
+### Berlaku untuk SEMUA Surat Jalan
+
+Perubahannya ditaruh di `gaya.blok_tanda_tangan()` (`nama_tanggal=True`), jadi
+langsung ikut di **Surat Jalan DPM, Packing List, dan Surat Jalan MTN** —
+ketiganya memanggil fungsi yang sama. "Untuk semuanya" memang begitu
+permintaannya.
+
+`garis_nama` dan `nama_tanggal` sekarang `if/elif`, sebab dua-duanya memakai
+baris `+4`. Kalau dibiarkan `if` terpisah, yang satu menimpa yang lain.
+
+### Satu jebakan yang nyaris terlewat: `print_area` MTN dipatok tetap
+
+`mtn.py` menulis `ws.print_area = f"A1:...{r + 3}"` — angka tetap yang dihitung
+sebelum blok tanda tangan dibuat. Baris `Nama:` (r+5) dan `Tanggal:` (r+6)
+ditulis dengan benar ke selnya, tapi **berada di luar area cetak**, jadi tidak
+akan pernah muncul di kertas maupun PDF. Nilai selnya tetap benar, jadi tes
+berbasis sel akan lolos — persis jebakan angka total qty di bagian 20.
+
+Sekarang `blok_tanda_tangan()` mengembalikan baris terakhirnya dan `print_area`
+memakai angka itu. Surat Jalan DPM tidak kena karena `siapkan_cetak()` memang
+sudah memakai `ws.max_row`.
+
+### Tes
+
+Enam tes baru: `Nama:`/`Tanggal:` ada di KOLOM YANG SAMA dengan tiap label
+(bukan sekadar ada di lembarnya — kalau kolomnya meleset, ketiganya berkumpul
+di bawah satu tanda tangan), area cetak mencakup baris `Tanggal:`, dan jarak
+satu baris ke blok tanda tangan. Dua yang pertama diparametrikan untuk Surat
+Jalan dan Packing List, ditambah satu khusus MTN. Tes 253 -> 259.
+
+**Dokumen lama tidak ikut berubah sendiri.** Jebakan lama bagian 26, 27, dan
+32: `SidikPO` hanya mengawasi order sheet, tidak pernah kode. Supaya semua
+dokumen memakai bentuk baru ini, hapus `data/kondisi_sapu.json` lalu jalankan
+`jadwal/sapu-semua-bulan.bat`.
