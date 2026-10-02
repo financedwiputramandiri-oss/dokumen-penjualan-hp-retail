@@ -8,6 +8,7 @@ Rp147.829.100. Modul ini memindai sampai baris terakhir.
 """
 from __future__ import annotations
 
+import re
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -38,6 +39,16 @@ KOL_COD = 31         # AE  nett COD
 KOL_NOTE = 32        # AF
 
 TAB_BUKAN_PO = {"harga retail"}
+
+# Nama tab master harga TIDAK selalu persis "Harga Retail". Order Sheet Mei 2025
+# menamainya "Harga Retail per Mei 2025" — 82 artikel yang dulu tidak pernah
+# terbaca sama sekali, dan harganya diam-diam diambil dari baris PO.
+# Pencocokan karena itu memakai AWALAN yang sudah diseragamkan, bukan nama
+# persis. Awalan, bukan "mengandung": tab "PO 30 Okt Borneo Retail - Deliv"
+# juga memuat kata "Retail" tapi itu tab PO sungguhan, bukan master harga.
+def adalah_tab_harga(nama: str) -> bool:
+    """True kalau nama tab ini tab master harga, apa pun akhirannya."""
+    return re.sub(r"\s+", " ", str(nama or "")).strip().lower().startswith("harga retail")
 
 
 def angka(nilai) -> float:
@@ -238,7 +249,19 @@ def _samakan_dengan_master(blok_list, master: dict, nama_tab: str) -> list[str]:
     Kode yang tidak terdaftar di master dibiarkan apa adanya dan dilaporkan.
     """
     if not master:
-        return []
+        # KETETAPAN Yosua 2 Oktober 2026: harga dokumen WAJIB ikut tab Harga
+        # Retail bulan itu. Kalau tabnya tidak ketemu, harga diambil dari baris
+        # PO — dan itu justru yang dilarang. Dulu hal ini terjadi TANPA pesan
+        # apa pun (Order Sheet Mei 2025, tabnya bernama "Harga Retail per Mei
+        # 2025"), jadi tidak ada yang tahu dokumennya memakai harga tak
+        # terverifikasi. Sekarang selalu diperingatkan.
+        return [
+            "TAB HARGA RETAIL TIDAK KETEMU di order sheet ini, jadi harga "
+            f"tab '{nama_tab}' diambil dari baris PO dan TIDAK terverifikasi. "
+            "Pastikan ada tab bernama 'Harga Retail' (boleh berakhiran lain, "
+            "contoh 'Harga Retail per Mei 2025') dengan kolom "
+            "Artikel / Nama Barang / Harga Ritel."
+        ]
     beda_harga, tak_terdaftar = [], []
     for blok in blok_list:
         for b in blok.baris:
@@ -295,7 +318,7 @@ def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> 
     hasil: list[Order] = []
     for ws in wb.worksheets:
         nama = ws.title
-        if nama.strip().lower() in TAB_BUKAN_PO:
+        if nama.strip().lower() in TAB_BUKAN_PO or adalah_tab_harga(nama):
             continue
         # Tab 'Packing List ...' tidak punya blok ORIGINAL PO, qty ada di D..L
         packing = nama.strip().lower().startswith("packing list")
@@ -337,13 +360,17 @@ def baca_master_harga(berkas: Path) -> dict[str, tuple[str, float]]:
 
 def master_harga_dari_buku(wb) -> dict[str, tuple[str, float]]:
     """Baca tab 'Harga Retail' dari buku kerja apa pun."""
-    if "Harga Retail" not in wb.sheetnames:
+    nama_tab = next((n for n in wb.sheetnames if adalah_tab_harga(n)), None)
+    if nama_tab is None:
         return {}
-    ws = wb["Harga Retail"]
+    ws = wb[nama_tab]
     master: dict[str, tuple[str, float]] = {}
     for r in range(1, ws.max_row + 1):
         kode = _teks(ws.cell(r, 1).value)
-        if not kode or kode.upper() in ("COLUMN 1", "ARTICLE CODE"):
+        # Judul kolomnya tidak seragam antar bulan: "ARTICLE CODE" di order
+        # sheet 2026, "Artikel" di "Harga Retail per Mei 2025". Tanpa ini
+        # baris judul ikut tercatat sebagai artikel berharga nol.
+        if not kode or kode.upper() in ("COLUMN 1", "ARTICLE CODE", "ARTIKEL", "KODE"):
             continue
         master[kode] = (_teks(ws.cell(r, 2).value), angka(ws.cell(r, 3).value))
     return master

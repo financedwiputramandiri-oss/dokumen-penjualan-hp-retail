@@ -88,3 +88,81 @@ def test_nama_barang_juga_dari_master(berkas):
                 m = cari_di_master(master, b.kode)
                 if m and m[0]:
                     assert b.nama == m[0], f"{b.kode}: nama tidak ikut master"
+
+
+# ------------------------------------------------- KETETAPAN 2 Oktober 2026
+# Yosua: "setiap ada update pada tabel di tab harga retail anda harus ikut
+# dengan harga tersebut". Tiga tes di bawah menutup celah yang membuat aturan
+# itu bisa dilanggar DIAM-DIAM.
+
+def test_nama_tab_harga_boleh_berakhiran_apa_pun():
+    """`Harga Retail per Mei 2025` juga tab master harga.
+
+    Order Sheet Mei 2025 menamainya begitu. Pencocokan nama yang persis
+    membuat 83 artikelnya tidak pernah terbaca, dan harga dokumennya diam-diam
+    diambil dari baris PO — persis yang dilarang ketetapan ini.
+
+    Tapi AWALAN, bukan "mengandung": tab `PO 30 Okt Borneo Retail - Deliv`
+    di order sheet Januari 2025 juga memuat kata "Retail" padahal itu tab PO
+    sungguhan. Kalau ikut tertangkap, tab PO-nya hilang dari dokumen.
+    """
+    from hp_dokumen.pemindai import adalah_tab_harga
+
+    for nama in ("Harga Retail", "Harga Retail per Mei 2025", "HARGA RETAIL",
+                 " Harga  Retail ", "harga retail 2026"):
+        assert adalah_tab_harga(nama), f"{nama!r} seharusnya dikenali"
+
+    for nama in ("PO 30 Okt Borneo Retail - Deliv", "PO 28 September - Dunia Bayi",
+                 "Packing List Haritsa", "Retail Harga", ""):
+        assert not adalah_tab_harga(nama), f"{nama!r} BUKAN tab harga"
+
+
+def test_master_terbaca_dari_tab_yang_namanya_berakhiran_lain(tmp_path):
+    """Harga tetap diambil dari master walau nama tabnya tidak persis."""
+    from hp_dokumen.pemindai import master_harga_dari_buku
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Harga Retail per Mei 2025"
+    ws.append(["Artikel", "Nama Barang", "Harga Ritel"])
+    ws.append(["42003.A", "Leo Set", 71000])
+    assert master_harga_dari_buku(wb) == {"42003.A": ("Leo Set", 71000.0)}
+
+
+def test_tanpa_tab_harga_program_memperingatkan_keras(tmp_path):
+    """Master kosong WAJIB menghasilkan peringatan, bukan diam.
+
+    Kalau tab harga tidak ketemu, harga diambil dari baris PO — dan itu
+    tidak terverifikasi. Dulu hal ini terjadi tanpa pesan apa pun, jadi tidak
+    ada yang tahu dokumennya memakai harga yang belum tentu berlaku.
+    """
+    berkas_contoh = buat_contoh(tmp_path / "tanpa_master.xlsx")
+    wb = openpyxl.load_workbook(berkas_contoh)
+    nama_tab_harga = [n for n in wb.sheetnames if "harga" in n.lower()]
+    assert nama_tab_harga, "berkas contoh seharusnya punya tab harga"
+    for n in nama_tab_harga:
+        del wb[n]
+    wb.save(berkas_contoh)
+
+    cfg = Konfigurasi.muat()
+    orders = baca_order_sheet(berkas_contoh, cfg.customer, tahun_bawaan=2026)
+    assert orders, "order sheet contoh tidak terbaca"
+    for o in orders:
+        assert any("TAB HARGA RETAIL TIDAK KETEMU" in w for w in o.peringatan), (
+            f"tab '{o.nama_tab}' tidak diperingatkan padahal master kosong")
+
+
+def test_tab_harga_tidak_ikut_dipindai_sebagai_po(tmp_path):
+    """Tab master harga bukan PO — tidak boleh menghasilkan dokumen."""
+    berkas_contoh = buat_contoh(tmp_path / "contoh_tab.xlsx")
+    wb = openpyxl.load_workbook(berkas_contoh)
+    for n in list(wb.sheetnames):
+        if n.strip().lower() == "harga retail":
+            wb[n].title = "Harga Retail per Contoh 2026"
+    wb.save(berkas_contoh)
+
+    cfg = Konfigurasi.muat()
+    orders = baca_order_sheet(berkas_contoh, cfg.customer, tahun_bawaan=2026)
+    from hp_dokumen.pemindai import adalah_tab_harga
+    nakal = [o.nama_tab for o in orders if adalah_tab_harga(o.nama_tab)]
+    assert not nakal, f"tab harga ikut jadi PO: {nakal}"

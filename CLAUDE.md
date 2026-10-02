@@ -3855,3 +3855,97 @@ Jalan dan Packing List, ditambah satu khusus MTN. Tes 253 -> 259.
 32: `SidikPO` hanya mengawasi order sheet, tidak pernah kode. Supaya semua
 dokumen memakai bentuk baru ini, hapus `data/kondisi_sapu.json` lalu jalankan
 `jadwal/sapu-semua-bulan.bat`.
+
+## 41. KETETAPAN — harga SELALU ikut tab Harga Retail bulan itu — 2 Oktober 2026
+
+> *"satu hal yang penting adalah anda harus memperhatikan tabel master harga di
+> tab harga retail yang ada di order sheet setiap bulannya"*
+> *"supaya menjadi ketetapan yaitu setiap ada update pada tabel di tab harga
+> retail anda harus ikut dengan harga tersebut"*
+
+Ini **KETETAPAN**, bukan preferensi. Harga dan nama barang di SEMUA dokumen
+wajib mengikuti tab `Harga Retail` **milik order sheet bulan yang sedang
+diproses** — bukan daftar harga tersimpan, bukan bulan lain, bukan angka yang
+diketik Sales di baris PO.
+
+Aturannya sendiri sudah berjalan sejak bagian 21 dan berlaku untuk kedua jalur
+(perintah manual lewat `cli.py` dan bot lewat `sapu/bot.py` — keduanya membaca
+master dari buku kerja yang sama). Yang dikerjakan 2 Oktober adalah menutup
+**tiga celah** yang membuat ketetapan ini bisa dilanggar DIAM-DIAM.
+
+### Bukti harga memang berubah antar bulan
+
+Dibaca dari 10 order sheet 2026 sekaligus:
+
+| Order sheet | `42022.A` Milo Set Small | `4202200.A` Milo Set Big |
+|---|---:|---:|
+| Januari – Juli 2026, Agustus (Harga Lama) | Rp49.400 | Rp55.400 |
+| **Agustus 2026 (Harga Baru), September 2026** | **Rp61.000** | **Rp69.500** |
+
+Jadi memakai master bulan yang salah bukan soal teori — selisihnya Rp11.600
+per potong. Ini juga yang dulu membuat faktur Mae Bebe Juli 2026 meleset
+Rp693.900 (bagian 18).
+
+### Celah 1 — nama tab tidak selalu persis `Harga Retail`
+
+`Order Sheet Mei 2025` menamainya **`Harga Retail per Mei 2025`**. Pencocokan
+lama memakai nama PERSIS, jadi masternya dianggap tidak ada: **82 artikel tidak
+pernah terbaca**, dan seluruh harga bulan itu diam-diam diambil dari baris PO.
+
+`adalah_tab_harga()` sekarang mencocokkan **AWALAN** pada nama yang sudah
+diseragamkan (huruf kecil, spasi dirapatkan).
+
+**Awalan, bukan "mengandung"** — dan ini bukan kehati-hatian kosong: order sheet
+Januari 2025 punya tab bernama `PO 30 Okt Borneo Retail - Deliv`. Kalau
+dicocokkan dengan "mengandung kata Retail", tab PO sungguhan itu akan dianggap
+master harga lalu hilang dari daftar dokumen.
+
+Hasilnya pada Mei 2025: master terbaca 82 artikel, dan langsung menangkap satu
+harga yang salah ketik — `71043` tertulis Rp70.000 di baris PO padahal master
+menulis **Rp75.000**.
+
+### Celah 2 — master kosong TIDAK diperingatkan
+
+`_samakan_dengan_master()` dulu `return []` begitu masternya kosong. Artinya
+untuk order sheet tanpa tab harga, dokumen tetap terbit memakai harga baris PO
+**tanpa satu pun pesan**. Itu persis yang dilarang ketetapan ini, dan tidak ada
+yang bisa tahu dari melihat dokumennya.
+
+Sekarang selalu memunculkan `TAB HARGA RETAIL TIDAK KETEMU ...` per tab PO.
+
+Empat order sheet 2025 yang memang belum punya tab harga sama sekali:
+Januari, Februari, Maret, April 2025. Sejak sekarang semuanya berteriak.
+
+### Celah 3 — baris judul ikut tercatat sebagai artikel
+
+Judul kolomnya tidak seragam: `ARTICLE CODE` di order sheet 2026, **`Artikel`**
+di `Harga Retail per Mei 2025`. Yang disaring dulu cuma `COLUMN 1` dan
+`ARTICLE CODE`, jadi Mei 2025 memuat satu "artikel" bernama `Artikel` berharga
+nol. Daftar saringnya ditambah `ARTIKEL` dan `KODE`.
+
+### Aturan yang berlaku saat harga baris PO berbeda dari master
+
+Tidak berubah dari bagian 21, dan inilah isi ketetapannya:
+
+| Keadaan | Tindakan |
+|---|---|
+| kode ada di master, harga sama | lanjut, tanpa pesan |
+| kode ada di master, harga BEDA | **master yang dipakai**, selisihnya DILAPORKAN |
+| kode ada di master, nama barang beda | **master yang dipakai** |
+| kode TIDAK ada di master | harga baris PO dipakai, DILAPORKAN |
+| **tab master tidak ketemu** | harga baris PO dipakai, **DIPERINGATKAN KERAS** |
+
+Selisih harga tidak pernah didiamkan: kalau harga baris PO berbeda, berarti
+`TOTAL ATO VALUE` di order sheet ikut salah dan pencocokan akan gagal —
+peringatannya menyebut itu supaya ORDER SHEET-nya yang dirapikan, bukan
+dokumennya yang dipaksa cocok.
+
+### Risiko yang tersisa ada pada MANUSIA, bukan program
+
+Program selalu memakai master dari berkas yang dibuka. Jadi satu-satunya cara
+ketetapan ini masih bisa dilanggar adalah **membuka order sheet bulan yang
+salah**. Karena itu urutannya tetap: periksa `modifiedTime` tepat sebelum
+membuat dokumen, tarik ulang kalau berubah, baru buat dokumennya — dan kalau
+Yosua menyebut PO dari bulan lain, ambil order sheet bulan ITU.
+
+Empat tes baru mengunci ketiga celah. Tes 259 -> 263.
