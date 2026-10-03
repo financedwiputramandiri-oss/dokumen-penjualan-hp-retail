@@ -10,6 +10,9 @@ data/**/*.csv
 
 # Hasil dokumen
 keluaran/
+# Folder tempat hasil sapuan dikumpulkan per order sheet. Isinya invoice
+# dan surat jalan customer SUNGGUHAN - data perusahaan, jangan masuk git.
+dok/
 
 # Python
 __pycache__/
