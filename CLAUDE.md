@@ -3949,3 +3949,79 @@ membuat dokumen, tarik ulang kalau berubah, baru buat dokumennya — dan kalau
 Yosua menyebut PO dari bulan lain, ambil order sheet bulan ITU.
 
 Empat tes baru mengunci ketiga celah. Tes 259 -> 263.
+
+## 42. Unggah .xlsx dari sesi ini TIDAK BISA DIANDALKAN — 3 Oktober 2026
+
+Yosua meminta dua kali: *"masukan semua file hasil sapuan ke drive"*, lalu
+*"saya sudah mempunyai drive for desktop coba masukan jadi file seharusnya
+bisa masuk ke drive"*.
+
+Dicoba sungguhan, dan **gagal di percobaan pertama**. Berkas terkecil yang ada
+(`FAKTUR_PAJAK_PO_17_September_-_Satu_Sama_(Ve.xlsx`, 6.826 byte, base64 9.104
+huruf) ditolak konektor Drive:
+
+    The file content is not a valid base64 string.
+
+### Sebabnya BUKAN batas ukuran — sayalah salurannya
+
+Bagian 37 menyimpulkan batasnya ada di sisi BACA (±21,5 KB per berkas) dan
+bagian 38 menyimpulkan aturannya "baca ulang base64 dari disk tiap kali".
+**Kedua kesimpulan itu melewatkan sebab yang sebenarnya.**
+
+Untuk mengunggah, base64-nya harus saya KETIK ULANG ke dalam panggilan
+`create_file`. Base64 adalah deretan huruf acak tanpa makna, dan menyalin
+9.000 huruf acak tanpa satu pun meleset bukan sesuatu yang bisa saya jamin.
+Pada percobaan ini bagian `xl/theme/theme1.xml` keluar jauh lebih panjang
+daripada aslinya — saya tidak menyalinnya, saya mengarangnya.
+
+Dua keberhasilan di bagian 38 karena itu **bukan bukti jalur ini andal** —
+itu kebetulan lolos, dan di bagian yang sama satu unggahan juga gagal.
+
+### Kenapa ini tidak boleh "dicoba saja dulu"
+
+Ada 967 berkas yang ukurannya muat. Andai tingkat kegagalannya cuma 10%,
+berarti ±97 faktur dan surat jalan RUSAK duduk di Drive dengan nama yang
+benar. Berkas Excel rusak baru ketahuan saat customer membukanya.
+
+`fileSize` yang cocok memang menangkap sebagian kerusakan, tapi tidak
+menangkap huruf yang tertukar dengan jumlah byte yang sama. Untuk dokumen
+penagihan, itu risiko yang tidak sepadan dengan apa pun.
+
+Ongkosnya juga tidak masuk akal: ±10.000 token per berkas (baca + tulis),
+jadi 967 berkas ±9 juta token — hampir seluruh isi satu sesi, untuk pekerjaan
+yang di komputer Yosua selesai dalam beberapa menit dengan satu klik.
+
+### Yang BISA dan TIDAK BISA, sejak sekarang
+
+| Jenis | Bisa dari sesi ini? |
+|---|---|
+| CSV / teks lewat `textContent` | **BISA**, andal. Dipakai untuk semua rekap |
+| Folder (`application/vnd.google-apps.folder`) | **BISA** |
+| .xlsx lewat `base64Content` | **TIDAK ANDAL — jangan dipakai untuk dokumen yang dikirim ke customer** |
+
+Teks bisa karena isinya bermakna (angka, nama, kalimat) dan saya memang bisa
+menyalinnya tepat. Base64 tidak bisa karena isinya acak.
+
+### Drive for Desktop TIDAK menolong sesi ini
+
+Yosua mengira karena ia sudah punya Drive for Desktop, berkasnya "seharusnya
+bisa masuk". Keliru, dan sebabnya perlu diterangkan tiap kali ditanya:
+**Drive for Desktop berjalan di KOMPUTER YOSUA.** Sesi Claude ini berjalan di
+wadah awan terpisah yang tidak punya akses apa pun ke drive `G:` miliknya.
+Drive for Desktop justru alasan kenapa jalur di komputernya mudah — bukan
+jalur yang bisa dipakai dari sini.
+
+### Satu-satunya jalan untuk memindahkan dokumen
+
+Di komputer Yosua:
+
+1. Hapus `data/kondisi_sapu.json`
+2. Klik dua kali `jadwal/sapu-semua-bulan.bat`
+
+Langkah 1 wajib: yang berubah sejak sapuan terakhirnya bukan order sheetnya
+melainkan FORMAT dokumennya, dan `SidikPO` tidak pernah mengawasi kode
+(jebakan bagian 26, 27, 32, dan 34).
+
+Folder `HASIL SAPUAN 3 OKTOBER 2026` yang sempat dibuat sudah dihapus lagi,
+mengikuti aturan bagian 37: jangan meninggalkan folder kosong yang
+menyesatkan.
