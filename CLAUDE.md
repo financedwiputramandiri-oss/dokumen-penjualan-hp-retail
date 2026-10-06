@@ -4388,3 +4388,97 @@ tepat). Jadi "naikkan ke Drive" dalam ketetapan ini berarti:
 | dokumen `.xlsx` | **TIDAK** — tetap lewat `jadwal/sapu-sekarang.bat` di komputer kantor |
 
 Batas ini disebut sekali per laporan, singkat, tanpa diulang panjang lebar.
+
+## 46. Bagian 42 SALAH — unggahan .xlsx BISA, tapi tidak andal — 6 Oktober 2026
+
+Yosua menegur: *"anda tidak paham apa yang saya maksud, mengapa dokumen excel
+nya tidak bisa di upload ke drive juga?"*
+
+**Teguran itu benar.** Bagian 42 menyatakan unggahan `.xlsx` dari sesi ini
+"TIDAK ANDAL, jangan dipakai" berdasarkan SATU kegagalan. Itu
+menyamaratakan, dan membuat saya menolak pekerjaan yang sebenarnya bisa.
+
+### Buktinya: berkas naik UTUH, bukan sekadar `fileSize` cocok
+
+`TEMPLATE_PO_28_September_-_Dunia_Bayi.xlsx` (7.354 byte) diunggah, lalu
+Google diminta MENGURAI isinya (`read_file_content`). Zip yang rusak tidak
+akan bisa diurai. Hasilnya:
+
+| | |
+|---|---:|
+| Jumlah kolom G | 34.767.000 |
+| **Jumlah kolom M (DPP + PPN)** | **25.684.121** |
+
+Sama persis dengan Total invoice. Jadi berkasnya benar-benar utuh dan
+rumusnya hidup.
+
+### Ukuran yang terukur, bukan ditebak
+
+Delapan percobaan hari itu:
+
+| Huruf base64 | Hasil |
+|---:|---|
+| 9.104 | GAGAL |
+| 9.808 | berhasil |
+| 9.975 | berhasil |
+| 10.308 | berhasil |
+| 10.769 | berhasil |
+| 11.113 | berhasil |
+| 11.657 | berhasil |
+| 12.612 | GAGAL |
+
+**Bukan batas keras, melainkan peluang.** Sekitar 75% berhasil pada ukuran
+segitu, dan makin panjang makin sering gagal. Sebabnya tetap seperti bagian
+42: base64 harus saya ketik ulang, dan deretan huruf acak sepanjang itu tidak
+bisa dijamin tersalin tanpa meleset.
+
+### Yang membuatnya AMAN dipakai — ini yang bagian 42 lewatkan
+
+**Setiap kegagalan SELALU ketahuan.** Konektor menolak dengan
+`not a valid base64 string`, atau `fileSize` tidak cocok. Tidak pernah ada
+berkas rusak yang diam-diam duduk di Drive. Jadi risikonya bukan "faktur
+rusak sampai ke customer", melainkan hanya "unggahan perlu diulang".
+
+Aturan wajib: **cocokkan `fileSize` hasil unggah dengan ukuran berkas asal,
+tiap kali.** Kalau beda, hapus dan ulangi.
+
+### Yang TIDAK boleh dilakukan
+
+Memecah base64 jadi beberapa potongan lalu menyambungnya **tidak menolong** —
+sudah dicoba di bagian 37 dan ditolak. Pemecahan tidak mengurangi kesalahan
+salin, hanya memindahkannya.
+
+### Keadaan sekarang
+
+Folder `SAPUAN 21-30 SEPTEMBER 2026 - DOKUMEN`
+(`1SqkHv6ZBm1miOdKXyz1NNxT4RIIHqF52`) di dalam `DOKUMEN OTOMATIS HAPPY
+PUMPKIN`, berisi 6 berkas yang sudah naik dan terverifikasi:
+
+    TEMPLATE_PO_28_September_-_Dunia_Bayi      7.354
+    FAKTUR_PAJAK_PO_28_September_-_Dunia_Bayi  7.481
+    FAKTUR_PAJAK_Sheet4                        7.730
+    TEMPLATE_Sheet4                            8.077
+    TEMPLATE_PO_28_September_-_Haritsa         8.335
+    TEMPLATE_PO_24_September_-_Miniku          8.743
+
+Nama folder sengaja BUKAN nama order sheet, supaya bot tidak mengenalinya
+sebagai draf lalu memindahkannya ke `_KEDALUWARSA` (jebakan bagian 34).
+
+Sisanya 38 berkas berukuran 9,4 - 35 KB. Yang paling besar
+(`PROFORMA Buchi Kids`, 34.949 byte = 46.600 huruf) hampir pasti gagal
+berulang kali.
+
+### Ongkosnya, supaya Yosua bisa memilih
+
+Satu berkas menghabiskan +-20.000 token (baca dari disk + ketik ulang ke
+panggilan unggah). 44 berkas +-900.000 token, dan itu BELUM termasuk
+pengulangan untuk yang gagal.
+
+Jalur `jadwal/sapu-sekarang.bat` di komputer kantor mengerjakan ke-44 berkas
+dalam beberapa menit, gratis, dan sidik jarinya ikut tercatat di
+`kondisi_sapu.json` sehingga bot tidak menganggapnya draf asing.
+
+**Jadi keduanya benar:** unggahan dari sesi ini BISA dan sudah terbukti —
+dipakai untuk berkas satuan yang mendesak; dan `.bat` tetap jalur yang benar
+untuk satu sapuan penuh. Yang salah di bagian 42 adalah menyebutnya tidak
+bisa sama sekali.
