@@ -4482,3 +4482,31 @@ dalam beberapa menit, gratis, dan sidik jarinya ikut tercatat di
 dipakai untuk berkas satuan yang mendesak; dan `.bat` tetap jalur yang benar
 untuk satu sapuan penuh. Yang salah di bagian 42 adalah menyebutnya tidak
 bisa sama sekali.
+
+### Keterangan di berkas .bat sempat berbohong soal jamnya — 6 Oktober 2026
+
+Yosua bertanya *"bagaimana cara saya menjalankan .bat"*. Saat memeriksa
+berkasnya untuk menjawab, ketahuan keterangan di dalamnya **tidak ikut
+diperbarui** waktu jadwal dan lingkup sapuan diubah di bagian 44.
+
+| Berkas | Yang tertulis | Yang sebenarnya dijalankan |
+|---|---|---|
+| `pasang-jadwal.bat` | "menyapu jam 06:00 dan 18:00" (5 tempat) | `/ST 08:00 /RI 540 /ET 17:30` = **08:00 dan 17:00** |
+| `sapu-sekarang.bat` | "HANYA MENYAPU ORDER SHEET BULAN INI (`--bulan-ini`)" | `py jalankan.py sapu --minggu-ini` |
+| `sapu-sekarang.bat` | "Sapuan terjadwal tetap membaca SEMUA bulan, jadi tidak ada yang terlewat" | **SUDAH TIDAK BENAR** sejak bagian 44 — yang terjadwal pun per minggu |
+| `sapu.bat` | "dipanggil Task Scheduler tiap 10 menit" | dua kali sehari |
+
+Kalimat ketiga yang paling berbahaya: ia menjanjikan jaring pengaman yang
+sudah dicabut. Orang yang membacanya akan mengira PO bulan lama pasti ikut
+tersapu sendiri, padahal sekarang harus lewat `sapu-semua-bulan.bat`.
+
+**Aturan umum: kalau perilaku .bat diubah, sisir juga blok `REM` dan
+`echo`-nya.** Tes hanya memeriksa ARGUMEN perintahnya (`/ST 08:00`,
+`--minggu-ini`), jadi keterangan yang salah lolos semua tes — dan justru
+keterangan itulah satu-satunya yang dibaca rekan kerja saat mengeklik.
+Pola yang sama dengan pemeriksa yang memberi saran salah di bagian 24 dan
+27: nasihat yang keliru lebih buruk daripada tidak ada nasihat.
+
+Disunting lewat BYTE (`read_bytes`/`write_bytes`) dengan pagar ASCII+CRLF,
+bukan `read_text`/`write_text` — aturan bagian 27, yang sudah sekali
+dilanggar di bagian 44. Tes tetap 295.
