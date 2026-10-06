@@ -337,9 +337,14 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
         gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=HURUF_ISI, angka="#,##0")
         gaya.sel_isi(ws, r, 5, rms.harga(r) if pakai_rumus else b.harga,
                      ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 6, b.diskon / b.qty if b.qty else 0,
+        # Rumus, sama seperti faktur DPM. TANPA ROUND — lihat rumus.py.
+        gaya.sel_isi(ws, r, 6,
+                     rms.diskon_satuan(r) if pakai_rumus
+                     else (b.diskon / b.qty if b.qty else 0),
                      ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
-        gaya.sel_isi(ws, r, 7, b.diskon, ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
+        gaya.sel_isi(ws, r, 7,
+                     rms.nilai_diskon(r) if pakai_rumus else b.diskon,
+                     ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
         gaya.sel_isi(ws, r, 8,
                      rms.jumlah_baris(r, "D", "E", "G") if pakai_rumus
                      else b.nett,
@@ -384,7 +389,8 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
     gaya.siapkan_cetak(ws, KOL_AKHIR_INV)
     ws.print_area = f"A2:H{akhir}"
     return {"qty": sum(b.qty for b in baris), "kotor": kotor,
-            "diskon": diskon, "nett": nett, "baris": len(baris)}
+            "diskon": diskon, "nett": nett, "baris": len(baris),
+            "persen_efektif": (diskon / kotor) if kotor else 0.0}
 
 
 # ------------------------------------------------------------ SURAT JALAN

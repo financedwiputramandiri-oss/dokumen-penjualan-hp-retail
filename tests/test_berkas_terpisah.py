@@ -171,22 +171,59 @@ def test_penutup_memakai_rumus_bukan_angka_mati(buku):
     assert any(x.startswith("=SUM(") for x in semua), "Diskon bukan rumus"
 
 
-def test_nilai_diskon_per_baris_TETAP_angka_bukan_rumus(buku):
-    """Sengaja, dan jangan diubah tanpa membaca dokumen/rumus.py.
+def test_nilai_diskon_per_baris_BERUPA_RUMUS(buku):
+    """Permintaan Yosua 6 Oktober 2026, membalik keputusan 20 September.
 
-    Nilai bersih di order sheet TIDAK dihitung dari persentase — ia dibaca
-    apa adanya dari kolom nilai bersih. Menghitungnya ulang lewat
-    `qty x harga x persen` meleset Rp1-2 dari baris TOTAL order sheet, dan
-    kecocokan sampai rupiah terakhir itulah yang dijaga seluruh program ini.
+    Qty yang disunting di Excel harus langsung memperbarui nilai diskon dan
+    Jumlah. Sebelumnya kolom ini berupa angka mati sehingga Yosua berkali-kali
+    harus meminta "sesuaikan nilai diskon nya" sesudah membetulkan qty.
     """
     berkas, _, _ = buku
     ws = _wb(berkas, "INVOICE")[rms.TAB_INVOICE]
     baris_rumus, _ = _sel(ws, 8)
+    satuan = ws.cell(baris_rumus, 6).value
     diskon = ws.cell(baris_rumus, 7).value
-    assert not (isinstance(diskon, str) and diskon.startswith("=")), (
-        "Nilai Diskon jadi rumus — total faktur tidak lagi sama persis "
-        "dengan order sheet"
+    assert isinstance(satuan, str) and satuan.startswith("="), (
+        f"Diskon satuan bukan rumus: {satuan!r}"
     )
+    assert isinstance(diskon, str) and diskon.startswith("="), (
+        f"Nilai Diskon bukan rumus: {diskon!r}"
+    )
+    # Nilai Diskon harus menurunkan dirinya dari qty, bukan menyalin angka —
+    # itu yang membuatnya ikut berubah saat qty disunting.
+    assert f"D{baris_rumus}" in diskon, (
+        f"Nilai Diskon tidak merujuk kolom Qty: {diskon!r}"
+    )
+
+
+def test_rumus_diskon_TIDAK_BOLEH_dibulatkan(buku):
+    """Jangan tambahkan ROUND ke kedua rumus ini — lihat dokumen/rumus.py.
+
+    Rumusnya aman HANYA karena tidak dibulatkan: jumlah seluruh kolom diskon
+    jadi `kotor x tarif = kotor - nett`, persis angka order sheet. Begitu tiap
+    baris dibulatkan sendiri-sendiri, sisanya menumpuk dan total faktur
+    meleset dari baris TOTAL order sheet — diukur pada 22 PO September 2026:
+    Rp32,99, terbesar Rp11,33 pada satu PO.
+    """
+    berkas, _, _ = buku
+    ws = _wb(berkas, "INVOICE")[rms.TAB_INVOICE]
+    baris_rumus, _ = _sel(ws, 8)
+    for kolom, nama in ((6, "Diskon satuan"), (7, "Nilai Diskon")):
+        isi = str(ws.cell(baris_rumus, kolom).value or "")
+        assert "ROUND" not in isi.upper(), (
+            f"{nama} memakai ROUND: {isi!r} — totalnya akan meleset dari "
+            "order sheet"
+        )
+
+
+def test_tarif_diskon_tersimpan_di_lembar_master(buku):
+    """Rumus diskon merujuk satu sel; sel itu wajib ada dan masuk akal."""
+    berkas, _, _ = buku
+    wb = _wb(berkas, "INVOICE")
+    assert rms.TAB_MASTER in wb.sheetnames
+    nilai = wb[rms.TAB_MASTER].cell(rms.BARIS_DISKON, rms.KOLOM_TARIF).value
+    assert isinstance(nilai, (int, float)), f"tarif diskon kosong: {nilai!r}"
+    assert 0.0 <= float(nilai) < 1.0, f"tarif diskon tidak masuk akal: {nilai}"
 
 
 def test_qty_surat_jalan_berupa_penjumlahan_kolom_ukuran(buku):

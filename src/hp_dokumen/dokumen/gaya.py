@@ -33,6 +33,11 @@ UKURAN_KOP = 11
 # angka, bukan kolom tersendiri. Bagian ketiga (`_-"Rp"* "-"_-`) adalah
 # bagian untuk nilai NOL, sehingga Uang Muka kosong tampil sebagai "-".
 FORMAT_RP = r'_-"Rp"* #,##0_-;\-"Rp"* #,##0_-;_-"Rp"* "-"_-;_-@_-'
+
+# Margin cetak, inci, keempat sisi. Lihat penjelasan di `siapkan_cetak()`:
+# nilainya sengaja JAUH lebih besar dari faktur asli (0,15) supaya garis
+# tabel paling tepi tidak jatuh di daerah yang tidak bisa dicetak printer.
+MARGIN_CETAK = 0.4
 FORMAT_ANGKA = "#,##0"
 
 _tipis = Side(style="thin", color="000000")
@@ -174,13 +179,28 @@ def siapkan_cetak(ws: Worksheet, kolom_terakhir: int, *, landscape: bool = False
     ws.page_setup.fitToHeight = 0
     ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
     ws.print_options.horizontalCentered = False
-    # Margin diambil dari faktur asli DPM (0010726 BABY WISE dan
-    # 0310726 MAE BEBE). Margin bawaan Excel 0,7 inci membuat tabel
-    # terdorong ke halaman kedua saat dicetak di A4.
-    ws.page_margins.left = 0.15
-    ws.page_margins.right = 0.15
-    ws.page_margins.top = 0.2
-    ws.page_margins.bottom = 0.25
+    # Margin 0,4 inci (+-1 cm) di keempat sisi — diperbesar 6 Oktober 2026
+    # atas laporan Yosua bahwa garis tabel paling tepi ikut terpotong saat
+    # dicetak.
+    #
+    # Faktur asli DPM memakai 0,15 inci, dan itu memang yang dipakai di sini
+    # sebelumnya. Tapi hampir semua printer punya tepi yang TIDAK BISA
+    # dicetak selebar +-5 mm (0,2 inci); margin 0,15 inci jatuh DI DALAM
+    # daerah itu, jadi garis tepinya hilang. 0,4 inci aman di luar daerah
+    # tersebut dan masih menyisakan jarak yang terlihat.
+    #
+    # Isinya tidak ikut terpotong: `fitToWidth = 1` menyusutkan tabel supaya
+    # selebar daerah cetak, jadi margin yang lebih lebar hanya membuat
+    # hurufnya sedikit lebih kecil (A4 8,27 inci: daerah cetak 7,97 -> 7,47
+    # inci, menyusut +-6%). JANGAN dikecilkan lagi ke angka faktur asli.
+    ws.page_margins.left = MARGIN_CETAK
+    ws.page_margins.right = MARGIN_CETAK
+    ws.page_margins.top = MARGIN_CETAK
+    ws.page_margins.bottom = MARGIN_CETAK
+    # Header/footer harus lebih sempit dari margin isi, kalau tidak Excel
+    # menolak pengaturannya dan diam-diam kembali ke bawaan 0,7 inci.
+    ws.page_margins.header = 0.2
+    ws.page_margins.footer = 0.2
     ws.print_area = f"A1:{get_column_letter(kolom_terakhir)}{max(ws.max_row, 1)}"
 
 

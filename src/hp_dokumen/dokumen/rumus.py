@@ -5,24 +5,40 @@ SATU berkas Excel di lembar berbeda, ditambah lembar berisi master harga
 sebagaimana adanya saat dokumen itu dibuat, dan perhitungan invoice ditulis
 sebagai RUMUS supaya bisa dilihat dan ditelusuri.
 
-Satu hal yang SENGAJA tidak dijadikan rumus: kolom "Nilai Diskon" per baris.
+Kolom "Nilai Diskon" per baris JUGA rumus, sejak 6 Oktober 2026.
 ------------------------------------------------------------------------
-Godaannya besar, sebab `qty x harga x persen` terlihat paling jelas. Tapi
-nilai bersih di order sheet TIDAK dihitung ulang dari persentase — ia dibaca
-apa adanya dari kolom nilai bersih (Aturan 2, CLAUDE.md bagian 7). Diuji pada
-dua PO sungguhan 20 September 2026:
+Permintaan Yosua: *"di invoice pada bagian nilai diskon di excel gunakan
+rumus mulai sekarang dan selanjutnya"*. Sebelumnya kolom itu sengaja berupa
+angka, sebab menghitungnya ulang dari persentase LALU DIBULATKAN per baris
+membuat total faktur meleset dari baris TOTAL order sheet (diukur 20
+September 2026: Rp1 dan Rp2 pada dua PO).
 
-    PO 17 September - Satu Sama (Veteran)  22% + 1.5%  selisih Rp1
-    PO 17 September - Baby Fame            25% + 1.5%  selisih Rp2
+Yang membuatnya aman sekarang: rumusnya TIDAK DIBULATKAN.
 
-Kecil, tapi artinya total faktur tidak lagi sama persis dengan baris TOTAL
-order sheet — padahal kecocokan sampai rupiah terakhir itulah yang dijaga
-seluruh program ini, dan yang membuat pencocokan berani MENOLAK menerbitkan
-dokumen. Jadi Nilai Diskon tetap berupa ANGKA dari order sheet, sedangkan
-semua yang bisa diturunkan darinya ditulis sebagai rumus:
+    F (Diskon satuan) = Harga x tarif diskon
+    G (Nilai Diskon)  = Qty x Diskon satuan
+
+Karena `tarif = (kotor - nett) / kotor`, jumlah seluruh kolom G sama dengan
+`kotor x tarif = kotor - nett` secara aljabar — persis nilai diskon dari
+order sheet, tanpa sisa pembulatan. Selnya menyimpan angka penuh dan format
+Rupiah hanya membulatkan TAMPILANNYA. Diukur pada 22 PO September 2026:
+selisih total Rp0,00.
+
+ROUND() karena itu JANGAN PERNAH ditambahkan ke kedua rumus ini. Dengan
+pembulatan per baris selisihnya langsung muncul — pada data yang sama
+Rp32,99, dan paling besar Rp11,33 pada satu PO.
+
+Tarif diskonnya disimpan di satu sel (`MASTER HARGA!$C$4`), jadi mengubah
+satu sel itu memperbarui seluruh baris. Qty yang disunting di Excel pun
+langsung memperbarui nilai diskon dan Jumlah — itu yang diminta Yosua, yang
+sebelumnya harus meminta "sesuaikan nilai diskon nya" tiap kali qty berubah.
+
+Yang ditulis sebagai rumus:
 
     Harga satuan   VLOOKUP ke lembar MASTER HARGA
     Deskripsi      VLOOKUP ke lembar MASTER HARGA
+    Diskon satuan  = Harga x tarif diskon
+    Nilai Diskon   = Qty x Diskon satuan
     Jumlah         = Qty x Harga - Nilai Diskon
     Subtotal       = SUMPRODUCT(Qty, Harga)
     Diskon         = SUM(Nilai Diskon)
@@ -45,11 +61,14 @@ TAB_MASTER = "MASTER HARGA"
 # di belasan sel.
 BARIS_TARIF = 3
 KOLOM_TARIF = 3            # C3
+# Tarif diskon efektif order ini, satu sel untuk seluruh baris faktur.
+BARIS_DISKON = 4           # C4
 BARIS_JUDUL_MASTER = 5
 BARIS_DATA_MASTER = 6
 
 _M = f"'{TAB_MASTER}'"
 SEL_TARIF = f"{_M}!$C${BARIS_TARIF}"
+SEL_DISKON = f"{_M}!$C${BARIS_DISKON}"
 
 
 def vlookup(kolom_kode: str, baris: int, kolom_hasil: int, bawaan: str) -> str:
@@ -76,6 +95,21 @@ def jumlah_baris(baris: int, kolom_qty: str, kolom_harga: str,
     """Jumlah per baris = qty x harga, dikurangi nilai diskon kalau ada."""
     pokok = f"{kolom_qty}{baris}*{kolom_harga}{baris}"
     return f"={pokok}-{kolom_diskon}{baris}" if kolom_diskon else f"={pokok}"
+
+
+def diskon_satuan(baris: int, kolom_harga: str = "E") -> str:
+    """Diskon per potong = harga x tarif diskon.
+
+    TANPA ROUND — lihat penjelasan di kepala berkas. Pembulatan per baris
+    membuat jumlah kolom diskon meleset dari nilai bersih order sheet.
+    """
+    return f"={kolom_harga}{baris}*{SEL_DISKON}"
+
+
+def nilai_diskon(baris: int, kolom_qty: str = "D",
+                 kolom_satuan: str = "F") -> str:
+    """Nilai diskon satu baris = qty x diskon per potong. TANPA ROUND."""
+    return f"={kolom_qty}{baris}*{kolom_satuan}{baris}"
 
 
 def subtotal(awal: int, akhir: int, kolom_qty: str, kolom_harga: str) -> str:
@@ -105,7 +139,7 @@ def qty_surat_jalan(baris: int, kolom_awal: str, kolom_akhir: str) -> str:
 
 
 def tulis_master(ws, master: dict, perusahaan, tarif_ppn: float,
-                 tanggal: date | None = None) -> None:
+                 tanggal: date | None = None, tarif_diskon: float = 0.0) -> None:
     """Isi lembar MASTER HARGA: harga yang BERLAKU saat dokumen ini dibuat.
 
     Gunanya bukan cuma untuk VLOOKUP. Harga retail berubah sepanjang tahun
@@ -126,6 +160,15 @@ def tulis_master(ws, master: dict, perusahaan, tarif_ppn: float,
     ws.cell(BARIS_TARIF, KOLOM_TARIF + 1,
             f"diproses lewat {getattr(perusahaan, 'nama', '')}"
             + ("" if tarif_ppn else " — tidak mengenakan PPN"))
+
+    # Tarif diskon efektif order ini. Kolom "Diskon satuan" dan "Nilai
+    # Diskon" di faktur merujuk ke SEL INI, jadi satu suntingan di sini
+    # memperbarui seluruh baris sekaligus.
+    ws.cell(BARIS_DISKON, 1, "Tarif diskon efektif faktur ini")
+    sel = ws.cell(BARIS_DISKON, KOLOM_TARIF, tarif_diskon)
+    sel.number_format = "0.0000%"
+    ws.cell(BARIS_DISKON, KOLOM_TARIF + 1,
+            "dipakai kolom Diskon satuan dan Nilai Diskon — jangan dibulatkan")
 
     for i, judul in enumerate(("KODE ARTIKEL", "NAMA BARANG",
                                "HARGA (SUDAH TERMASUK PPN)"), start=1):

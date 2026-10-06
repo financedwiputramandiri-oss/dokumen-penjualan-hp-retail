@@ -271,3 +271,71 @@ def test_judul_faktur_tidak_terpotong_walau_kode_artikel_pendek():
     panjang = [BarisInvoice("4106500 (Bottom/Celana)", "Nilo Straight Denim Pants",
                             12, 41000, 492000, 403440)]
     assert lebar_menyesuaikan(panjang)[2] <= MAKS_KODE
+
+
+# --------------------------------------------------------------------------
+# Jarak tepi kertas — Yosua 6 Oktober 2026: "kalau di print masih memiliki
+# jarak antara batas kertas dengan border paling ujung sehingga tidak
+# terpotong". Margin lama 0,15 inci jatuh di dalam daerah yang tidak bisa
+# dicetak printer (+-5 mm), jadi garis tabel paling tepi hilang.
+# --------------------------------------------------------------------------
+
+MARGIN_MINIMAL = 0.3        # inci; di bawah ini garis tepi berisiko terpotong
+
+
+@pytest.mark.parametrize("pembuat", [buat_invoice, buat_surat_jalan,
+                                     buat_packing_list])
+def test_margin_cetak_cukup_jauh_dari_tepi_kertas(bahan, tmp_path, pembuat):
+    orders, cfg = bahan
+    o = orders[0]
+    c = cfg.customer.cari(o.nama_tab)
+    pt = cfg.perusahaan.untuk(c)
+    wb = Workbook()
+    if pembuat is buat_invoice:
+        pembuat(wb.active, o, tentukan_nett(o, c), c, pt, cfg.pengaturan, "001")
+    else:
+        pembuat(wb.active, o, c, pt, "001")
+    ws = _simpan(wb.active, tmp_path, f"{pembuat.__name__}.xlsx")
+
+    m = ws.page_margins
+    for sisi in ("left", "right", "top", "bottom"):
+        nilai = getattr(m, sisi)
+        assert nilai is not None and nilai >= MARGIN_MINIMAL, (
+            f"margin {sisi} = {nilai} inci — terlalu dekat ke tepi kertas, "
+            "garis tabel paling ujung akan terpotong printer"
+        )
+    # Header/footer harus lebih sempit dari margin isi, kalau tidak Excel
+    # membuang pengaturannya dan kembali ke bawaan 0,7 inci.
+    assert m.header is not None and m.header < m.top
+    assert m.footer is not None and m.footer < m.bottom
+
+
+def test_persen_diskon_tidak_dibulatkan_saat_dicetak(bahan, tmp_path):
+    """Faktur tidak boleh menyebut persen yang berbeda dari yang ditagih.
+
+    Diskon efektif sering bukan bilangan bulat — Baby Wise 27,5%, Fany Baby
+    23,17%. Dengan format "0%" keduanya tercetak "28%" dan "23%", padahal
+    nilai selnya benar. Cacat semacam ini hanya terlihat dari dokumen yang
+    sudah dicetak, jadi yang diperiksa di sini FORMAT ANGKANYA.
+    """
+    orders, cfg = bahan
+    for o in orders:
+        c = cfg.customer.cari(o.nama_tab)
+        wb = Workbook()
+        buat_invoice(wb.active, o, tentukan_nett(o, c), c,
+                     cfg.perusahaan.untuk(c), cfg.pengaturan, "001")
+        ws = _simpan(wb.active, tmp_path, "persen.xlsx")
+        for r in range(1, 20):
+            sel = ws.cell(r, 6)
+            if not isinstance(sel.value, (int, float)) or sel.value in (0, None):
+                continue
+            if "%" not in (sel.number_format or ""):
+                continue
+            persen = float(sel.value) * 100
+            if abs(persen - round(persen)) < 0.005:
+                continue        # memang bulat, "0%" pun sudah benar
+            assert "." in sel.number_format, (
+                f"{o.nama_tab}: diskon {persen:.2f}% dicetak dengan format "
+                f"{sel.number_format!r} — tercetak {round(persen):.0f}%, "
+                "berbeda dari yang ditagihkan"
+            )

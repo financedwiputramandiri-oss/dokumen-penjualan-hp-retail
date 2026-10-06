@@ -112,19 +112,24 @@ def buat_berkas(
     ws_inv = wb.active
     ws_inv.title = rms.TAB_INVOICE
     if pakai_mtn:
-        buat_invoice_mtn(ws_inv, order, keputusan, cust, pt, cfg.pengaturan,
-                         nomor, pakai_rumus=pakai_rumus)
+        hasil_inv = buat_invoice_mtn(ws_inv, order, keputusan, cust, pt,
+                                     cfg.pengaturan, nomor,
+                                     pakai_rumus=pakai_rumus)
     else:
-        buat_invoice(ws_inv, order, keputusan, cust, pt, cfg.pengaturan, nomor,
-                     pakai_rumus=pakai_rumus)
+        hasil_inv = buat_invoice(ws_inv, order, keputusan, cust, pt,
+                                 cfg.pengaturan, nomor,
+                                 pakai_rumus=pakai_rumus)
     # buat_invoice* menyetel ws.title sendiri; dikembalikan supaya nama
     # lembarnya sama untuk DPM maupun MTN, sebab rumus menunjuk ke nama itu.
     ws_inv.title = rms.TAB_INVOICE
 
     if master:
         tarif = cfg.pengaturan.tarif_ppn if pt.kenakan_ppn else 0.0
+        # Tarif diskon efektif ikut ditulis: kolom Diskon satuan dan Nilai
+        # Diskon di faktur merujuk ke selnya (MASTER HARGA!$C$4).
         rms.tulis_master(wb.create_sheet(rms.TAB_MASTER), master, pt, tarif,
-                         order.tanggal_po)
+                         order.tanggal_po,
+                         tarif_diskon=float(hasil_inv.get("persen_efektif") or 0.0))
     berkas_utama = folder / f"INVOICE_{aman}.xlsx"
     wb.save(berkas_utama)
     dibuat.append(berkas_utama)

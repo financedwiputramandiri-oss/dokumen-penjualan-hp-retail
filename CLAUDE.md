@@ -4025,3 +4025,132 @@ melainkan FORMAT dokumennya, dan `SidikPO` tidak pernah mengawasi kode
 Folder `HASIL SAPUAN 3 OKTOBER 2026` yang sempat dibuat sudah dihapus lagi,
 mengikuti aturan bagian 37: jangan meninggalkan folder kosong yang
 menyesatkan.
+
+## 43. Nilai Diskon jadi RUMUS, dan jarak tepi kertas — 6 Oktober 2026
+
+> *"di invoice pada bagian nilai diskon di excel gunakan rumus mulai sekarang
+> dan selanjutnya"*
+> *"buatkan format excel yang sesuai sehingga kalau di print masih memiliki
+> jarak antara batas kertas dengan border paling ujung sehingga tidak
+> terpotong"*
+
+### Nilai Diskon — MEMBATALKAN keputusan bagian 33
+
+Bagian 33 sengaja membiarkan kolom Nilai Diskon berupa ANGKA, karena
+menghitungnya ulang dari persentase meleset Rp1-2 dari baris TOTAL order
+sheet. Yosua membalik keputusan itu, dan alasannya masuk akal: ia berkali-kali
+harus meminta *"sesuaikan nilai diskon nya"* sesudah membetulkan qty sendiri
+di Excel (16 dan 29 September), sebab angka mati tidak ikut berubah.
+
+**Yang membuatnya aman sekarang: rumusnya TIDAK DIBULATKAN.**
+
+    F (Diskon satuan) = Harga x tarif diskon        =E15*'MASTER HARGA'!$C$4
+    G (Nilai Diskon)  = Qty x Diskon satuan         =D15*F15
+    H (Jumlah)        = Qty x Harga - Nilai Diskon  (sudah ada sejak bagian 33)
+
+Karena `tarif = (kotor - nett) / kotor`, jumlah seluruh kolom G sama dengan
+`kotor x tarif = kotor - nett` secara aljabar — persis nilai diskon order
+sheet. Sel menyimpan angka penuh; format Rupiah hanya membulatkan TAMPILANnya.
+
+Dibuktikan dengan menghitung ulang lewat LibreOffice, bukan dari kode:
+
+| PO | order sheet | hasil rumus | selisih |
+|---|---:|---:|---:|
+| 26 Sep - Katamama (Cikaret) | 29.752.341 | 29.752.341 | **0** |
+| 21 Sep - Buchi Kids (Malang) | 82.812.524 | 82.812.524 | **0** |
+| 28 Sep - Baby Wise | 30.558.170 | 30.558.170 | **0** |
+
+**JANGAN PERNAH menambahkan ROUND ke kedua rumus itu.** Dengan pembulatan per
+baris, selisihnya langsung muncul — pada 22 PO September 2026 totalnya
+Rp32,99, terbesar Rp11,33 pada Katamama Cikaret. Ada tes yang menolak ROUND.
+
+Tarifnya disimpan di **satu sel**, `MASTER HARGA!$C$4`, jadi seluruh baris
+ikut sekali ubah. Diuji: qty baris 15 Baby Wise digandakan 18 -> 36, Subtotal
+naik Rp864.000 dan Total naik Rp626.400 — persis `864.000 x (1 - 27,5%)`.
+
+Berlaku untuk faktur DPM dan MTN; keduanya memakai `rumus.diskon_satuan()`
+dan `rumus.nilai_diskon()` yang sama.
+
+### Jarak tepi kertas: margin 0,15 -> 0,4 inci
+
+Margin lama diambil dari faktur asli DPM (bagian 19). Masalahnya hampir semua
+printer punya tepi yang **tidak bisa dicetak** selebar +-5 mm (0,2 inci), dan
+0,15 inci jatuh DI DALAM daerah itu — jadi garis tabel paling tepi hilang.
+
+Sekarang `gaya.MARGIN_CETAK = 0.4` di keempat sisi. Isinya tidak ikut
+terpotong: `fitToWidth = 1` menyusutkan tabel sendiri, jadi yang terjadi cuma
+hurufnya +-6% lebih kecil (daerah cetak 7,97 -> 7,47 inci).
+
+Satu hal yang mudah terlewat: `page_margins.header` dan `.footer` harus LEBIH
+SEMPIT dari margin isi. Kalau tidak, Excel membuang pengaturannya dan
+diam-diam kembali ke bawaan 0,7 inci.
+
+Diukur pada PDF sungguhan, dari piksel gambarnya:
+
+| Dokumen | kiri | kanan | atas | bawah |
+|---|---:|---:|---:|---:|
+| Invoice Baby Wise | 1,02 cm | 1,14 cm | 1,37 cm | 1,04 cm |
+| Surat Jalan Miniku (9 ukuran) | 1,02 cm | 1,19 cm | 1,04 cm | 1,65 cm |
+
+Keduanya A4 tegak 8,27 x 11,70 inci, kolom Qty paling kanan utuh.
+
+### Cacat yang ketahuan saat memeriksa: persen diskon DIBULATKAN
+
+Ditemukan dari melihat GAMBAR hasil render, bukan dari nilai sel. Baris judul
+kolom Diskon menulis angka 0,275 dengan format `"0%"`, sehingga **tercetak
+"28%" padahal yang ditagih 27,5%**. Faktur memberi tahu customer persen yang
+berbeda dari yang dipakai menghitung.
+
+Terjadi pada **65 dari 219 PO tahun 2026** — semua order yang diskon
+efektifnya bukan bilangan bulat (Fany Baby 23,17% tercetak 23%, Input Baby
+Shop 21,20% tercetak 21%).
+
+Formatnya diganti `"0.##%"`: 25% tetap "25%", 27,5% jadi "27.5%" — titik
+desimal, sama seperti bentuk gabungan `22% + 1.5%` di faktur asli.
+
+Proforma dan MTN TIDAK kena: keduanya sudah memakai `_persen_ringkas()` yang
+menulisnya sebagai teks.
+
+**Ini kali kesepuluh pola yang sama muncul** (kolom C Surat Jalan bagian 19,
+DISK% proforma bagian 28, label Faktur Pajak bagian 28, tanggal MTN bagian 31,
+lembar master dihapus bagian 33, "STOMER" bagian 33, Value Disc dan tinggi
+baris SJ bagian 36, kolom No. MTN bagian 38, dan sekarang ini). Nilai selnya
+SELALU benar. **Render ke PDF, ubah jadi gambar, lalu lihat.**
+
+### Tes
+
+Tes lama `test_nilai_diskon_per_baris_TETAP_angka_bukan_rumus` DIHAPUS — ia
+mengunci keputusan yang Yosua balik. Penggantinya lima tes: Nilai Diskon wajib
+rumus dan wajib merujuk kolom Qty, kedua rumus dilarang memakai ROUND, tarif
+diskon wajib ada di lembar master, margin keempat sisi minimal 0,3 inci
+dengan header/footer lebih sempit, dan persen diskon pecahan dilarang memakai
+format tanpa desimal. Tes 263 -> 271.
+
+**Dokumen lama tidak ikut berubah sendiri** — jebakan bagian 26, 27, 32, 34,
+dan 40. Supaya semua faktur memakai rumus dan margin baru: hapus
+`data/kondisi_sapu.json` lalu jalankan `jadwal/sapu-semua-bulan.bat`.
+
+### Diperiksa pada SELURUH PO, bukan tiga contoh
+
+Rumus baru ini hanya aman kalau `qty x harga` memang sama dengan nilai kotor
+order sheet. Diperiksa pada 463 PO dari 22 order sheet:
+
+| | |
+|---|---:|
+| PO 2026 yang LOLOS pencocokan | 217 |
+| selisih terbesar rumus vs order sheet | **Rp0,000000006** |
+
+Angka itu derau desimal komputer, bukan selisih uang.
+
+**Tujuh PO memang `qty x harga`-nya berbeda jauh** dari nilai kotor sheet —
+`DHAWAFEST BAZAAR` beda Rp9,6 juta, `Sheet6` September 2025 Rp10,5 juta,
+`Sheet5` Juli 2025 Rp7,5 juta, sisanya Rp9.900 sampai Rp242.600. Ketujuhnya
+ada di lima order sheet yang **sudah terhalang pencocokan** (Februari 2026,
+Juli 2025, Mei 2025, Oktober 2025, September 2025) — pemeriksaan ke-5
+`rekonsiliasi.py` memang menguji persis hal ini, dengan toleransi Rp1. Jadi
+dokumennya tidak pernah terbit, dan rumus ini tidak bisa menghasilkan faktur
+salah untuk mereka.
+
+Kalau suatu saat order sheet itu dirapikan Sales dan lolos pencocokan, otomatis
+`qty x harga = kotor` juga dan rumusnya ikut benar. Tidak ada yang perlu
+ditambal.

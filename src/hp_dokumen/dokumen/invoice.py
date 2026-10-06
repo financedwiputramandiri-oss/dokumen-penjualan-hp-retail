@@ -356,7 +356,16 @@ def buat_invoice(
             gaya.sel_judul(ws, j, 6, "Diskon ", ukuran=HURUF_JUDUL_KOLOM_INV)
             ws.merge_cells(start_row=j + 1, start_column=6, end_row=j + 2, end_column=6)
             sel = gaya.sel_judul(ws, j + 1, 6, angka_persen or 0, ukuran=HURUF_JUDUL_KOLOM_INV)
-            sel.number_format = "0%"
+            # "0.##%", BUKAN "0%". Diskon efektif sering bukan bilangan bulat:
+            # Baby Wise 27,5% tercetak "28%" dan Fany Baby 23,17% tercetak
+            # "23%" — faktur memberi tahu customer persen yang berbeda dari
+            # yang ditagihkan. Terjadi pada 65 dari 219 PO tahun 2026.
+            # Nilai selnya SELALU benar, jadi cacat ini hanya terlihat dari
+            # dokumen yang sudah dicetak, bukan dari membaca sel.
+            # Format ini menyembunyikan desimal kalau memang bulat: 25% tetap
+            # "25%", 27,5% jadi "27.5%" — titik desimal, sama seperti bentuk
+            # gabungan "22% + 1.5%" di faktur asli.
+            sel.number_format = "0.##%"
     else:
         # Bentuk tanpa diskon, seperti 0020826 CV. BASA MANDIRI: kolom
         # Harga melebar menutupi E:G dan kolom Diskon tidak dicetak sama
@@ -391,10 +400,17 @@ def buat_invoice(
         harga_sel = rms.harga(r) if pakai_rumus else b.harga
         if ada_diskon:
             gaya.sel_isi(ws, r, 5, harga_sel, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
-            gaya.sel_isi(ws, r, 6, (b.diskon / b.qty) if b.qty else 0.0,
+            # Diskon satuan dan Nilai Diskon ditulis sebagai RUMUS sejak
+            # 6 Oktober 2026 atas permintaan Yosua. Keduanya TANPA ROUND —
+            # lihat kepala dokumen/rumus.py: pembulatan per baris membuat
+            # total faktur meleset dari baris TOTAL order sheet.
+            gaya.sel_isi(ws, r, 6,
+                         rms.diskon_satuan(r) if pakai_rumus
+                         else ((b.diskon / b.qty) if b.qty else 0.0),
                          angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
-            gaya.sel_isi(ws, r, 7, b.diskon, angka=gaya.FORMAT_RP,
-                         ukuran=gy.huruf_angka)
+            gaya.sel_isi(ws, r, 7,
+                         rms.nilai_diskon(r) if pakai_rumus else b.diskon,
+                         angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             # Kolom Jumlah berisi nilai SETELAH diskon. Dibuktikan pada
             # faktur asli 0310726 MAE BEBE baris 1: 18 x 62.900 = 1.132.200,
             # diskon 283.050, kolom H = 849.150. Jumlah seluruh kolom H sama
