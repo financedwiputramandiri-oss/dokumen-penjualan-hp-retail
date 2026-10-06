@@ -4343,3 +4343,48 @@ Rekapnya naik ke `DOKUMEN OTOMATIS HAPPY PUMPKIN` sebagai
 dari sesi ini — bagian 42.
 
 Tes 290 -> 295.
+
+## 45. KETETAPAN — kerjakan sampai tuntas, termasuk naik ke Drive — 6 Oktober 2026
+
+> *"untuk menjadi ketetapan mulai sekarang, jika menjalankan perintah
+> jalankan saja dan naikkan ke drive tanpa harus disuruh atau perintah coding
+> atau lainnya"*
+
+Ini **KETETAPAN**, bukan preferensi. Satu perintah Yosua = satu pekerjaan
+yang selesai, bukan rangkaian langkah yang harus ia minta satu per satu.
+
+| Yang diminta | Yang dikerjakan tanpa diminta lagi |
+|---|---|
+| "sapu order sheet ..." | periksa `modifiedTime`, tarik kalau berubah, sapu, verifikasi angkanya, **naikkan rekapnya ke Drive**, lapor |
+| "buatkan invoice/SJ untuk PO ..." | buat, verifikasi terhadap order sheet, **naikkan ke Drive**, lapor |
+| perubahan format/kode yang diperlukan | kerjakan sendiri — jangan menunggu diminta "ubah kodenya" |
+
+Folder Drive bawaannya **`DOKUMEN OTOMATIS HAPPY PUMPKIN`**
+(`1kucuLO3P4yZUnRgXO8ISvxXcHa9531tP`), kecuali Yosua menyebut folder lain.
+
+### Yang TETAP harus ditanyakan — jangan ikut dihapus
+
+Ketetapan ini soal LANGKAH KERJA, bukan soal menebak data. Yang berikut
+tetap wajib ditanyakan, sebab salah menebaknya mengubah SELURUH dokumen
+customer itu ke depan termasuk yang dibuat bot sendiri:
+
+- data customer yang belum diketahui (NPWP, NITKU, alamat, nama di dokumen)
+- `cara_bayar_paksa` dan `perusahaan_pemroses` di `config/customer.csv`
+- mana kolom nilai bersih yang dimaksud kalau Yosua bilang totalnya beda
+
+Pelajaran Buchi Kids (bagian 36) masih berlaku penuh: saat diminta
+mencocokkan satu angka, saya mengubah aturan permanen — itu terlalu jauh.
+
+### Batas yang nyata dan harus disebut, bukan didiamkan
+
+Dokumen `.xlsx` **tidak bisa** dinaikkan dari sesi ini (bagian 42: base64
+harus saya ketik ulang, dan 9.000 huruf acak tidak bisa dijamin tersalin
+tepat). Jadi "naikkan ke Drive" dalam ketetapan ini berarti:
+
+| Jenis | Naik otomatis? |
+|---|---|
+| rekap / ringkasan CSV | **YA**, selalu, tanpa diminta |
+| folder di Drive | YA |
+| dokumen `.xlsx` | **TIDAK** — tetap lewat `jadwal/sapu-sekarang.bat` di komputer kantor |
+
+Batas ini disebut sekali per laporan, singkat, tanpa diulang panjang lebar.
