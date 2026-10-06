@@ -34,12 +34,13 @@ if not exist "%SKRIP%" (
 )
 
 REM /SC WEEKLY /D MON..SAT = hanya hari kerja, Minggu dilewati.
-REM /ST 06:00              = sapuan pertama tiap harinya.
-REM /RI 720                = diulang tiap 12 jam (720 menit).
-REM /ET 18:30 /K           = berhenti mengulang setelah sapuan kedua, dan
+REM /ST 08:00              = sapuan pertama tiap harinya.
+REM /RI 540                = diulang tiap 9 jam (540 menit), jadi
+REM                          sapuan kedua jatuh jam 17:00.
+REM /ET 17:30 /K           = berhenti mengulang setelah sapuan kedua, dan
 REM                          sapuan yang masih berjalan saat itu dihentikan.
 REM                          Jadi yang benar-benar jalan: 06:00 dan 18:00.
-REM                          /ET sengaja 18:30, bukan 18:00 - kalau sama
+REM                          /ET sengaja 17:30, bukan 17:00 - kalau sama
 REM                          persis dengan jam sapuan kedua, Windows bisa
 REM                          menutup jendela pengulangannya sebelum sapuan
 REM                          itu sempat mulai.
@@ -50,7 +51,7 @@ REM /IT = jalan HANYA kalau Bapak sedang login.
 REM      Ini WAJIB. Kalau bot jalan saat belum login, drive G: dari Google
 REM      Drive for Desktop belum ada, dan dokumennya gagal ditulis.
 REM /F  = timpa jadwal lama kalau sudah pernah dipasang.
-schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 06:00 /RI 720 /ET 18:30 /K /RU "%USERNAME%" /IT /F
+schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 540 /ET 17:30 /K /RU "%USERNAME%" /IT /F
 
 if errorlevel 1 goto :gagal
 

@@ -97,9 +97,9 @@ def _tangkap(monkeypatch):
     dicatat = {}
 
     def palsu(p=None, cfg=None, cetak=print, saring_bulan=None, paksa=False,
-              pakai_kunci=None):
+              pakai_kunci=None, saring_minggu=None):
         dicatat.update(saring_bulan=saring_bulan, paksa=paksa,
-                       pakai_kunci=pakai_kunci)
+                       pakai_kunci=pakai_kunci, saring_minggu=saring_minggu)
         return HasilSapuan([], [], [], [])
 
     monkeypatch.setattr(bot, "sapu", palsu)

@@ -253,8 +253,22 @@ def perintah_sapu(args) -> int:
     if args.tanpa_rumus:
         p.pantau_rumus = False
 
+    from .sapu.minggu import minggu_sekarang, urai_minggu
+
     saring = None
-    if args.bulan:
+    saring_minggu = None
+    # Lingkup MINGGU menang atas lingkup bulan kalau dua-duanya diminta —
+    # ia yang lebih sempit, jadi tidak pernah membuat sapuan jadi lebih
+    # mahal daripada yang diminta.
+    if args.minggu:
+        try:
+            saring_minggu = urai_minggu(args.minggu)
+        except ValueError as e:
+            print(e)
+            return 2
+    elif args.minggu_ini:
+        saring_minggu = minggu_sekarang()
+    elif args.bulan:
         try:
             saring = urai_bulan(args.bulan)
         except ValueError as e:
@@ -264,7 +278,8 @@ def perintah_sapu(args) -> int:
         saring = bulan_sekarang()
 
     hasil = sapu(p, cfg, saring_bulan=saring, paksa=args.paksa,
-                 pakai_kunci=not args.tanpa_kunci)
+                 pakai_kunci=not args.tanpa_kunci,
+                 saring_minggu=saring_minggu)
     # Sapuan yang mengalah karena komputer lain sedang menyapu BUKAN
     # kegagalan. Kalau dikembalikan sebagai galat, log jadwal penuh berisi
     # "GAGAL" padahal semuanya berjalan sebagaimana mestinya.
@@ -397,6 +412,11 @@ def buat_parser() -> argparse.ArgumentParser:
                    help="Hanya memantau, tidak membuat draf dokumen")
     h.add_argument("--tanpa-rumus", dest="tanpa_rumus", action="store_true",
                    help="Jangan bandingkan rumus (lebih cepat)")
+    h.add_argument("--minggu-ini", dest="minggu_ini", action="store_true",
+                   help="hanya PO minggu berjalan (Senin-Minggu) — lingkup "
+                        "paling hemat, dipakai jadwal 08:00 dan 17:00")
+    h.add_argument("--minggu", dest="minggu", default="",
+                   help="minggu yang memuat tanggal ini, contoh 2026-10-06")
     h.add_argument("--bulan-ini", dest="bulan_ini", action="store_true",
                    help="Hanya sapu order sheet BULAN BERJALAN (jauh lebih cepat)")
     h.add_argument("--bulan", dest="bulan", default="",

@@ -43,7 +43,7 @@ def test_sapu_bat_mencatat_hasilnya_ke_log():
     """
     isi = SAPU.read_text(encoding="ascii")
     assert "log-sapuan.txt" in isi
-    assert "jalankan.py sapu >>" in isi
+    assert "jalankan.py sapu --minggu-ini >>" in isi
     assert "2>&1" in isi, "galat harus ikut tercatat, bukan cuma keluaran biasa"
 
 
@@ -58,19 +58,19 @@ def test_pasang_jadwal_memakai_IT():
     assert " /IT " in isi or isi.rstrip().endswith("/IT")
 
 
-def test_pasang_jadwal_hari_kerja_tiap_12_jam():
-    """Senin-Sabtu, tiap 12 jam (permintaan Yosua 19 Sep 2026).
+def test_pasang_jadwal_hari_kerja_jam_8_dan_17():
+    """Senin-Sabtu, jam 08:00 dan 17:00 (permintaan Yosua 6 Oktober 2026).
 
-    /RI 720 dengan /ET 18:30 berarti sapuan jam 06:00 dan 18:00 saja.
+    /RI 540 (9 jam) dengan /ET 17:30 berarti sapuan jam 08:00 dan 17:00 saja.
     Kalau `/ET` atau `/K` hilang, bot terus menyapu sepanjang malam; kalau
     `/D` hilang, ikut jalan hari Minggu.
     """
     isi = PASANG.read_text(encoding="ascii")
     assert "/SC WEEKLY" in isi
     assert "/D MON,TUE,WED,THU,FRI,SAT" in isi, "Minggu harus libur"
-    assert "/ST 06:00" in isi
-    assert "/RI 720" in isi, "12 jam = 720 menit"
-    assert "/ET 18:30" in isi, "harus lewat 18:00 supaya sapuan kedua sempat jalan"
+    assert "/ST 08:00" in isi
+    assert "/RI 540" in isi, "08:00 -> 17:00 = 9 jam = 540 menit"
+    assert "/ET 17:30" in isi, "harus lewat 17:00 supaya sapuan kedua sempat jalan"
     assert " /K " in isi, "tanpa /K sapuan yang tersangkut tidak dihentikan"
     # Diperiksa pada argumen /D saja, bukan seluruh berkas: kata biasa
     # seperti "langsung" mengandung "sun" dan dulu membuat tes ini gagal
@@ -226,22 +226,21 @@ def test_catatan_lama_tanpa_nama_komputer_tidak_diperingatkan():
     assert peringatan_pindah_komputer(Kondisi(disapu_oleh="")) == ""
 
 
-# ------------------------------------------------- sapuan cepat = bulan ini
-def test_sapu_sekarang_hanya_menyapu_bulan_berjalan():
-    """Itulah gunanya: dokumen mendadak harus jadi cepat.
-
-    Sapuan penuh membaca 22 order sheet; bulan berjalan biasanya satu-dua.
-    """
-    assert "sapu --bulan-ini" in SEKARANG.read_text(encoding="ascii")
+# ------------------------------------------------ lingkup sapuan = MINGGU
+def test_sapu_sekarang_memakai_lingkup_minggu():
+    """Itulah gunanya: dokumen mendadak harus jadi cepat."""
+    assert "sapu --minggu-ini" in SEKARANG.read_text(encoding="ascii")
 
 
-def test_sapuan_terjadwal_tetap_membaca_semua_bulan():
-    """Kalau yang terjadwal ikut disaring bulan, order sheet lama yang
-    baru diperbaiki tidak akan pernah disapu lagi — dan tidak ada yang
-    tahu, sebab tidak ada galat apa pun.
+def test_sapuan_terjadwal_memakai_lingkup_minggu():
+    """Permintaan Yosua 6 Oktober 2026: hemat kredit.
+
+    MEMBATALKAN aturan lama "yang terjadwal tetap membaca semua bulan".
+    Gantinya `sapu-semua-bulan.bat`, yang dijalankan sesudah order sheet
+    bulan LAMA diperbaiki — lihat CLAUDE.md bagian 44.
     """
     isi = SAPU.read_text(encoding="ascii")
-    assert "--bulan-ini" not in isi
+    assert "--minggu-ini" in isi, "sapuan terjadwal harus berlingkup minggu"
     assert "--bulan" not in isi
 
 

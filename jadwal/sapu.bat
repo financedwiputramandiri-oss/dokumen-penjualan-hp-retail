@@ -55,7 +55,7 @@ echo ============================================================ >> "%LOG%"
 echo MULAI  %DATE% %TIME% >> "%LOG%"
 echo ============================================================ >> "%LOG%"
 
-py jalankan.py sapu >> "%LOG%" 2>&1
+py jalankan.py sapu --minggu-ini >> "%LOG%" 2>&1
 set KODE=%ERRORLEVEL%
 
 echo. >> "%LOG%"

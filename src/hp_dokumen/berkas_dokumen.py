@@ -15,6 +15,7 @@ from openpyxl import Workbook
 from .dokumen.faktur_pajak import buat_faktur_pajak
 from .dokumen.invoice import buat_invoice
 from .dokumen.proforma import buat_proforma
+from .dokumen.template_pajak import buat_template_pajak
 from .dokumen.mtn import buat_invoice_mtn, buat_surat_jalan_mtn
 from .dokumen import rumus as rms
 from .dokumen.surat_jalan import buat_packing_list, buat_surat_jalan
@@ -81,6 +82,11 @@ def buat_berkas(
     tugas = [
         ("FAKTUR_PAJAK",
          lambda ws: buat_faktur_pajak(ws, order, keputusan, cust, pt, cfg.pengaturan, nomor)),
+        # Lembar TEMPLATE bentukan Yosua sendiri, diterbitkan untuk SETIAP
+        # invoice - permintaannya 6 Oktober 2026. Lihat dokumen/template_pajak.py.
+        ("TEMPLATE",
+         lambda ws: buat_template_pajak(ws, order, keputusan, cust, pt,
+                                        cfg.pengaturan, nomor)),
     ]
     if sertakan_packing_list:
         tugas.append(

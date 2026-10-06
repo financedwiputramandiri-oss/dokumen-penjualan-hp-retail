@@ -75,7 +75,7 @@ echo MULAI (manual, bulan ini saja) %DATE% %TIME% >> "%LOG%"
 echo ============================================================ >> "%LOG%"
 
 REM Keluarannya ke layar DAN ke log sekaligus.
-py jalankan.py sapu --bulan-ini 2>&1
+py jalankan.py sapu --minggu-ini 2>&1
 set KODE=%ERRORLEVEL%
 echo SELESAI (manual) %DATE% %TIME% - kode %KODE% >> "%LOG%"
 goto :eof

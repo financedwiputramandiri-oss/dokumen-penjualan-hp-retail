@@ -24,9 +24,11 @@ from ..berkas_dokumen import nama_aman
 from ..konfigurasi import AKAR, Konfigurasi
 from ..model import Order
 from ..nilai_bersih import tentukan_nett
-from ..pemindai import baca_buku, master_harga_dari_buku
+from ..pemindai import adalah_tab_harga, baca_buku, master_harga_dari_buku
 from ..rekonsiliasi import periksa_order
-from .bulan import cocok_bulan, folder_bisa_dilewati, nama_bulan
+from .bulan import cocok_bulan, folder_bisa_dilewati, nama_bulan, tahun_di
+from .minggu import (bulan_tersentuh, minggu_sekarang, sebutan as sebutan_minggu,
+                      tab_dalam_minggu, tahun_tersentuh)
 from .draf import HasilDraf, buat_draf, perlu_draf
 from .unggah import PengunggahDokumen
 from .google import Sambungan
@@ -157,6 +159,7 @@ def sapu(
     saring_bulan: tuple[int, int] | None = None,
     paksa: bool = False,
     pakai_kunci: bool | None = None,
+    saring_minggu: tuple = None,
 ) -> HasilSapuan:
     """Satu kali sapuan.
 
@@ -169,7 +172,9 @@ def sapu(
     sambung = Sambungan(p.berkas_kredensial)
     cetak(f"Bot: {sambung.email_bot}")
 
-    if saring_bulan:
+    if saring_minggu:
+        cetak(f"Lingkup MINGGU: {sebutan_minggu(*saring_minggu)}.")
+    elif saring_bulan:
         cetak(f"Hanya order sheet {nama_bulan(saring_bulan[0])} {saring_bulan[1]}.")
 
     # ---- kunci antar-KOMPUTER ------------------------------------------
@@ -182,7 +187,8 @@ def sapu(
         pakai_kunci = p.pakai_kunci_bersama
     if pakai_kunci and p.sheet_otomatisasi_id:
         kunci = KunciBersama(sambung, p.sheet_otomatisasi_id)
-        ket = (f"sapuan {nama_bulan(saring_bulan[0])} {saring_bulan[1]}"
+        ket = ("sapuan minggu " + sebutan_minggu(*saring_minggu) if saring_minggu
+               else f"sapuan {nama_bulan(saring_bulan[0])} {saring_bulan[1]}"
                if saring_bulan else "sapuan penuh")
         try:
             dapat = kunci.ambil(ket)
@@ -200,7 +206,7 @@ def sapu(
                                    alasan_batal=pesan)
             cetak(f"Kunci sapuan dipegang komputer ini ({kunci.perangkat}).")
     try:
-        return _sapu(p, cfg, sambung, cetak, saring_bulan, paksa)
+        return _sapu(p, cfg, sambung, cetak, saring_bulan, paksa, saring_minggu)
     finally:
         if kunci:
             try:
@@ -209,7 +215,8 @@ def sapu(
                 cetak(f"Kunci sapuan gagal dilepas: {e}")
 
 
-def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
+def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
+          saring_minggu=None) -> HasilSapuan:
     pengunggah = (PengunggahDokumen(sambung, p.folder_dokumen_id)
                   if p.folder_dokumen_id else None)
 
@@ -243,7 +250,15 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
         id_folder, nama_folder = f.get("id", ""), f.get("nama", f.get("id", ""))
         if not id_folder:
             continue
-        if saring_bulan and folder_bisa_dilewati(nama_folder, saring_bulan[1]):
+        if saring_minggu:
+            # Satu minggu bisa menyeberang dua bulan, bahkan dua TAHUN
+            # (29 Des - 4 Jan). Folder dilewati hanya kalau tidak satu pun
+            # tahunnya tersentuh.
+            if all(folder_bisa_dilewati(nama_folder, th)
+                   for th in tahun_tersentuh(*saring_minggu)):
+                cetak(f"\nFolder: {nama_folder} — dilewati, di luar minggu ini")
+                continue
+        elif saring_bulan and folder_bisa_dilewati(nama_folder, saring_bulan[1]):
             cetak(f"\nFolder: {nama_folder} — dilewati, bukan tahun "
                   f"{saring_bulan[1]}")
             continue
@@ -256,7 +271,15 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
             continue
 
         lembar = [x for x in isi if x.mime == "application/vnd.google-apps.spreadsheet"]
-        if saring_bulan:
+        if saring_minggu:
+            sebelum = len(lembar)
+            pasangan = bulan_tersentuh(*saring_minggu)
+            lembar = [x for x in lembar
+                      if any(cocok_bulan(x.nama, b, t, nama_folder)
+                             for b, t in pasangan)]
+            cocok_bulan_ini.extend(x.nama for x in lembar)
+            cetak(f"  {len(lembar)} dari {sebelum} order sheet menyentuh minggu ini")
+        elif saring_bulan:
             sebelum = len(lembar)
             lembar = [x for x in lembar
                       if cocok_bulan(x.nama, saring_bulan[0], saring_bulan[1],
@@ -290,7 +313,24 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa) -> HasilSapuan:
                 j for j in judul_semua
                 if j.upper().strip().startswith(("PO ", "(DELIVERY", "PACKING LIST"))
             ]
-            judul_diambil = judul_po + [j for j in judul_semua if j.strip() == "Harga Retail"]
+            # Lingkup MINGGU disaring DI SINI, sebelum `buku_dari_tab` —
+            # tab yang disaring tidak pernah ikut diminta ke Google, jadi
+            # yang dihemat payload batchGet-nya, bukan cuma waktu olah.
+            if saring_minggu:
+                th = tahun_di(berkas.nama) or saring_minggu[0].year
+                semua_po = judul_po
+                judul_po = [j for j in judul_po
+                            if tab_dalam_minggu(j, saring_minggu[0],
+                                                saring_minggu[1], th)]
+                cetak(f"    {len(judul_po)} dari {len(semua_po)} tab PO "
+                      f"jatuh di minggu ini")
+
+            # Tab harga HARUS selalu ikut ditarik, berapa pun lingkupnya.
+            # Ketetapan bagian 41: harga tiap dokumen wajib mengikuti tab
+            # Harga Retail bulan itu. Tanpa tab ini harga diam-diam diambil
+            # dari baris PO.
+            judul_diambil = judul_po + [j for j in judul_semua
+                                        if adalah_tab_harga(j)]
             if not judul_po:
                 cetak("    tidak ada tab PO, dilewati")
                 kondisi.catat_sheet(berkas.id, berkas.nama, berkas.diubah, 0)

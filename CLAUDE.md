@@ -4154,3 +4154,137 @@ salah untuk mereka.
 Kalau suatu saat order sheet itu dirapikan Sales dan lolos pencocokan, otomatis
 `qty x harga = kotor` juga dan rumusnya ikut benar. Tidak ada yang perlu
 ditambal.
+
+## 44. Lingkup MINGGU, jadwal 08:00/17:00, dan lembar TEMPLATE — 6 Oktober 2026
+
+Empat permintaan Yosua sekaligus.
+
+### Lingkup sapuan jadi PER MINGGU
+
+> *"jika terdapat proses sweep bot atau sapu bot buat scope menjadi perminggu
+> saja untuk menghemat credit"*
+
+`sapu/minggu.py` + `--minggu-ini` / `--minggu 2026-10-06`. Lingkup minggu
+MENANG atas `--bulan` kalau dua-duanya diminta — ia yang lebih sempit, jadi
+tidak pernah membuat sapuan lebih mahal daripada yang diminta.
+
+Penyaringan dipasang **sebelum `buku_dari_tab`**, jadi tab di luar minggu itu
+tidak pernah ikut diminta ke Google sama sekali. Yang dihemat payload
+batchGet-nya, bukan cuma waktu olah. Diukur pada minggu 28 Sep - 4 Okt:
+**4 dari 22 tab PO** September ditarik — hemat 82%.
+
+Empat jebakan, semuanya sudah dikunci tes:
+
+| Hal | Kenapa |
+|---|---|
+| Satu minggu bisa menyeberang DUA bulan | 28 Sep - 4 Okt menyentuh order sheet September DAN Oktober. Menyaring ke satu bulan melewatkan separuhnya, diam-diam |
+| Bahkan dua TAHUN | 29 Des - 4 Jan. Folder dilewati hanya kalau tidak satu pun tahunnya tersentuh |
+| Tab yang tanggalnya TIDAK TERBACA tetap ikut | `Sheet4` memang berisi PO sungguhan (bagian 18). Melewatkan PO jauh lebih mahal daripada menyapu satu tab berlebih |
+| `--minggu` salah ketik DITOLAK | menerbitkan dokumen periode yang salah lebih mahal daripada perintah yang ditolak |
+
+**Ini MEMBATALKAN aturan bagian 32** "jadwal tetap membaca semua bulan".
+Akibatnya yang harus diingat: order sheet bulan LAMA yang baru diperbaiki
+Sales **tidak lagi ikut tersapu sendiri**. Untuk itu `sapu-semua-bulan.bat`,
+dijalankan manual sesudah rumus order sheet lama dibetulkan.
+
+Cacat yang ikut ketahuan: `bot.py` masih mencocokkan tab harga dengan nama
+PERSIS (`j.strip() == "Harga Retail"`), padahal bagian 41 sudah menggantinya
+dengan pencocokan awalan di `pemindai.py`. Order sheet Mei 2025 menamainya
+`Harga Retail per Mei 2025`, jadi lewat bot masternya tidak akan terbaca.
+Sudah diganti `adalah_tab_harga()`. **Pola berulang bagian 29: kalau satu
+aturan pencocokan diperbaiki di satu modul, sisir modul lain.**
+
+### Jadwal jadi 08:00 dan 17:00
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 540 /ET 17:30 /K
+
+`/RI 540` (9 jam) dengan `/ET 17:30`. Aturan bagian 30 tetap berlaku: `/ET`
+selalu setengah jam SESUDAH sapuan terakhir, kalau sama persis Windows bisa
+menutup jendela pengulangannya sebelum sapuan itu sempat mulai.
+
+`sapu.bat` dan `sapu-sekarang.bat` sekarang memakai `--minggu-ini`.
+
+**Berkas `.bat` disunting lewat BYTE, bukan `read_text`/`write_text`.**
+Percobaan pertama memakai teks dan CRLF-nya rontok jadi LF — aturan bagian
+27. Tesnya menangkapnya, tapi lebih baik tidak merusaknya sejak awal.
+
+### Lembar TEMPLATE — dokumen KEENAM
+
+> *"template tersebut diambil dari invoice, jadi setiap invoice yang anda
+> buat, buatkanlah template nya seperti itu pastikan jumlahnya berupakan
+> angka bulat sesuai dengan invoice"*
+
+`Template_Baby_Wise_Surabaya.xlsx` dibongkar sel per sel. Isinya ternyata
+`PO 31 Agustus - Baby Wise (Surabaya)`: kolom G berjumlah Rp22.179.900 dan
+kolom M Rp15.758.819 — cocok persis dengan bagian 7 dan 12. Template itu
+sekaligus membenarkan pembacaan order sheet oleh program.
+
+Keluaran per PO sekarang **lima** berkas (enam untuk customer per-ukuran):
+INVOICE, SURAT_JALAN, PACKING_LIST, FAKTUR_PAJAK, **TEMPLATE**, + PROFORMA.
+
+**PPN 12% atas DPP Nilai Lain.** `K = J x 11/12` lalu `L = K x 12%` memberi
+`L = J x 0,11`. Tarif efektifnya tetap 11%, hanya penyajiannya mengikuti
+aturan DJP sejak 2025. Ini menjawab "Tarif PPN sementara 11%, perlu dicek"
+di bagian 9: **angkanya benar, cara menulisnya yang perlu diperbaiki.**
+JANGAN disederhanakan jadi `L = J x 11%` walau hasilnya sama — faktur pajak
+harus memperlihatkan mekanismenya.
+
+**Kolom DISC beruntun, bukan dijumlahkan.** Rumus Yosua
+`=D3*((27.5/100*F3)+(2/100*(F3-(27.5/100*F3))))` = 28,95%, bukan 29,5% —
+aturan yang sama dengan invoice (bagian 22). Di template kedua tarifnya
+ditulis mati karena untuk satu customer; program mengambilnya dari order.
+
+### "Angka bulat" dipenuhi lewat FORMAT, bukan ROUND
+
+Diukur pada data template itu sendiri:
+
+| Cara | DPP + PPN | Selisih dari invoice |
+|---|---:|---:|
+| **rumus asli (tanpa ROUND)** | **15.758.818,95** | **Rp0,00** |
+| hanya F dibulatkan | 15.758.841,12 | Rp22,17 |
+| F + semua sel dibulatkan | 15.758.843,00 | Rp24,05 |
+| semua kecuali F dibulatkan | 15.758.819,89 | Rp0,94 |
+
+Hanya rumus asli yang tepat. Jadi TIDAK ADA ROUND di lembar ini; yang
+membuat angkanya terlihat bulat adalah format `#,##0` pada kolom M dan baris
+jumlah — persis seperti berkas Yosua. **Pelajaran yang sama dengan bagian
+43: bulatkan TAMPILANnya, jangan nilainya.** Judul kolom F berbunyi
+"(Pembulatan)" tapi rumusnya sendiri tidak membulatkan — ikuti rumusnya.
+
+Hasil adu dengan berkas Yosua: **218 dari 221 sel IDENTIK.** Diverifikasi
+lewat LibreOffice pada 7 PO: DPP+PPN sama dengan nilai bersih order sheet,
+selisih Rp0,00 (satu PO Rp0,25, derau desimal di bawah satu rupiah).
+
+### Tiga sel yang SENGAJA berbeda — perlu jawaban Yosua
+
+| Sel | Berkas Yosua | Program | Kenapa tidak disamakan |
+|---|---|---|---|
+| I1 NPWP | `0963947262604000` | kosong | Tidak ada di `customer.csv`. Aturan bagian 33: jangan menyimpulkan data customer dari berkas contoh |
+| K1 tanggal | 1 Sep 2026 | 31 Agu 2026 (tanggal PO) | Pertanyaan lama bagian 18 yang belum dijawab: tanggal dokumen = tanggal terbit atau tanggal PO? |
+| M1 nama | `BIJAK WAHANA SUKSES` | `BABY WISE INDONESIA (SURABAYA)` | `customer.csv` menulis nama lain. Perlu dipastikan mana yang benar sebelum diubah |
+
+Ketiganya BUKAN kelalaian. Mengubah `customer.csv` berarti mengubah SEMUA
+dokumen customer itu ke depan termasuk yang dibuat bot — keputusan Yosua,
+bukan kesimpulan dari satu berkas contoh (pelajaran Buchi Kids, bagian 36).
+
+### Sapuan mingguan yang dijalankan
+
+| | |
+|---|---|
+| Minggu diuji | 28 September - 4 Oktober 2026 |
+| Tab ditarik | 4 dari 22 (September) + 0 dari 2 (Oktober) |
+| PO terbit | 4 — Baby Wise, Haritsa, Dunia Bayi, Sheet4 |
+| Berkas | 21 |
+| Nilai bersih | Rp100.113.166 |
+
+**Minggu berjalan (5-11 Oktober) menghasilkan 0 dokumen, dan itu benar:**
+order sheet Oktober 2026 sudah ada dengan 2 PO (`PO 05 Okt - Baby Wise`,
+`PO 06 Okt - Pratama`) tapi kolom AVAILABLE TO ORDER (N-V) masih KOSONG —
+ORIGINAL PO terisi, W = 0. Sesuai bagian 15: ATO belum terisi, tidak membuat
+apa-apa. Yang perlu dikerjakan Sales, bukan program.
+
+Rekapnya naik ke folder `DOKUMEN OTOMATIS HAPPY PUMPKIN` sebagai
+`SAPUAN MINGGUAN 28 SEPTEMBER - 4 OKTOBER 2026`. Dokumen `.xlsx`-nya tetap
+tidak bisa dikirim dari sesi ini — bagian 42.
+
+Tes 271 -> 290.
