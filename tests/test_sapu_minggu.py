@@ -81,3 +81,42 @@ def test_sebutan_terbaca_orang():
     assert sebutan(date(2026, 10, 5), date(2026, 10, 11)) == "5-11 Oktober 2026"
     assert sebutan(date(2026, 9, 28), date(2026, 10, 4)) == \
         "28 September - 4 Oktober 2026"
+
+
+# ------------------------------------------------- rentang tanggal BEBAS
+# Permintaan Yosua 6 Oktober 2026: "sapu dari 21 September sampai 30
+# September". Bukan satu minggu penuh, jadi lingkupnya digeneralkan.
+
+def test_rentang_bebas_dibaca_benar():
+    from hp_dokumen.sapu.minggu import urai_rentang
+    assert urai_rentang("2026-09-21", "2026-09-30") == (
+        date(2026, 9, 21), date(2026, 9, 30))
+
+
+def test_rentang_TERBALIK_ditolak():
+    """Rentang terbalik menghasilkan nol PO tanpa galat apa pun, dan itu
+    terlihat persis seperti sapuan yang wajar."""
+    from hp_dokumen.sapu.minggu import urai_rentang
+    with pytest.raises(ValueError, match="terbalik"):
+        urai_rentang("2026-09-30", "2026-09-21")
+
+
+def test_rentang_salah_ketik_ditolak():
+    from hp_dokumen.sapu.minggu import urai_rentang
+    for a, b in (("21 September", "2026-09-30"), ("2026-09-21", ""),
+                 ("2026-02-31", "2026-09-30")):
+        with pytest.raises(ValueError):
+            urai_rentang(a, b)
+
+
+def test_tab_disaring_menurut_rentang_bukan_minggu():
+    from hp_dokumen.sapu.minggu import tab_dalam_rentang
+    a, b = date(2026, 9, 21), date(2026, 9, 30)
+    assert tab_dalam_rentang("PO 21 September - Buchi Kids", a, b, 2026)
+    assert tab_dalam_rentang("PO 28 September - Haritsa", a, b, 2026)
+    assert not tab_dalam_rentang("PO 14 September - Baby Wise", a, b, 2026)
+    assert not tab_dalam_rentang("PO 05 Okt - Baby Wise", a, b, 2026)
+
+
+def test_sebutan_rentang_dalam_satu_bulan():
+    assert sebutan(date(2026, 9, 21), date(2026, 9, 30)) == "21-30 September 2026"

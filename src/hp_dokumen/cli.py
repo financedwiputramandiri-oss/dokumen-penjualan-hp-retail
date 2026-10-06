@@ -253,14 +253,27 @@ def perintah_sapu(args) -> int:
     if args.tanpa_rumus:
         p.pantau_rumus = False
 
-    from .sapu.minggu import minggu_sekarang, urai_minggu
+    from .sapu.minggu import minggu_sekarang, urai_minggu, urai_rentang
 
     saring = None
     saring_minggu = None
     # Lingkup MINGGU menang atas lingkup bulan kalau dua-duanya diminta —
     # ia yang lebih sempit, jadi tidak pernah membuat sapuan jadi lebih
     # mahal daripada yang diminta.
-    if args.minggu:
+    if args.dari or args.sampai:
+        # Rentang tanggal bebas, contoh: --dari 2026-09-21 --sampai 2026-09-30.
+        # Keduanya wajib: setengah rentang akan diam-diam menyapu periode
+        # yang bukan diminta.
+        if not (args.dari and args.sampai):
+            print("--dari dan --sampai harus diisi dua-duanya, "
+                  "contoh: --dari 2026-09-21 --sampai 2026-09-30")
+            return 2
+        try:
+            saring_minggu = urai_rentang(args.dari, args.sampai)
+        except ValueError as e:
+            print(e)
+            return 2
+    elif args.minggu:
         try:
             saring_minggu = urai_minggu(args.minggu)
         except ValueError as e:
@@ -412,6 +425,11 @@ def buat_parser() -> argparse.ArgumentParser:
                    help="Hanya memantau, tidak membuat draf dokumen")
     h.add_argument("--tanpa-rumus", dest="tanpa_rumus", action="store_true",
                    help="Jangan bandingkan rumus (lebih cepat)")
+    h.add_argument("--dari", dest="dari", default="",
+                   help="awal rentang tanggal, contoh 2026-09-21 "
+                        "(harus bersama --sampai)")
+    h.add_argument("--sampai", dest="sampai", default="",
+                   help="akhir rentang tanggal, contoh 2026-09-30")
     h.add_argument("--minggu-ini", dest="minggu_ini", action="store_true",
                    help="hanya PO minggu berjalan (Senin-Minggu) — lingkup "
                         "paling hemat, dipakai jadwal 08:00 dan 17:00")

@@ -93,8 +93,8 @@ def tanggal_tab(nama_tab: str, tahun_bawaan: int) -> date | None:
         return None
 
 
-def tab_dalam_minggu(nama_tab: str, senin: date, minggu: date,
-                     tahun_bawaan: int) -> bool:
+def tab_dalam_rentang(nama_tab: str, dari: date, sampai: date,
+                      tahun_bawaan: int) -> bool:
     """True kalau tab ini perlu ikut disapu.
 
     Tab yang tanggalnya TIDAK TERBACA ikut disapu — lihat catatan 2 di kepala
@@ -104,13 +104,50 @@ def tab_dalam_minggu(nama_tab: str, senin: date, minggu: date,
     tgl = tanggal_tab(nama_tab, tahun_bawaan)
     if tgl is None:
         return True
-    return senin <= tgl <= minggu
+    return dari <= tgl <= sampai
 
 
-def sebutan(senin: date, minggu: date) -> str:
+# Nama lama, dipertahankan supaya pemanggil dan tes yang sudah ada tetap
+# jalan. Satu minggu hanyalah rentang tanggal yang kebetulan tujuh hari.
+tab_dalam_minggu = tab_dalam_rentang
+
+
+def urai_rentang(dari: str, sampai: str,
+                 hari_ini: date | None = None) -> tuple[date, date]:
+    """Baca rentang tanggal bebas dari baris perintah.
+
+    Dipakai permintaan seperti "sapu 21 September sampai 30 September".
+    Keduanya WAJIB diisi dan `dari` tidak boleh melewati `sampai` — rentang
+    terbalik akan menghasilkan nol PO tanpa galat apa pun, dan itu terlihat
+    persis seperti sapuan yang wajar.
+    """
+    a = _satu_tanggal(dari, "--dari")
+    b = _satu_tanggal(sampai, "--sampai")
+    if a > b:
+        raise ValueError(
+            f"Rentang terbalik: --dari {a} lebih akhir daripada --sampai {b}."
+        )
+    return a, b
+
+
+def _satu_tanggal(teks: str, label: str) -> date:
+    teks = (teks or "").strip()
+    m = re.fullmatch(r"(20\d{2})-(\d{1,2})-(\d{1,2})", teks)
+    if not m:
+        raise ValueError(
+            f"{label} '{teks}' tidak dikenali. Tulis seperti 2026-09-21."
+        )
+    try:
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+    except ValueError as e:
+        raise ValueError(f"{label} '{teks}' tidak ada di kalender ({e}).") from e
+
+
+def sebutan(dari: date, sampai: date) -> str:
+    """Terbaca orang: "21-30 September 2026" atau
+    "28 September - 4 Oktober 2026"."""
     from .bulan import nama_bulan
-    if (senin.month, senin.year) == (minggu.month, minggu.year):
-        return (f"{senin.day}-{minggu.day} {nama_bulan(senin.month)} "
-                f"{senin.year}")
-    return (f"{senin.day} {nama_bulan(senin.month)} - "
-            f"{minggu.day} {nama_bulan(minggu.month)} {minggu.year}")
+    if (dari.month, dari.year) == (sampai.month, sampai.year):
+        return f"{dari.day}-{sampai.day} {nama_bulan(dari.month)} {dari.year}"
+    return (f"{dari.day} {nama_bulan(dari.month)} - "
+            f"{sampai.day} {nama_bulan(sampai.month)} {sampai.year}")

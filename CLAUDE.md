@@ -4288,3 +4288,58 @@ Rekapnya naik ke folder `DOKUMEN OTOMATIS HAPPY PUMPKIN` sebagai
 tidak bisa dikirim dari sesi ini — bagian 42.
 
 Tes 271 -> 290.
+
+### Lingkup diperluas jadi RENTANG TANGGAL BEBAS — 6 Oktober 2026
+
+> *"sapulah order sheet dari tanggal 21 September 2026 sampai 30 September
+> dan upload file hasil sapuan ke drive"*
+
+21-30 September bukan satu minggu penuh, jadi lingkup minggu digeneralkan
+jadi rentang tanggal bebas:
+
+    py jalankan.py sapu --dari 2026-09-21 --sampai 2026-09-30
+
+Mesinnya tidak berubah sama sekali — `tab_dalam_minggu()` memang hanya
+memeriksa `dari <= tanggal <= sampai`, jadi ia cuma diganti nama jadi
+`tab_dalam_rentang()` (nama lama dipertahankan sebagai alias). `--minggu-ini`
+sekarang sekadar jalan pintas yang menghitung rentang Senin-Minggu.
+
+Dua penolakan yang sengaja dibuat keras:
+
+| Keadaan | Tindakan |
+|---|---|
+| hanya `--dari` atau hanya `--sampai` | DITOLAK kode 2 — setengah rentang diam-diam menyapu periode yang bukan diminta |
+| `--dari` lebih akhir dari `--sampai` | DITOLAK — rentang terbalik memberi nol PO TANPA galat, dan itu terlihat persis seperti sapuan yang wajar |
+
+### Hasil sapuan 21-30 September 2026
+
+`modifiedTime` order sheet diperiksa lebih dulu: 6 Okt 02:32, sama dengan
+salinan yang sudah ditarik, jadi tidak perlu diunduh ulang.
+
+| | |
+|---|---|
+| Tab PO masuk rentang | **8 dari 22** |
+| Dokumen terbit | 8 PO, **44 berkas** |
+| Qty | 4.931 pcs |
+| Sebelum diskon | Rp351.342.900 |
+| Nilai bersih | **Rp260.789.715** |
+
+Per jenis: 8 INVOICE, 8 SURAT_JALAN, 8 PACKING_LIST, 8 FAKTUR_PAJAK,
+8 TEMPLATE, 4 PROFORMA.
+
+Lembar TEMPLATE diverifikasi lewat LibreOffice pada kedelapan PO: kolom
+DPP + PPN sama dengan nilai bersih order sheet, selisih terbesar **Rp0,50** —
+dan itu pun hanya karena angka acuannya sudah dibulatkan lebih dulu.
+
+Dua angka cocok dengan catatan lama sampai rupiah terakhir: Buchi Kids
+Rp82.812.524 (bagian 36) dan Katamama Cikaret Rp29.752.341 (bagian 39).
+
+`Sheet4` ikut tersapu karena tanggalnya tidak terbaca dari nama tab — aturan
+yang memang disengaja. Tab itu berisi 566 pcs senilai Rp28.318.875 dan masih
+belum diketahui milik customer siapa; perlu dirapikan Sales.
+
+Rekapnya naik ke `DOKUMEN OTOMATIS HAPPY PUMPKIN` sebagai
+`SAPUAN 21-30 SEPTEMBER 2026`. Dokumen `.xlsx`-nya tetap tidak bisa dikirim
+dari sesi ini — bagian 42.
+
+Tes 290 -> 295.
