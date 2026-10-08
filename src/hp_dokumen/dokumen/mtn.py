@@ -33,7 +33,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from . import gaya
 from . import rumus as rms
-from .invoice import susun_baris, _persen_tertulis, _persen_ringkas
+from .invoice import susun_baris, _persen_tertulis, _persen_ringkas, _harga_sel
 from ..model import KeputusanNett, Order
 
 # ---------------------------------------------------------------- INVOICE
@@ -335,7 +335,7 @@ def buat_invoice_mtn(ws: Worksheet, order: Order, keputusan: KeputusanNett,
                      else b.deskripsi,
                      ukuran=HURUF_ISI, lipat=True)
         gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=HURUF_ISI, angka="#,##0")
-        gaya.sel_isi(ws, r, 5, rms.harga(r) if pakai_rumus else b.harga,
+        gaya.sel_isi(ws, r, 5, _harga_sel(order, rms, r, b, pakai_rumus),
                      ukuran=HURUF_ISI, angka=gaya.FORMAT_RP)
         # Rumus, sama seperti faktur DPM. TANPA ROUND — lihat rumus.py.
         gaya.sel_isi(ws, r, 6,

@@ -105,6 +105,11 @@ class Order:
     peringatan: list[str] = field(default_factory=list)
     judul_cbd: str = ""          # teks judul kolom AD apa adanya di order sheet
     judul_cod: str = ""          # teks judul kolom AE apa adanya di order sheet
+    # true kalau dokumen dibuat dengan --harga-baris-po. Harga satuan lalu
+    # ditulis sebagai ANGKA (nilai kotor / qty), bukan VLOOKUP ke lembar
+    # MASTER HARGA — sebab satu kode bisa muncul dua kali dengan harga
+    # berbeda, dan satu nilai master tidak bisa mewakili keduanya.
+    harga_baris_po: bool = False
 
     # ---- ringkasan angka -------------------------------------------------
     @property

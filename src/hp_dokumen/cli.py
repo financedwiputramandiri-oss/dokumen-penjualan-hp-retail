@@ -58,7 +58,12 @@ def _aman(teks: str) -> str:
 def _muat(args) -> tuple[Konfigurasi, list[Order], dict, Path]:
     cfg = Konfigurasi.muat()
     berkas = _cari_berkas(getattr(args, "berkas", None))
-    orders = baca_order_sheet(berkas, cfg.customer, tahun_bawaan=args.tahun)
+    orders = baca_order_sheet(
+        berkas,
+        cfg.customer,
+        tahun_bawaan=args.tahun,
+        harga_baris_po=getattr(args, "harga_baris_po", False),
+    )
     master = baca_master_harga(berkas)
     return cfg, orders, master, berkas
 
@@ -381,6 +386,10 @@ def buat_parser() -> argparse.ArgumentParser:
     c.add_argument("po", help="Sebagian nama PO/customer, contoh: Panda")
     c.add_argument("--nomor", help="Nomor dokumen, contoh 0050826")
     c.add_argument("--pdf", action="store_true", help="Sekalian buat PDF")
+    c.add_argument("--harga-baris-po", dest="harga_baris_po", action="store_true",
+                   help="Pakai harga dari baris PO, bukan tab Harga Retail. "
+                        "Hanya untuk tab yang satu kodenya muncul dua kali "
+                        "dengan harga berbeda. Selalu diperingatkan.")
     c.add_argument("--abaikan-pencocokan", dest="abaikan_pencocokan", action="store_true",
                    help="Tetap buat walau angka tidak cocok (tidak disarankan)")
     c.set_defaults(fungsi=perintah_buat)

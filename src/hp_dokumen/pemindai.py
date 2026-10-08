@@ -238,7 +238,9 @@ def _tanggal(nama_tab: str, tahun_bawaan: int) -> Optional[date]:
         return None
 
 
-def _samakan_dengan_master(blok_list, master: dict, nama_tab: str) -> list[str]:
+def _samakan_dengan_master(
+    blok_list, master: dict, nama_tab: str, harga_baris_po: bool = False
+) -> list[str]:
     """Timpa harga dan nama barang tiap baris dengan isi tab 'Harga Retail'.
 
     Tab master adalah sumber kebenaran harga. Kalau Sales mengetik harga
@@ -248,6 +250,33 @@ def _samakan_dengan_master(blok_list, master: dict, nama_tab: str) -> list[str]:
 
     Kode yang tidak terdaftar di master dibiarkan apa adanya dan dilaporkan.
     """
+    if harga_baris_po:
+        # PENGECUALIAN yang diminta Yosua sendiri, per dokumen, lewat
+        # --harga-baris-po. Dipakai HANYA kalau satu kode artikel muncul dua
+        # kali di tab PO dengan harga BERBEDA: tidak ada satu pun nilai master
+        # yang bisa membenarkan kedua barisnya, jadi memaksakan master justru
+        # membuat qty x harga != nilai kotor dan dokumennya tidak pernah bisa
+        # cocok dengan order sheet. Harga baris PO dipakai apa adanya, dan itu
+        # SELALU diperingatkan — KETETAPAN bagian 41 tetap berlaku untuk
+        # semua dokumen lain.
+        beda = []
+        for blok in blok_list:
+            for b in blok.baris:
+                m = cari_di_master(master, b.kode)
+                if m is not None and abs(float(m[1]) - float(b.harga)) > 1:
+                    beda.append(f"{b.kode} (PO {b.harga:,.0f} vs master {m[1]:,.0f})")
+        pesan = [
+            f"--harga-baris-po DIPAKAI untuk tab '{nama_tab}': harga diambil "
+            "dari BARIS PO, bukan dari tab Harga Retail. Ini menyimpang dari "
+            "ketetapan 2 Oktober 2026 dan hanya boleh atas permintaan Yosua."
+        ]
+        if beda:
+            pesan.append(
+                "Harga baris PO BERBEDA dari tab Harga Retail pada "
+                f"{len(beda)} baris: " + ", ".join(beda[:8])
+                + ". Tab Harga Retail dan baris PO perlu dirapikan Sales."
+            )
+        return pesan
     if not master:
         # KETETAPAN Yosua 2 Oktober 2026: harga dokumen WAJIB ikut tab Harga
         # Retail bulan itu. Kalau tabnya tidak ketemu, harga diambil dari baris
@@ -297,13 +326,19 @@ def baca_order_sheet(
     berkas: Path,
     daftar_customer: DaftarCustomer,
     tahun_bawaan: int = 2026,
+    harga_baris_po: bool = False,
 ) -> list[Order]:
     """Baca berkas order sheet (.xlsx) jadi daftar Order, satu per tab PO."""
     wb = openpyxl.load_workbook(berkas, data_only=True, read_only=False)
-    return baca_buku(wb, daftar_customer, tahun_bawaan)
+    return baca_buku(wb, daftar_customer, tahun_bawaan, harga_baris_po=harga_baris_po)
 
 
-def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> list[Order]:
+def baca_buku(
+    wb,
+    daftar_customer: DaftarCustomer,
+    tahun_bawaan: int = 2026,
+    harga_baris_po: bool = False,
+) -> list[Order]:
     """Baca satu buku kerja jadi daftar Order.
 
     `wb` boleh Workbook openpyxl (dari berkas .xlsx) atau BukuNilai (dari
@@ -326,7 +361,9 @@ def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> 
         blok, total, peringatan = pindai_tab(ws, pakai_kolom_ori=packing)
         if not blok:
             continue
-        peringatan = list(peringatan) + _samakan_dengan_master(blok, master, nama)
+        peringatan = list(peringatan) + _samakan_dengan_master(
+            blok, master, nama, harga_baris_po=harga_baris_po
+        )
         tata = blok[0].tata
         kc = tata.kolom_jenis("CBD") if tata else None
         kd = tata.kolom_jenis("COD") if tata else None
@@ -347,6 +384,7 @@ def baca_buku(wb, daftar_customer: DaftarCustomer, tahun_bawaan: int = 2026) -> 
             peringatan=peringatan,
             judul_cbd=judul_cbd,
             judul_cod=judul_cod,
+            harga_baris_po=harga_baris_po,
         )
         hasil.append(order)
     return hasil

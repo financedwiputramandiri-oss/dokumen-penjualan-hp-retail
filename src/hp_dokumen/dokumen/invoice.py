@@ -174,6 +174,21 @@ class BarisInvoice:
         return self.kotor - self.nett
 
 
+def _harga_sel(order, rms, r: int, b, pakai_rumus: bool):
+    """Isi kolom Harga satuan: VLOOKUP, atau ANGKA kalau --harga-baris-po.
+
+    Dengan --harga-baris-po harga TIDAK boleh di-VLOOKUP ke lembar MASTER
+    HARGA: satu kode bisa muncul dua kali di tab PO dengan harga berbeda,
+    lalu dijumlahkan jadi satu baris invoice, sehingga satu nilai master
+    tidak bisa mewakili keduanya dan Subtotal akan meleset dari order
+    sheet. Yang dipakai `nilai kotor / qty` — tepat, bukan dibulatkan,
+    jadi SUMPRODUCT(qty, harga) kembali persis ke nilai kotor order sheet.
+    """
+    if getattr(order, "harga_baris_po", False):
+        return (b.kotor / b.qty) if b.qty else b.harga
+    return rms.harga(r) if pakai_rumus else b.harga
+
+
 def susun_baris(order: Order, keputusan: KeputusanNett, *, pecah_per_ukuran: bool,
                 akhiran_y: bool, pecah_per_warna: bool = False) -> list[BarisInvoice]:
     """Ubah baris order sheet jadi baris invoice.
@@ -397,7 +412,7 @@ def buat_invoice(
                      ukuran=gy.huruf_teks, lipat=True)
         gaya.sel_isi(ws, r, 4, b.qty, rata="center", ukuran=gy.huruf_angka)
         ws.row_dimensions[r].height = gy.tinggi_data
-        harga_sel = rms.harga(r) if pakai_rumus else b.harga
+        harga_sel = _harga_sel(order, rms, r, b, pakai_rumus)
         if ada_diskon:
             gaya.sel_isi(ws, r, 5, harga_sel, angka=gaya.FORMAT_RP, ukuran=gy.huruf_angka)
             # Diskon satuan dan Nilai Diskon ditulis sebagai RUMUS sejak
