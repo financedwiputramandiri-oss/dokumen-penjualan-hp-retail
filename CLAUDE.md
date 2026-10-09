@@ -4510,3 +4510,86 @@ Pola yang sama dengan pemeriksa yang memberi saran salah di bagian 24 dan
 Disunting lewat BYTE (`read_bytes`/`write_bytes`) dengan pagar ASCII+CRLF,
 bukan `read_text`/`write_text` — aturan bagian 27, yang sudah sekali
 dilanggar di bagian 44. Tes tetap 295.
+
+## 47. ORDER SHEET RETUR — link yang diingat Yosua, 9 Oktober 2026
+
+> *"link yang saya beri ini merupakan link daftar retur barang penjualan DPM
+> ... ingatlah sewaktu-waktu bila saya membutuhkan membuat invoice ulang jika
+> dibutuhkan"*
+
+    https://docs.google.com/spreadsheets/d/1hxSNKuXVelyZbH7jCa5LbFsEm4u_cJf_DjvTBpDLfjU/edit
+
+| | |
+|---|---|
+| ID | `1hxSNKuXVelyZbH7jCa5LbFsEm4u_cJf_DjvTBpDLfjU` |
+| Judul | `Order Sheet Retur - Happy Pumpkin 2026` |
+| Folder induk | `1LrCGjJ2q7xbWjE5AHgYexZjhGBoQItGV` |
+| Pemilik | `happypumpkinkids.id@gmail.com` |
+| Dibuat / diubah | 30 Sep 2026 / 6 Okt 2026 09:28 |
+
+**Inilah berkas yang dipakai kalau Yosua menyebut "retur" atau meminta
+invoice ulang.** Ini berkas TAHUNAN (satu berkas, satu tab per bulan) —
+beda dari order sheet penjualan yang satu berkas per bulan.
+
+### Susunan — BERBEDA JAUH dari tab PO, jangan pakai pemindai yang sama
+
+3 tab: `Harga Retail`, `Agustus 2026`, `September 2026`.
+
+Tab bulanan hanya **6 kolom**, judul di baris 1, data mulai baris 3:
+
+| Kolom | Isi |
+|---|---|
+| A | ARTICLE CODE |
+| B | PRODUCT NAME |
+| C | COLOUR |
+| D | SIZE (satu ukuran per baris, bukan 9 kolom ukuran) |
+| E | QTY |
+| F | **NOTE** di tab September, **Toko** di tab Agustus — isinya NAMA CUSTOMER |
+
+Jadi **satu baris = satu potong barang per ukuran per warna**, bukan satu
+artikel dengan 9 kolom ukuran. Tidak ada ORIGINAL PO, tidak ada ATO, tidak
+ada kolom harga, nilai kotor, DISC, TOTAL VALUE, CBD/COD, dan **tidak ada
+baris TOTAL**. Karena itu:
+
+1. `pemindai.pindai_tab()` dan Aturan 2 (`nilai_bersih`) TIDAK berlaku di
+   sini — keduanya mencari kolom N–V dan AC/AD/AE yang tidak ada.
+2. Pencocokan wajib (`rekonsiliasi.py`) juga tidak bisa dipakai apa adanya:
+   tidak ada baris TOTAL milik sheet untuk dicocokkan.
+3. Nama kolom F TIDAK seragam antar tab (`NOTE` vs `Toko`). Cocokkan kedua
+   nama itu, jangan satu saja — pola yang sama dengan tab harga di bagian 41.
+
+### Angka per 9 Oktober 2026
+
+| Tab | Qty retur | Nilai retail | Customer |
+|---|---:|---:|---|
+| Agustus 2026 | 59 pcs | Rp4.201.800 | Katamama Cikaret 46, Katamama Tapos 12, Baby Wise 1 |
+| September 2026 | 38 pcs | Rp2.423.200 | Katamama Cikaret 25, Katamama Tapos 13 |
+
+Seluruh kode artikel retur ADA di tab `Harga Retail` berkas ini (0 tidak
+ketemu). Nilai di atas **harga retail penuh, BELUM dipotong diskon** — jadi
+itu BUKAN nilai yang boleh dipakai di dokumen apa pun.
+
+### Yang WAJIB ditanyakan sebelum invoice ulang dibuat — jangan ditebak
+
+Berkas retur tidak memuat harga maupun diskon, jadi empat hal berikut tidak
+bisa disimpulkan dari situ:
+
+| Hal | Kenapa tidak bisa ditebak |
+|---|---|
+| **Diskon mana yang dipakai** | Tidak ada kolom DISC/TOTAL VALUE/CBD/COD di berkas retur. Diskonnya harus diambil dari PO ASAL customer itu di order sheet penjualan bulan yang bersangkutan |
+| **Harga mana yang berlaku** | KETETAPAN bagian 41: harga ikut tab `Harga Retail` **order sheet bulan itu**, bukan tab Harga Retail berkas retur ini. Harga berubah antar bulan (Milo Set 49.400 -> 61.000, bagian 18) |
+| **Bentuk dokumennya** | Invoice pengganti seluruh PO, atau nota kredit/invoice hanya sebesar barang yang diretur? Dua hal yang sangat berbeda |
+| **Nomor dokumen** | Nomor urut tidak pernah ditebak program. Perlu dipastikan apakah invoice ulang memakai nomor baru atau nomor lama + akhiran (pola `.A` seperti Haritsa, bagian 22) |
+
+Catatan Yosua hanya meminta link ini DIINGAT, belum meminta invoice ulang
+dibuat. Jadi belum ada kode baru yang ditulis untuk berkas ini — sengaja,
+sebab bentuk dokumennya belum dipastikan.
+
+### Yang harus dilakukan saat invoice ulang benar-benar diminta
+
+1. Periksa `modifiedTime` berkas retur DAN order sheet penjualan bulan yang
+   dimaksud, tepat sebelum membuat dokumen (bagian 36 — berkasnya pernah
+   berubah lima kali dalam satu hari).
+2. Tanyakan keempat hal di tabel atas.
+3. Baru setelah dijawab, tulis pembaca khusus untuk tab retur (6 kolom,
+   kolom F = customer) dan ambil harga dari order sheet penjualan bulan itu.
