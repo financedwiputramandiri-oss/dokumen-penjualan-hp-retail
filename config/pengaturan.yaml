@@ -1,0 +1,48 @@
+# ============================================================
+# PENGATURAN UMUM
+# ============================================================
+
+# ---- PAJAK -------------------------------------------------
+# Harga di order sheet SUDAH termasuk PPN, jadi DPP dihitung mundur:
+#   DPP = Total / (1 + tarif)
+#   PPN = Total - DPP
+#
+# PERHATIAN: tarif di bawah masih memakai angka sementara 11%
+# sesuai catatan CLAUDE.md. WAJIB dikonfirmasi ke konsultan pajak
+# apakah masih sesuai aturan yang berlaku sebelum lapor Coretax.
+ppn:
+  tarif: 0.11
+  sudah_dikonfirmasi: false   # ubah jadi true setelah dicek
+
+# ---- LABEL UKURAN -----------------------------------------
+# Khusus invoice Haritsa & Katamama yang dipecah per ukuran.
+# true  -> label angka polos ditulis pakai akhiran Y:  2  -> 2Y
+# false -> label ditulis apa adanya:                   2  -> 2
+# Label yang sudah punya satuan (0-3M, 7-8Y, S, M, L, XL, NB)
+# SELALU ditulis apa adanya, tidak terpengaruh pengaturan ini.
+#
+# BELUM DIKONFIRMASI YOSUA. Default mengikuti contoh yang Yosua
+# tulis sendiri: "Alice Ruffle Sleeveless Top Small Size - 2Y".
+label_ukuran:
+  akhiran_y_untuk_angka: true
+  sudah_dikonfirmasi: false
+
+# ---- TERMIN PEMBAYARAN ------------------------------------
+# Dipakai kalau customer belum punya termin sendiri di customer.csv.
+# BELUM DIKONFIRMASI.
+termin_hari_default: 30
+
+# ---- PEMBULATAN -------------------------------------------
+# Nilai bersih diambil apa adanya dari order sheet, tidak dibulatkan.
+# Angka ini hanya batas toleransi saat mencocokkan (dalam Rupiah).
+toleransi_cocok: 1.0
+
+# ---- NOMOR DOKUMEN ----------------------------------------
+# Faktur lama memakai pola 7 angka, contoh 0050726 = urut 005, bulan 07, tahun 26.
+# Nomor urut TIDAK boleh ditebak program, jadi bawaannya dikosongkan.
+# Kalau mau diisi otomatis: ubah otomatis jadi true dan set nomor_awal.
+nomor_dokumen:
+  otomatis: false
+  nomor_awal: 1        # dipakai hanya kalau otomatis: true
+  bulan: 8             # bulan pada nomor (1-12)
+  tahun: 26            # dua angka terakhir tahun
