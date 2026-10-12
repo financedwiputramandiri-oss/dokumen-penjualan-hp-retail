@@ -110,6 +110,10 @@ class Order:
     # MASTER HARGA — sebab satu kode bisa muncul dua kali dengan harga
     # berbeda, dan satu nilai master tidak bisa mewakili keduanya.
     harga_baris_po: bool = False
+    # true kalau tab ini tab PACKING LIST: hanya memuat qty, tanpa kolom
+    # harga maupun kolom nilai. Hanya dokumen Packing List yang diterbitkan,
+    # dan pemeriksaan nilai dilewati karena angkanya memang tidak ada.
+    hanya_qty: bool = False
 
     # ---- ringkasan angka -------------------------------------------------
     @property

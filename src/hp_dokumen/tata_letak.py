@@ -74,6 +74,10 @@ class TataLetak:
     kol_note: int = 0
     nett: list[KolomNett] = field(default_factory=list)
     catatan: list[str] = field(default_factory=list)
+    # true untuk tab PACKING LIST: satu blok qty saja, TANPA kolom harga dan
+    # tanpa kolom nilai. Qty-nya ditaruh di ori_mulai..ori_selesai supaya
+    # pemindai bisa membacanya lewat jalur `pakai_kolom_ori` yang sudah ada.
+    hanya_qty: bool = False
 
     @property
     def jumlah_ukuran(self) -> int:
@@ -92,6 +96,8 @@ class TataLetak:
         return None
 
     def lengkap(self) -> bool:
+        if self.hanya_qty:
+            return bool(self.ori_mulai and self.ori_selesai)
         return bool(
             self.ato_mulai and self.ato_selesai
             and self.kol_harga and self.kol_ato_value and self.kolom_top()
@@ -150,6 +156,22 @@ def kenali(ws, baris_judul: int, kolom_maks: int = 60) -> TataLetak:
     t.kol_ato_value = cari(_ATO_VALUE) or 0
     t.kol_losses = cari(_LOSSES) or 0
     t.kol_note = cari(_NOTE) or 0
+
+    # Tab PACKING LIST: hanya SATU blok qty, tanpa kolom harga dan tanpa
+    # kolom nilai. Dibuktikan dari tab "Packing List - Dunia Bayi" pada order
+    # sheet Oktober 2026 — judulnya "AVAILABLE TO ORDER (QTY)", 16 kolom saja.
+    # Catatan lama mengira tab semacam ini berjudul ORIGINAL PO (Packing List
+    # Haritsa), jadi dukungannya belum pernah benar-benar jalan.
+    if not c_ori and c_ato and not t.kol_harga:
+        batas_qty = total_setelah(c_ato)
+        t.hanya_qty = True
+        t.ori_mulai = c_ato
+        t.ori_selesai = (batas_qty - 1) if batas_qty else batas
+        if batas_qty:
+            t.kol_ato_total = batas_qty
+        else:
+            t.catatan.append("Kolom TOTAL milik blok qty tidak ketemu.")
+        return t
 
     if not c_ori or not c_ato or not t.kol_harga:
         t.catatan.append(

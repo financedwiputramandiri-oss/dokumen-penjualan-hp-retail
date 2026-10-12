@@ -86,6 +86,11 @@ def pecah_nama_tab(nama_tab: str) -> tuple[Optional[tuple[int, int, Optional[int
     dikenali, tanggal = None dan seluruh nama tab dianggap nama customer.
     """
     sisa = re.sub(r"^\s*\(delivery\s*\d*\)\s*", "", str(nama_tab or ""), flags=re.IGNORECASE)
+    # Tab PACKING LIST diberi awalan jenis dokumennya, contoh
+    # 'Packing List - Dunia Bayi'. Awalan itu dibuang supaya nama customernya
+    # tetap ketemu di config/customer.csv — tanpa ini kop dokumennya terbit
+    # TANPA nama dan alamat customer, dan itu tidak kelihatan dari nilai sel.
+    sisa = re.sub(r"^\s*packing\s*list\b[\s.:-]*", "", sisa, flags=re.IGNORECASE)
     sisa = sisa.strip()
     asli = sisa
 

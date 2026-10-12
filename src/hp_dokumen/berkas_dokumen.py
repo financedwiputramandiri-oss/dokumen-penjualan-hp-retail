@@ -79,6 +79,17 @@ def buat_berkas(
 
     pakai_rumus = bool(master)
 
+    # Tab PACKING LIST hanya memuat qty — tanpa harga dan tanpa nilai. Yang
+    # bisa diterbitkan dari situ HANYA Packing List. Menerbitkan Invoice atau
+    # Faktur Pajak dari tab ini berarti mengirim dokumen penagihan bernilai
+    # nol, dan itu jauh lebih berbahaya daripada tidak menerbitkannya.
+    if getattr(order, "hanya_qty", False):
+        wb = Workbook()
+        buat_packing_list(wb.active, order, cust, pt, nomor)
+        berkas = folder / f"PACKING_LIST_{aman}.xlsx"
+        wb.save(berkas)
+        return [berkas]
+
     tugas = [
         ("FAKTUR_PAJAK",
          lambda ws: buat_faktur_pajak(ws, order, keputusan, cust, pt, cfg.pengaturan, nomor)),

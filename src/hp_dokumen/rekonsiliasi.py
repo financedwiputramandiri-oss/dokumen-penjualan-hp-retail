@@ -53,6 +53,34 @@ def _rp(x: float) -> str:
     return f"Rp{x:,.0f}".replace(",", ".")
 
 
+def _periksa_master(hasil, order, master_harga) -> None:
+    """Pemeriksaan "kode artikel ada di master harga" saja.
+
+    Dipakai tab PACKING LIST, yang tidak punya kolom harga maupun nilai
+    sehingga pemeriksaan lainnya tidak ada bandingannya. Pencariannya lewat
+    `cari_di_master()` yang tidak peduli huruf besar-kecil — lihat bagian 29
+    CLAUDE.md, pemeriksa ini pernah tertinggal memakai pencarian peka huruf.
+    """
+    if not master_harga:
+        return
+    hilang = sorted(
+        {
+            b.kode
+            for b in order.semua_baris
+            if b.kode and cari_di_master(master_harga, b.kode) is None
+        }
+    )
+    hasil.periksa.append(
+        Pemeriksaan(
+            "Kode artikel ada di master harga",
+            f"{len(hilang)} kode tidak ketemu",
+            "0 kode",
+            not hilang,
+            "" if not hilang else ", ".join(hilang[:10]),
+        )
+    )
+
+
 def periksa_order(
     order: Order,
     keputusan: KeputusanNett,
@@ -89,6 +117,22 @@ def periksa_order(
                 "jumlah kolom TOTAL ATO (VALUE) / kolom Z",
             )
         )
+
+    # Tab PACKING LIST tidak punya kolom harga maupun kolom nilai, jadi
+    # pemeriksaan 3 sampai 6 tidak ada bandingannya. Yang bisa dicocokkan
+    # hanya qty terhadap baris TOTAL (pemeriksaan 1) dan keberadaan kode
+    # artikel di master harga (pemeriksaan 7). Memaksakan pemeriksaan nilai
+    # di sini hanya menghasilkan "BEDA" yang tidak bisa dibetulkan siapa pun,
+    # dan itu persis jenis alarm palsu yang membuat orang berhenti percaya
+    # pada pemeriksanya (aturan bagian 24 CLAUDE.md).
+    if getattr(order, "hanya_qty", False):
+        hasil.peringatan.append(
+            "Tab PACKING LIST: hanya qty yang dicocokkan. Tab ini tidak "
+            "memuat kolom harga maupun kolom nilai, jadi nilai kotor dan "
+            "nilai bersih tidak diperiksa di sini — pakai tab PO-nya untuk itu."
+        )
+        _periksa_master(hasil, order, master_harga)
+        return hasil
 
     # 3. nilai bersih vs jumlah kolom sumbernya
     jumlah_kolom = sum(nett_baris(b, keputusan.kolom) for b in order.semua_baris)

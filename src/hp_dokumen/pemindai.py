@@ -169,7 +169,13 @@ def pindai_tab(ws, pakai_kolom_ori: bool = False) -> tuple[list[Blok], TotalShee
                     for k in tata.nett
                     if k.jenis != "LAIN"
                 }
-                nett["TOP"] = angka(ws.cell(r, tata.kolom_top().kolom).value)
+                # Tab PACKING LIST tidak punya kolom nilai sama sekali, jadi
+                # tidak ada kolom TOP untuk dibaca. Harga diisi dari tab Harga
+                # Retail oleh _samakan_dengan_master(); nilai kotor dan nilai
+                # bersih memang tidak dipakai dokumen ini.
+                k_top = tata.kolom_top()
+                if k_top is not None:
+                    nett["TOP"] = angka(ws.cell(r, k_top.kolom).value)
                 blok.baris.append(
                     Baris(
                         baris_sheet=r,
@@ -177,8 +183,10 @@ def pindai_tab(ws, pakai_kolom_ori: bool = False) -> tuple[list[Blok], TotalShee
                         nama=_teks(ws.cell(r, tata.kol_nama).value),
                         warna=_teks(ws.cell(r, tata.kol_warna).value),
                         qty_per_ukuran=qty,
-                        harga=angka(ws.cell(r, tata.kol_harga).value),
-                        nilai_kotor=angka(ws.cell(r, tata.kol_ato_value).value),
+                        harga=(angka(ws.cell(r, tata.kol_harga).value)
+                               if tata.kol_harga else 0.0),
+                        nilai_kotor=(angka(ws.cell(r, tata.kol_ato_value).value)
+                                     if tata.kol_ato_value else 0.0),
                         nett=nett,
                         disc_persen=angka(ws.cell(r, tata.kol_disc).value) if tata.kol_disc else 0.0,
                         catatan=_teks(ws.cell(r, tata.kol_note).value) if tata.kol_note else "",
@@ -207,16 +215,19 @@ def pindai_tab(ws, pakai_kolom_ori: bool = False) -> tuple[list[Blok], TotalShee
     if tata_terakhir is not None and tata_terakhir.lengkap():
         k_qty = tata_terakhir.kol_ato_total
         k_val = tata_terakhir.kol_ato_value
-        k_top = tata_terakhir.kolom_top().kolom
+        # Tab PACKING LIST tidak punya kolom nilai maupun kolom TOP, jadi
+        # baris TOTAL-nya hanya memuat qty. Dicocokkan apa adanya.
+        kolom_top = tata_terakhir.kolom_top()
+        k_top = kolom_top.kolom if kolom_top else 0
         for r in range(baris_akhir_data, min(baris_akhir_data + 4, ws.max_row) + 1):
             q = angka(ws.cell(r, k_qty).value) if k_qty else 0
-            g = angka(ws.cell(r, k_val).value)
+            g = angka(ws.cell(r, k_val).value) if k_val else 0
             if q > 0 or g > 0:
                 total = TotalSheet(
                     baris_sheet=r,
                     qty=int(round(q)),
-                    nilai_kotor=g,
-                    total_value=angka(ws.cell(r, k_top).value),
+                    nilai_kotor=g if k_val else None,
+                    total_value=angka(ws.cell(r, k_top).value) if k_top else None,
                 )
                 break
     if total.baris_sheet is None:
@@ -385,6 +396,7 @@ def baca_buku(
             judul_cbd=judul_cbd,
             judul_cod=judul_cod,
             harga_baris_po=harga_baris_po,
+            hanya_qty=any(b.tata is not None and b.tata.hanya_qty for b in blok),
         )
         hasil.append(order)
     return hasil
