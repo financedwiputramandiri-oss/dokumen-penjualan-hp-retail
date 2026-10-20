@@ -128,10 +128,34 @@ def tentukan_nett(order: Order, customer: Customer | None = None) -> KeputusanNe
     )
 
 
+def daftar_tarif_tertulis(judul: str) -> list[float]:
+    """Semua angka persen di judul kolom, urut seperti tertulis.
+
+    Satu judul bisa memuat lebih dari satu potongan tambahan, contoh
+    'DISCOUNT CBD + 2% + 2%'. Dulu yang dibaca hanya yang PERTAMA, jadi
+    potongan kedua hilang dari tulisan diskon di invoice dan diskon dasarnya
+    dipulihkan dengan pembagi yang salah.
+    """
+    return [
+        float(a.replace(",", ".")) / 100
+        for a in re.findall(r"(\d+(?:[.,]\d+)?)\s*%", judul or "")
+    ]
+
+
 def tarif_tambahan_tertulis(judul: str) -> float | None:
-    """Baca angka persen dari judul kolom, contoh 'DISCOUNT CBD + 1.5%' -> 0.015."""
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*%", judul or "")
-    return float(m.group(1).replace(",", ".")) / 100 if m else None
+    """Potongan tambahan GABUNGAN dari judul kolom.
+
+    'DISCOUNT CBD + 1.5%'   -> 0.015
+    'DISCOUNT CBD + 2% + 2%' -> 0.0396, sebab potongannya BERUNTUN
+                                (1 - 0,98 x 0,98), bukan dijumlahkan.
+    """
+    tarif = daftar_tarif_tertulis(judul)
+    if not tarif:
+        return None
+    sisa = 1.0
+    for t in tarif:
+        sisa *= (1.0 - t)
+    return 1.0 - sisa
 
 
 def persen_diskon_efektif(nilai_kotor: float, nett: float) -> float:

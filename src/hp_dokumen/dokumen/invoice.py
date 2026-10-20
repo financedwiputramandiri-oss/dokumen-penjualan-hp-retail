@@ -128,7 +128,7 @@ def lebar_judul_faktur(ukuran: int) -> float:
 
 
 def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL,
-                       min_ab: float = 0.0) -> dict:
+                       min_ab: float = 0.0, tulisan_diskon: str = "") -> dict:
     """Lebarkan kolom ARTICLE CODE dan DESKRIPSI mengikuti isi terpanjang.
 
     Lebar tetap seperti faktur asli memotong kode panjang macam
@@ -148,6 +148,13 @@ def lebar_menyesuaikan(baris, gaya_faktur: GayaFaktur = GAYA_PER_ARTIKEL,
             min_ab - lebar[1]),
         MAKS_KODE,
     )
+
+    # Tulisan diskon beruntun ("25% + 2% + 2%") lebih panjang daripada kolom
+    # Diskon bawaan, dan kalau terpotong faktur memberi tahu customer persen
+    # yang BERBEDA dari yang dipakai menghitung. Kekurangannya diambil dari
+    # kolom deskripsi, yang memang melipat — jumlah A..H tidak berubah.
+    if tulisan_diskon:
+        lebar[6] = max(lebar[6], len(tulisan_diskon) * huruf + 1.5)
 
     deskripsi = max(len(str(b.deskripsi)) for b in baris) * huruf + 1.5
     lain = sum(v for k, v in lebar.items() if k != 3)
@@ -250,19 +257,23 @@ def _persen_tertulis(order: Order, keputusan: KeputusanNett, pengaturan) -> tupl
     Yang kedua dipakai kalau nilai bersihnya diambil dari kolom CBD/COD, karena
     di situ ada potongan tambahan di atas diskon dasar.
     """
-    from ..nilai_bersih import tarif_tambahan_tertulis
+    from ..nilai_bersih import daftar_tarif_tertulis, tarif_tambahan_tertulis
 
     kotor = sum(b.nilai_kotor for blok in order.blok for b in blok.baris)
     efektif = persen_diskon_efektif(kotor, keputusan.nett_total)
     tambahan = tarif_tambahan_tertulis(keputusan.kolom_sumber)
     if tambahan:
+        # Judul kolom bisa memuat beberapa potongan, contoh
+        # 'DISCOUNT CBD + 2% + 2%'. Semuanya ditulis apa adanya; yang
+        # digabung hanya saat memulihkan diskon dasarnya.
+        rincian = daftar_tarif_tertulis(keputusan.kolom_sumber)
         # Diskon dasar dipulihkan dengan membagi, bukan mengurangi: kedua
         # potongan itu BERUNTUN (kotor x (1-dasar) x (1-tambahan)), bukan
         # dijumlahkan. Contoh Katamama 0220826: efektif 23,17%, tambahan
         # 1,5% -> dasar 22% persis. Kalau dikurangi, hasilnya 21,67%.
         dasar = 1.0 - (1.0 - efektif) / (1.0 - tambahan) if tambahan < 1 else 0.0
-        teks = f"{_persen_ringkas(dasar)} + {_persen_ringkas(tambahan)}"
-        return teks, None
+        bagian = [_persen_ringkas(dasar)] + [_persen_ringkas(t) for t in rincian]
+        return " + ".join(bagian), None
     return None, efektif
 
 
@@ -311,7 +322,10 @@ def buat_invoice(
         akhiran_y=pengaturan.akhiran_y_untuk_angka,
     )
     ada_diskon = any(b.diskon > 0.5 for b in baris)
-    lebar_kolom = lebar_menyesuaikan(baris, gy, gaya.min_kolom_ab(perusahaan))
+    # Tulisan diskon dihitung LEBIH DULU: lebar kolom Diskon ikut panjangnya.
+    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
+    lebar_kolom = lebar_menyesuaikan(
+        baris, gy, gaya.min_kolom_ab(perusahaan), teks_persen or "")
 
     gaya.kop_dpm(
         ws, perusahaan,
@@ -337,7 +351,6 @@ def buat_invoice(
 
     # ---- judul tabel: tiga baris bertingkat ----------------------------
     j = BARIS_JUDUL
-    teks_persen, angka_persen = _persen_tertulis(order, keputusan, pengaturan)
     tegak = [(1, "No."), (2, "ARTICLE CODE"), (3, "DESKRIPSI BARANG"), (8, "Jumlah")]
     for kolom, teks in tegak:
         ws.merge_cells(start_row=j, start_column=kolom, end_row=j + 2, end_column=kolom)

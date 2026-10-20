@@ -4593,3 +4593,51 @@ sebab bentuk dokumennya belum dipastikan.
 2. Tanyakan keempat hal di tabel atas.
 3. Baru setelah dijawab, tulis pembaca khusus untuk tab retur (6 kolom,
    kolom F = customer) dan ambil harga dari order sheet penjualan bulan itu.
+
+## 48. Diskon beruntun TIGA tingkat — 20 Oktober 2026
+
+> *"ada tambahan revisi invoice, diskonnya menjadi 25%+2%+2%"*
+> (PO 15 Okt - Caroline Mom, Baby & Gift Shop)
+
+Judul kolom nett dulu hanya dibaca persen PERTAMA-nya
+(`re.search`, bukan `findall`). Jadi `DISCOUNT CBD + 2% + 2%` terbaca sebagai
+tambahan 2% saja, dan diskon dasarnya dipulihkan dengan pembagi yang salah —
+invoice mencetak `26.53% + 2%`, bukan `25% + 2% + 2%`.
+
+Sekarang `nilai_bersih.daftar_tarif_tertulis()` mengembalikan SEMUA persen di
+judul, dan `tarif_tambahan_tertulis()` menggabungkannya **BERUNTUN**:
+
+    2% + 2%  ->  1 - 0,98 x 0,98 = 3,96%   (BUKAN 4%)
+
+Aturan yang sama dengan bagian 22. `tata_letak._tarif_dari_judul()` ikut
+diperbaiki — kalau tidak, pemeriksaan ke-11 `rekonsiliasi.py` membandingkan
+tarif sebenarnya dengan judul yang salah baca dan memberi peringatan palsu.
+
+| Cara hitung | Total | |
+|---|---:|---|
+| beruntun `24.266.100 x 0,75 x 0,98 x 0,98` | **17.478.871,83** | BENAR |
+| dijumlahkan `x (1 - 0,29)` | 17.228.931 | meleset Rp249.941 |
+
+### Kolom Diskon melebar mengikuti tulisannya
+
+`25% + 2% + 2%` (13 huruf) tidak muat di kolom Diskon bawaan 12,7 satuan —
+tercetak melipat lalu terpotong, jadi **faktur memberi tahu customer persen
+yang berbeda dari yang dipakai menghitung**. `lebar_menyesuaikan()` sekarang
+menerima `tulisan_diskon` dan mengambil kekurangannya dari kolom DESKRIPSI
+yang memang melipat; jumlah A..H tidak bertambah. `_persen_tertulis()` karena
+itu dipanggil SEBELUM lebar disetel.
+
+**Ini kali kesebelas pola yang sama muncul.** Nilai selnya SELALU benar.
+Render ke PDF, ubah jadi gambar, lalu lihat.
+
+### Potongan 2% kedua TIDAK ADA di order sheet
+
+Kolom AD tab itu hanya memuat `25% + 2%` (Rp17.835.583,50). Dokumen ini
+dibuat dari salinan kerja `data/semua/10._Oktober_2026_CAROLINE_3TINGKAT.xlsx`
+yang kolom AD-nya dikalikan 0,98 sekali lagi dan judulnya diganti
+`DISCOUNT  CBD + 2% + 2%`. Order sheet aslinya **TIDAK disentuh**.
+
+Akibatnya: **sapuan bot akan kembali menghasilkan Rp17.835.584.** Supaya
+tetap, Sales harus menambahkan potongan kedua itu di order sheet.
+
+Empat tes baru. Tes 261 -> 265.

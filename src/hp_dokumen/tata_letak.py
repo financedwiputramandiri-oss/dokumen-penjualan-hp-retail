@@ -105,8 +105,19 @@ class TataLetak:
 
 
 def _tarif_dari_judul(judul: str) -> Optional[float]:
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*%", judul)
-    return float(m.group(1).replace(",", ".")) / 100 if m else None
+    """Potongan tambahan GABUNGAN dari judul kolom.
+
+    Judul bisa memuat lebih dari satu potongan ('... CBD + 2% + 2%'), dan
+    potongan itu BERUNTUN — jadi digabung dengan mengalikan sisanya, bukan
+    dijumlahkan.
+    """
+    angka = re.findall(r"(\d+(?:[.,]\d+)?)\s*%", judul)
+    if not angka:
+        return None
+    sisa = 1.0
+    for a in angka:
+        sisa *= (1.0 - float(a.replace(",", ".")) / 100)
+    return 1.0 - sisa
 
 
 def _jenis_nett(judul: str) -> str:
