@@ -30,6 +30,37 @@ GALAT_EXCEL = ("#REF!", "#N/A", "#DIV/0!", "#VALUE!", "#NAME?", "#NUM!", "#NULL!
 _SEL = re.compile(r"\$?([A-Z]{1,3})\$?(\d+)")
 _RENTANG = re.compile(r"(\$?[A-Z]{1,3}\$?\d+)\s*:\s*(\$?[A-Z]{1,3}\$?\d+)")
 _TUNGGAL = re.compile(r"(?<![:\w$])\$?([A-Z]{1,3})\$?(\d+)(?![:\d])")
+_PERSEN_RUMUS = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
+_PERSEN_SEL = re.compile(r"\s*(\d+(?:[.,]\d+)?)\s*%\s*")
+
+
+def persen_dalam_rumus(rumus) -> Optional[float]:
+    """Persen yang DITANAM di dalam rumus diskon, contoh `=Z3-(Z3*25%)`.
+
+    Persen itu TIDAK menunjuk kolom DISC, jadi keduanya bisa berbeda tanpa
+    ada yang tahu — dan yang dipakai menghitung uang adalah yang di rumus.
+    """
+    if not isinstance(rumus, str):
+        return None
+    m = _PERSEN_RUMUS.search(rumus)
+    if m:
+        return float(m.group(1).replace(",", ".")) / 100
+    m = re.search(r"\*\s*(0?[.,]\d+)", rumus)
+    if m:
+        v = float(m.group(1).replace(",", "."))
+        return round(1 - v, 6) if v > 0.5 else v   # `=Z3*0.75` -> diskon 25%
+    return None
+
+
+def persen_sel(v) -> Optional[float]:
+    """Isi kolom DISC jadi pecahan. Kadang ANGKA (0.25), kadang TEKS ("25%")."""
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        m = _PERSEN_SEL.fullmatch(v)
+        if m:
+            return float(m.group(1).replace(",", ".")) / 100
+    return None
 
 
 def nomor_kolom(huruf: str) -> int:
@@ -173,6 +204,56 @@ def periksa(ws_nilai, ws_rumus, blok_list, maks_baris: int = 2000) -> list[str]:
             "Belum berdampak karena kolom sisanya masih kosong, tapi qty akan "
             "HILANG DIAM-DIAM begitu Sales mengisinya."
         )
+
+    # ---- 2b. persen di kolom DISC vs persen di dalam rumus TOTAL VALUE -
+    #
+    # Rumus nilai bersih menanam persennya sendiri (`=Z3-(Z3*22%)`) dan TIDAK
+    # menunjuk kolom DISC. Jadi kolom DISC bisa menulis 25% sementara uang
+    # yang dihitung memakai 22% — dan tidak ada tanda apa pun di angkanya.
+    k_top = tata0.kolom_top()
+    if k_top is not None and tata0.kol_disc:
+        p_rumus: dict[float, int] = {}
+        p_disc: dict[float, int] = {}
+        for r in baris_data:
+            pr = persen_dalam_rumus(_rumus(ws_rumus, r, k_top.kolom))
+            if pr is not None:
+                p_rumus[round(pr, 6)] = p_rumus.get(round(pr, 6), 0) + 1
+            pd = persen_sel(ws_nilai.cell(r, tata0.kol_disc).value)
+            if pd is not None:
+                p_disc[round(pd, 6)] = p_disc.get(round(pd, 6), 0) + 1
+        if p_rumus and p_disc:
+            pr = max(p_rumus, key=p_rumus.get)
+            pd = max(p_disc, key=p_disc.get)
+            if abs(pr - pd) > 0.0005:
+                pesan.append(
+                    f"RUMUS SALAH (GENTING): kolom DISC menulis {pd:.4%} tapi "
+                    f"rumus {get_column_letter(k_top.kolom)} memakai {pr:.4%}. "
+                    "Yang dipakai menghitung uang adalah yang di dalam rumus. "
+                    "Pastikan mana yang benar sebelum dokumen dipakai menagih."
+                )
+        if len(p_rumus) > 1:
+            rinci = ", ".join(f"{x:.4%} ({n} baris)"
+                              for x, n in sorted(p_rumus.items()))
+            pesan.append(
+                "RUMUS SALAH (GENTING): persen diskon di dalam rumus "
+                f"{get_column_letter(k_top.kolom)} tidak seragam dalam satu "
+                f"tab — {rinci}."
+            )
+
+    # ---- 2c. harga diketik tangan, bukan VLOOKUP ke Harga Retail -------
+    if tata0.kol_harga:
+        diketik = [r for r in baris_data
+                   if not _rumus(ws_rumus, r, tata0.kol_harga)
+                   and ws_nilai.cell(r, tata0.kol_harga).value]
+        if diketik:
+            pesan.append(
+                f"RUMUS KURANG TEPAT: harga di {len(diketik)} baris DIKETIK "
+                "TANGAN, bukan VLOOKUP ke tab Harga Retail — "
+                + ", ".join(f"{get_column_letter(tata0.kol_harga)}{r}"
+                            for r in diketik[:6])
+                + (f" dan {len(diketik)-6} baris lain" if len(diketik) > 6 else "")
+                + ". Harganya tidak ikut berubah kalau Harga Retail diperbarui."
+            )
 
     # ---- 3. baris TOTAL menjangkau seluruh baris data ------------------
     # Satu tab bisa punya beberapa baris TOTAL (satu per blok, lalu satu

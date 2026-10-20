@@ -4825,3 +4825,96 @@ Tes 265 -> 277.
 `alat/audit_rumus.py` sekarang mengimpor pembaca rumusnya dari modul yang
 sama — satu sumber, supaya audit dan peringatan harian tidak pernah menyebut
 angka yang berbeda.
+
+## 51. Audit RUMUS HARGA & DISKON seluruh 2026 — 20 Oktober 2026
+
+> *"cek kembali hasilnya apakah ada salah perhitungan atau rumus di bagian
+> harga dan diskon yang telah dibuat di ordersheet dalam kurun waktu tahun
+> ini"* ... *"cek keseluruhan 2026"*
+
+Audit bagian 49 memeriksa qty, baris TOTAL, dan galat Excel. Rantai UANGNYA
+sendiri belum pernah diperiksa. `alat/audit_harga_diskon.py` (baru) menyisir
+rantai itu pada 269 tab / 12.374 baris.
+
+### Rantai rumusnya, dan di mana letak bahayanya
+
+    X  PRICE W/ VAT       = VLOOKUP ke tab Harga Retail
+    Z  TOTAL ATO (VALUE)  = X * W
+    AB DISC               persen diskon yang DITULIS
+    AC TOTAL VALUE        = Z - (Z * 25%)     <- persennya MATI di rumus
+    AD/AE CBD/COD         = AC - (AC * 1.5%)  <- tarifnya juga MATI
+
+**Kolom AB dan persen di dalam rumus AC TIDAK saling menunjuk.** Mengubah
+kolom DISC tidak mengubah uangnya sama sekali, dan sebaliknya. Tidak ada
+tanda apa pun di angkanya kalau keduanya berbeda.
+
+### Hasil: rantai harganya BERSIH
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Harga = VLOOKUP ke Harga Retail | **12.374 dari 12.374 baris** |
+| Harga diketik tangan | **0** |
+| `qty x harga = nilai kotor` | 0 selisih |
+| Nilai bersih cocok dengan persen di rumusnya | 0 selisih |
+| Tarif CBD/COD cocok dengan judul kolomnya | 0 selisih |
+| Persen diskon seragam dalam satu tab | 0 kecuali satu (di bawah) |
+
+Jadi KETETAPAN bagian 41 terbukti dipatuhi di seluruh 2026 — bukan karena
+programnya menambal, tapi karena order sheetnya memang memakai VLOOKUP.
+
+### SATU temuan nyata: Maret 2026, `PO 04 Maret - Katamama Cikaret`
+
+| | |
+|---|---:|
+| Kolom DISC tertulis | **25%** (55 dari 57 baris) |
+| Persen di rumus AC | **22%** (SELURUH baris) |
+| Nilai kotor | Rp9.638.400 |
+| Nilai bersih terpakai (AC) | Rp7.517.952 |
+| Kalau 25% yang benar | Rp7.228.800 — selisih **Rp289.152** |
+
+Dokumennya dulu terbit lewat kolom AE (COD +1,5%) senilai Rp7.405.183.
+Kalau 25% yang benar, seharusnya Rp7.120.368 — **selisih Rp284.815**.
+
+Dua baris (3 dan 4, `GM.07S`) kolom DISC-nya memang 22%, 55 baris lainnya
+25%. **Perlu dipastikan Yosua mana yang benar** sebelum dokumennya dipakai
+menagih. Jangan ditebak — ini mengubah tagihan.
+
+Catatan tambahan tab itu: kolom AD berjudul `DISCOUNT 5%` dan terisi hanya
+7 dari 57 baris. Aturan 2 mengabaikannya, dan itu memang benar.
+
+### Lubang pada pemeriksanya sendiri yang nyaris membuat laporan palsu
+
+Versi pertama melaporkan **"semua bersih"**. Ternyata kolom DISC kadang
+berisi **TEKS** (`"27.5%"`), bukan angka — dan pembacanya hanya menerima
+angka, jadi pemeriksaan DISC **tidak pernah jalan** di tab-tab itu.
+
+Karena itu keluarannya sekarang selalu memuat **statistik positif**
+(berapa baris benar-benar diperiksa, berapa rumus AC dan CBD/COD yang
+berhasil dibaca). "Bersih" tanpa bukti bahwa pemeriksaannya jalan adalah
+laporan yang menyesatkan, dan itu lebih buruk daripada tidak memeriksa.
+
+### Kedua pemeriksaan ini masuk ke PERINGATAN HARIAN
+
+`periksa_rumus.py` bertambah dua:
+
+| Pemeriksaan | Tingkat |
+|---|---|
+| kolom DISC berbeda dari persen di dalam rumus nilai bersih | **GENTING** |
+| persen diskon tidak seragam dalam satu tab | **GENTING** |
+| harga diketik tangan, bukan VLOOKUP | POTENSI |
+
+### Gambaran LENGKAP 2026 sesudah semuanya digabung
+
+12 order sheet, 264 tab berdata: **5 peringatan GENTING**, 503 POTENSI.
+
+| Order sheet | Tab | GENTING |
+|---|---|---|
+| Februari 2026 | DHAWAFEST BAZAAR | rumus qty 76 pcs + TOTAL W160 246 pcs |
+| Februari 2026 | PO 5 Feb - Defara Baby | rumus qty 4 pcs |
+| **Maret 2026** | **PO 04 Maret - Katamama Cikaret** | **DISC 25% vs rumus 22%** |
+| Agustus Harga Lama | PO 07 Agu - Katamama Tapos | TOTAL W116 lewat baris 113 |
+
+Sepuluh order sheet lainnya **bersih dari GENTING** — termasuk Juli,
+September, dan Oktober 2026.
+
+Tes 277 -> 287.

@@ -33,6 +33,7 @@ def _tab(wb, nama, rumus_qty_sampai="V", rumus_total=None, baris=3):
     ws.cell(1, 24, "PRICE W/ VAT")
     ws.cell(1, 26, "TOTAL ATO")
     ws.cell(1, 27, "LOSSES")
+    ws.cell(1, 28, "DISC")
     ws.cell(1, 29, "TOTAL VALUE")
     return ws
 
@@ -157,3 +158,86 @@ def test_baris_tercakup_membaca_rentang_dan_sel_satuan(rumus, kolom, harap):
 def test_rentang_rumus_membaca_koordinat_dengan_benar():
     assert rentang_rumus("=SUM(N3:V3)") == [(14, 3, 22, 3)]
     assert rentang_rumus("=SUM($W$3:$W$9)") == [(23, 3, 23, 9)]
+
+
+# --------------------------------------------------- harga & diskon
+def _pasang_diskon(wn, wr, persen_rumus, persen_disc, harga_rumus=True):
+    """Isi kolom DISC (AB=28) dan TOTAL VALUE (AC=29) tiga baris."""
+    for r in range(3, 6):
+        kotor = 50000
+        wn.cell(r, 26, kotor)
+        wr.cell(r, 26, f"=X{r}*W{r}")
+        wn.cell(r, 28, persen_disc)
+        wr.cell(r, 28, persen_disc)
+        wn.cell(r, 29, kotor * (1 - persen_rumus))
+        wr.cell(r, 29, f"=Z{r}-(Z{r}*{persen_rumus*100:g}%)")
+        if harga_rumus:
+            wr.cell(r, 24, f"=VLOOKUP(A{r},'Harga Retail'!$A$1:$C$99,3,0)")
+
+
+def test_kolom_disc_beda_dari_persen_di_rumus_diperingatkan_GENTING():
+    """Persen di kolom DISC tidak menunjuk rumusnya, jadi keduanya bisa
+    berbeda tanpa tanda apa pun. Kasus nyata: Maret 2026 Katamama Cikaret,
+    DISC tertulis 25% tapi rumus AC memakai 22%."""
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.22, persen_disc=0.25)
+    pesan = [p for p in periksa(wn, wr, _blok(wn)) if "kolom DISC" in p]
+    assert pesan, periksa(wn, wr, _blok(wn))
+    assert "GENTING" in pesan[0]
+    assert "25" in pesan[0] and "22" in pesan[0]
+
+
+def test_kolom_disc_berisi_TEKS_persen_tetap_diperiksa():
+    """Kolom DISC kadang teks ("25%"), kadang angka (0.25).
+
+    Versi pertama pemeriksa ini hanya membaca angka, jadi tab ber-DISC teks
+    tidak pernah diperiksa dan hasilnya terlihat bersih padahal
+    pemeriksaannya memang tidak jalan.
+    """
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.22, persen_disc="25%")
+    assert [p for p in periksa(wn, wr, _blok(wn)) if "kolom DISC" in p]
+
+
+def test_kolom_disc_yang_cocok_tidak_memunculkan_peringatan():
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.25, persen_disc=0.25)
+    assert [p for p in periksa(wn, wr, _blok(wn)) if "kolom DISC" in p] == []
+
+
+def test_persen_diskon_tidak_seragam_dalam_satu_tab_diperingatkan():
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.25, persen_disc=0.25)
+    wr.cell(5, 29, "=Z5-(Z5*20%)")      # satu baris beda sendiri
+    wn.cell(5, 29, 40000)
+    pesan = [p for p in periksa(wn, wr, _blok(wn)) if "tidak seragam" in p]
+    assert pesan and "GENTING" in pesan[0]
+
+
+def test_harga_diketik_tangan_diperingatkan():
+    """Harga yang diketik tidak ikut berubah kalau Harga Retail diperbarui —
+    melanggar KETETAPAN bagian 41."""
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, 0.25, 0.25, harga_rumus=False)
+    for r in range(3, 6):
+        wn.cell(r, 24, 51000)           # angka, bukan rumus
+    pesan = [p for p in periksa(wn, wr, _blok(wn)) if "DIKETIK" in p]
+    assert pesan, periksa(wn, wr, _blok(wn))
+    assert "Harga Retail" in pesan[0]
+
+
+def test_harga_VLOOKUP_tidak_memunculkan_peringatan():
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, 0.25, 0.25, harga_rumus=True)
+    assert [p for p in periksa(wn, wr, _blok(wn)) if "DIKETIK" in p] == []
+
+
+@pytest.mark.parametrize("rumus,harap", [
+    ("=Z3-(Z3*25%)", 0.25),
+    ("=Z3-(Z3*1,5%)", 0.015),
+    ("=Z3*0.75", 0.25),
+    ("=Z3", None),
+])
+def test_persen_dalam_rumus_terbaca(rumus, harap):
+    from hp_dokumen.periksa_rumus import persen_dalam_rumus
+    assert persen_dalam_rumus(rumus) == harap
