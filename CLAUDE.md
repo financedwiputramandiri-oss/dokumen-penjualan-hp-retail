@@ -4641,3 +4641,122 @@ Akibatnya: **sapuan bot akan kembali menghasilkan Rp17.835.584.** Supaya
 tetap, Sales harus menambahkan potongan kedua itu di order sheet.
 
 Empat tes baru. Tes 261 -> 265.
+
+## 49. AUDIT SELURUH ORDER SHEET 2026 — 20 Oktober 2026
+
+> *"audit seluruh ordersheet dan cek rumus di setiap cell pada tahun ini"*
+> *"dan periksa juga setiap tab nya"*
+
+12 order sheet 2026 ditarik ulang dari Drive, lalu **274 tab / 11.512 baris
+data** diperiksa sel per sel oleh `alat/audit_rumus.py` (baru). Hasilnya di
+`keluaran/AUDIT_ORDER_SHEET_2026.xlsx` (5 lembar) dan tiga CSV pendukung.
+
+### Yang diperiksa tiap tab
+
+1. tata letaknya dikenali
+2. rumus qty per baris menjangkau SELURUH kolom ukuran
+3. baris TOTAL menjangkau SELURUH baris data
+4. sel bergalat Excel di mana pun
+5. nilai kotor = qty x harga
+6. harga ikut tab Harga Retail (KETETAPAN bagian 41)
+7. pencocokan penuh lewat `rekonsiliasi.py`
+
+### Temuan GENTING — 623
+
+| Jenis | Jumlah | Keterangan |
+|---|---:|---|
+| `#REF!` di baris TOTAL kolom AD/AE | 604 sel, **266 dari 274 tab** | total CBD/COD tidak terbaca di sheet |
+| Rumus qty pendek yang SUDAH menelan qty | 16 baris, 31 pcs | hanya DHAWAFEST BAZAAR Februari |
+| Baris TOTAL kurang | 2 | DHAWAFEST W160, Katamama Tapos Agu-Lama W116 |
+| Tata letak tak dikenali | 1 | April, `Pengiriman Support Baby Wear` |
+
+### Temuan POTENSI — 12.354, JANGAN diperlakukan sebagai cacat hari ini
+
+**Rumus qty per baris TIDAK PERNAH menjangkau kolom ukuran ke-9.** Ini
+berlaku di hampir SELURUH baris sepanjang 2026, dan polanya berubah
+pertengahan tahun:
+
+| Periode | Rumus | Kolom di luar jumlah |
+|---|---|---|
+| Januari - Juni 2026 | `=SUM(N:S)` | T, U, V |
+| Juli - Oktober 2026 | `=SUM(N:U)` | V |
+
+Hari ini tidak berdampak karena kolom sisanya memang kosong — sesuai temuan
+lama bagian 12 ("kolom ukuran ke-9 tidak pernah terpakai"). **Tapi begitu
+Sales mengisinya, qty-nya hilang DIAM-DIAM** — itu persis yang terjadi pada
+Buchi Kids September (bagian 36): 12 pcs di kolom V, Rp890.400, dan
+ketahuannya hanya karena Yosua sendiri yang menyadari totalnya aneh.
+
+Juga POTENSI: 255 sel `#REF!` di kolom AA (LOSSES), kolom yang tidak dipakai
+dokumen mana pun.
+
+### Yang TIDAK ditemukan — sama pentingnya untuk dicatat
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `qty x harga = nilai kotor` | **0 selisih** dari 11.512 baris |
+| Kode artikel tidak ada di Harga Retail | **0** |
+| Harga baris PO beda dari Harga Retail | **0** |
+| `#REF!` di kolom AC/AD/AE BARIS DATA | **0** |
+
+Yang terakhir itu yang menentukan: Aturan 2 membaca nilai bersih **per
+baris**, bukan dari baris TOTAL. Jadi 604 `#REF!` di baris TOTAL **tidak
+membuat satu dokumen pun salah** — tapi membuat Yosua tidak bisa membaca
+total CBD/COD langsung dari sheet, dan itulah sumber kebingungan berulang
+bagian 36 dan 39.
+
+### Pelajaran membuat pemeriksa: pisahkan GENTING dari POTENSI
+
+Versi pertama audit ini melaporkan **12.115 "rumus qty pendek"**. Hanya 16
+yang benar-benar menelan qty. Laporan 12.000 baris tidak akan pernah dibaca
+siapa pun — pelajaran alarm palsu bagian 14. Sekarang tiap temuan punya
+kolom TINGKAT, dan lembar POTENSI diringkas per tab.
+
+### Tiga cacat pada PEMERIKSAnya sendiri, ketahuan saat membuatnya
+
+Dicatat karena ketiganya pasti terulang kalau audit ini ditulis ulang:
+
+1. **Baris TOTAL punya DUA bentuk.** `W116=SUM(W3:W115)` menjumlah MENURUN,
+   `W74=SUM(N74:S74)` menjumlah MENDATAR (sel total tiap kolom ukuran).
+   Memeriksa yang mendatar dengan aturan menurun memberi **35 alarm palsu**.
+2. **Satu tab punya BEBERAPA baris TOTAL** — satu per blok, lalu satu TOTAL
+   seluruh PO. Mengambil yang PERTAMA ketemu memilih TOTAL blok, dan cacat
+   di TOTAL seluruh PO lolos. Terbukti pada DHAWAFEST: W124 yang terbaca,
+   **W160 yang cacat**. Ambil yang TERAKHIR, dan utamakan yang menurun.
+3. **Rumus bisa menyebut sel satuan, bukan hanya rentang** —
+   `=sum(W3,W7,W11:W16)`. Yang cuma membaca rentang melaporkan W3 dan W7
+   "tidak ikut dijumlah" padahal ikut. Empat alarm palsu.
+
+### Pencocokan penuh: 260 dari 263 PO COCOK
+
+Tiga yang gagal, semuanya sudah tercatat sebelumnya dan sebabnya di SHEET:
+
+| Order sheet | Tab | Sebab |
+|---|---|---|
+| Februari 2026 | DHAWAFEST BAZAAR | rumus qty `=SUM(N:S)` + TOTAL W160 |
+| Februari 2026 | PO 5 Feb - Defara Baby | rumus qty `=SUM(N:S)` |
+| Agustus 2026 Harga Lama | PO 07 Agu - Katamama Tapos | TOTAL W116 lewat baris 113 |
+
+Januari 2026 yang dulu terhalang seluruhnya (bagian 29) kini **29 PO COCOK**
+— perbaikan huruf besar-kecil di `rekonsiliasi.py` memang menyelesaikannya.
+
+### Dua berkas Juli 2026 yang isinya BERBEDA
+
+Folder order sheet 2026 memuat `7. ... Juli 2026` (Google Sheet) **dan**
+`7. ... Juli 2026 New.xlsx`. Keduanya memberi angka pencocokan yang sama
+persis (30 PO, 10.657 pcs, nett Rp580.450.196), tapi **3.184 sel nilainya
+berbeda** dan nama tabnya tidak sama. Perlu dipastikan Yosua mana yang
+berlaku, lalu yang satunya diarsipkan — bot menyapu KEDUANYA dan akan
+menerbitkan dua set dokumen untuk PO yang sama.
+
+### Berkas hasil
+
+| Berkas | Isi |
+|---|---|
+| `keluaran/AUDIT_ORDER_SHEET_2026.xlsx` | RINGKASAN, PER TAB, GENTING, POTENSI, PENCOCOKAN |
+| `keluaran/AUDIT_TEMUAN.csv` | 12.977 temuan, berkolom TINGKAT |
+| `keluaran/AUDIT_TAB.csv` | 274 tab |
+| `keluaran/AUDIT_GALAT.csv` | 1.276 sel bergalat, dipisah baris data / baris lain |
+
+Perintahnya: `python3 alat/audit_rumus.py data/audit2026`
+lalu `python3 alat/laporan_audit.py`.
