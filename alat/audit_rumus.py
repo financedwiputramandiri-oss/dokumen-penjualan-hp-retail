@@ -29,30 +29,15 @@ from openpyxl.utils import get_column_letter
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from hp_dokumen import tata_letak as tl
+# Pembacaan rumus SATU sumber dengan peringatan yang dipakai program sehari-hari
+# (src/hp_dokumen/periksa_rumus.py). Kalau dibiarkan dua salinan, cepat atau
+# lambat audit dan peringatan menyebut angka yang berbeda — pola yang sama
+# dengan rekap di CLAUDE.md bagian 35.
+from hp_dokumen.periksa_rumus import (GALAT_EXCEL as GALAT,
+                                      nomor_kolom as _kolom,
+                                      rentang_rumus as rentang_sum)
 from hp_dokumen.pemindai import (adalah_tab_harga, cari_di_master,
                                  master_harga_dari_buku)
-
-GALAT = ("#REF!", "#N/A", "#DIV/0!", "#VALUE!", "#NAME?", "#NUM!", "#NULL!")
-
-_SEL = re.compile(r"\$?([A-Z]{1,3})\$?(\d+)")
-
-
-def _kolom(huruf: str) -> int:
-    n = 0
-    for c in huruf:
-        n = n * 26 + (ord(c) - 64)
-    return n
-
-
-def rentang_sum(rumus: str):
-    """Daftar (kol1, bar1, kol2, bar2) dari tiap rentang di dalam rumus."""
-    hasil = []
-    for a, b in re.findall(r"(\$?[A-Z]{1,3}\$?\d+)\s*:\s*(\$?[A-Z]{1,3}\$?\d+)", rumus):
-        ma, mb = _SEL.match(a), _SEL.match(b)
-        if ma and mb:
-            hasil.append((_kolom(ma.group(1)), int(ma.group(2)),
-                          _kolom(mb.group(1)), int(mb.group(2))))
-    return hasil
 
 
 class Temuan:

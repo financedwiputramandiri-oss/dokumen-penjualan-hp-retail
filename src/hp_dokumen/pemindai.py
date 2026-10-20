@@ -15,6 +15,7 @@ from typing import Optional
 
 import openpyxl
 
+from . import periksa_rumus
 from .konfigurasi import DaftarCustomer, pecah_nama_tab
 from .model import JUMLAH_KOLOM_UKURAN, Baris, Blok, Order, TotalSheet
 from .tata_letak import kenali
@@ -339,9 +340,20 @@ def baca_order_sheet(
     tahun_bawaan: int = 2026,
     harga_baris_po: bool = False,
 ) -> list[Order]:
-    """Baca berkas order sheet (.xlsx) jadi daftar Order, satu per tab PO."""
+    """Baca berkas order sheet (.xlsx) jadi daftar Order, satu per tab PO.
+
+    Berkasnya dibuka DUA kali: sekali untuk nilai hasil hitung, sekali untuk
+    RUMUS-nya. Yang kedua dipakai memeriksa rumus yang salah (lihat
+    periksa_rumus.py) — cacat seperti `=SUM(N3:S3)` yang berhenti sebelum
+    kolom ukuran terakhir tidak pernah kelihatan dari angkanya.
+    """
     wb = openpyxl.load_workbook(berkas, data_only=True, read_only=False)
-    return baca_buku(wb, daftar_customer, tahun_bawaan, harga_baris_po=harga_baris_po)
+    try:
+        wb_rumus = openpyxl.load_workbook(berkas, data_only=False, read_only=False)
+    except Exception:
+        wb_rumus = None   # pemeriksaan rumus dilewati, pembacaan tetap jalan
+    return baca_buku(wb, daftar_customer, tahun_bawaan,
+                     harga_baris_po=harga_baris_po, buku_rumus=wb_rumus)
 
 
 def baca_buku(
@@ -349,6 +361,7 @@ def baca_buku(
     daftar_customer: DaftarCustomer,
     tahun_bawaan: int = 2026,
     harga_baris_po: bool = False,
+    buku_rumus=None,
 ) -> list[Order]:
     """Baca satu buku kerja jadi daftar Order.
 
@@ -375,6 +388,19 @@ def baca_buku(
         peringatan = list(peringatan) + _samakan_dengan_master(
             blok, master, nama, harga_baris_po=harga_baris_po
         )
+        # Rumus yang salah TIDAK kelihatan dari angkanya. Permintaan Yosua
+        # 20 Oktober 2026; aturannya di periksa_rumus.py.
+        ws_rumus = None
+        if buku_rumus is not None:
+            try:
+                ws_rumus = buku_rumus[nama]
+            except KeyError:
+                ws_rumus = None
+        try:
+            peringatan += periksa_rumus.periksa(ws, ws_rumus, blok)
+        except Exception as e:   # pemeriksaan tambahan tidak boleh
+            peringatan.append(   # menggagalkan pembacaan order sheet
+                f"Pemeriksaan rumus tab '{nama}' tidak bisa dijalankan: {e}")
         tata = blok[0].tata
         kc = tata.kolom_jenis("CBD") if tata else None
         kd = tata.kolom_jenis("COD") if tata else None

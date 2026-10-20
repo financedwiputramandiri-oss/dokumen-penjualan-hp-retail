@@ -97,6 +97,48 @@ def _tampilkan_peringatan_umum(cfg) -> None:
             print(f"  - {w}")
 
 
+def _tampilkan_peringatan_rumus(orders) -> None:
+    """Rumus order sheet yang salah atau kurang tepat.
+
+    Ditampilkan TERPISAH dan didahulukan, sebab cacat rumus tidak pernah
+    kelihatan dari angkanya — `=SUM(N3:S3)` yang berhenti sebelum kolom
+    ukuran terakhir tampak wajar sampai qty-nya hilang diam-diam.
+    Yang GENTING dikumpulkan di atas supaya tidak tenggelam.
+    """
+    genting, ringan = [], []
+    for o in orders:
+        for w in o.peringatan:
+            if not w.startswith(("RUMUS SALAH", "RUMUS KURANG TEPAT")):
+                continue
+            (genting if "GENTING" in w else ringan).append((o.nama_tab, w))
+    if not genting and not ringan:
+        return
+    print("\n" + "=" * 110)
+    print("PERINGATAN RUMUS ORDER SHEET")
+    print("=" * 110)
+    if genting:
+        print("\nANGKANYA SUDAH SALAH SEKARANG:")
+        for tab, w in genting:
+            print(f"  [{tab}]")
+            print(f"    {w}")
+    if ringan:
+        # Yang belum berdampak muncul di hampir SETIAP tab — kalau ditulis
+        # satu per satu, peringatan GENTING di atasnya tenggelam. Jadi yang
+        # ditampilkan jumlah tabnya saja, rinciannya di laporan pencocokan.
+        jenis: dict[str, set] = {}
+        for tab, w in ringan:
+            kunci = ("rumus qty berhenti sebelum kolom ukuran terakhir"
+                     if w.startswith("RUMUS KURANG TEPAT")
+                     else "baris TOTAL kolom nilai bersih berisi galat")
+            jenis.setdefault(kunci, set()).add(tab)
+        print("\nBELUM BERDAMPAK, TAPI PERLU DIRAPIKAN SALES:")
+        for k, tabs in sorted(jenis.items(), key=lambda x: -len(x[1])):
+            contoh = ", ".join(sorted(tabs)[:3])
+            lagi = f", dan {len(tabs)-3} tab lain" if len(tabs) > 3 else ""
+            print(f"  - {k}: {len(tabs)} tab — {contoh}{lagi}")
+    print("\nYang harus dibetulkan ADA DI ORDER SHEET, bukan di program.")
+
+
 # ------------------------------------------------------------- perintah
 def perintah_daftar(args) -> int:
     cfg, orders, master, berkas = _muat(args)
@@ -119,6 +161,7 @@ def perintah_periksa(args) -> int:
     if args.rinci or args.po:
         for h in hasil:
             cetak_rinci(h)
+    _tampilkan_peringatan_rumus(orders)
     _tampilkan_peringatan_umum(cfg)
 
     gagal = [h for h in hasil if not h.lolos]
@@ -164,6 +207,7 @@ def perintah_buat(args) -> int:
         print("\nBERHENTI. Angka hasil olahan tidak cocok dengan order sheet:\n")
         for h in gagal:
             cetak_rinci(h)
+        _tampilkan_peringatan_rumus([h.order for h in gagal])
         print("\nDokumen TIDAK dibuat. Perbaiki dulu order sheetnya.")
         print("(Kalau benar-benar perlu, tambahkan --abaikan-pencocokan, tapi hasilnya tidak bisa dipercaya.)")
         return 1
@@ -180,6 +224,7 @@ def perintah_buat(args) -> int:
 
     lap = tulis_laporan_pencocokan(hasil, FOLDER_KELUARAN / "LAPORAN_PENCOCOKAN.xlsx", cfg.peringatan)
     print(f"\nLaporan pencocokan: {lap.relative_to(AKAR)}")
+    _tampilkan_peringatan_rumus(orders)
     _tampilkan_peringatan_umum(cfg)
     for h in hasil:
         if h.peringatan:

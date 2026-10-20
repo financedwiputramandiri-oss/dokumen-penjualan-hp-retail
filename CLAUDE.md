@@ -4760,3 +4760,68 @@ menerbitkan dua set dokumen untuk PO yang sama.
 
 Perintahnya: `python3 alat/audit_rumus.py data/audit2026`
 lalu `python3 alat/laporan_audit.py`.
+
+## 50. Peringatan rumus order sheet yang salah — 20 Oktober 2026
+
+> *"berikan warning ketika di order sheet ada formula yang tidak sesuai dan
+> tidak tepat"*
+
+Audit bagian 49 hanya berjalan kalau perintah auditnya dijalankan. Sekarang
+peringatannya muncul **setiap kali dokumen dibuat dan setiap kali bot
+menyapu** — `src/hp_dokumen/periksa_rumus.py`.
+
+### Tiga hal yang diperiksa
+
+| Pemeriksaan | Tingkat |
+|---|---|
+| rumus qty per baris berhenti sebelum kolom ukuran terakhir, DAN kolom sisanya ada isinya | **GENTING** |
+| ... tapi kolom sisanya masih kosong | POTENSI |
+| baris TOTAL tidak menjumlah seluruh baris data | **GENTING** |
+| galat Excel di kolom nilai bersih BARIS DATA | **GENTING** |
+| galat Excel di baris TOTAL kolom nilai bersih | POTENSI |
+
+Yang terakhir sengaja BUKAN genting: nilai bersih dibaca per baris (Aturan
+2), jadi dokumennya tetap benar. Menyebutnya genting akan membuat 266 dari
+274 tab berteriak percuma.
+
+### Cara menampilkannya — ini yang menentukan apakah dibaca orang
+
+`periksa` dan `buat` memunculkan blok **PERINGATAN RUMUS ORDER SHEET**
+terpisah, dan yang GENTING didahulukan dengan rinciannya (sel mana, berapa
+pcs hilang, rumus penggantinya). Yang POTENSI **diringkas jadi satu baris
+per jenis** beserta jumlah tabnya — sebab ia muncul di hampir setiap tab,
+dan kalau ditulis satu per satu peringatan genting di atasnya tenggelam.
+
+Peringatan juga dimunculkan saat `buat` BERHENTI karena angka tidak cocok.
+Di situ gunanya paling besar: sebab ketidakcocokannya biasanya justru rumus
+yang dilaporkan itu.
+
+### Jalur bot: tanpa panggilan Google tambahan
+
+`sapu/bot.py` sudah menarik rumus tiap tab (`rumus=True`) untuk sidik jari
+sejak bagian 14. Rumus itu dipakai ulang, jadi pemeriksaan ini **tidak
+menambah satu panggilan pun** ke Google.
+
+Di jalur manual, `baca_order_sheet()` sekarang membuka berkasnya DUA kali —
+sekali `data_only=True` untuk nilai, sekali `data_only=False` untuk rumus.
+Kalau yang kedua gagal, pembacaan tetap jalan dan hanya pemeriksaan rumusnya
+yang dilewati; kegagalan pemeriksaan tidak boleh menggagalkan penerbitan
+dokumen.
+
+### Dibuktikan pada order sheet sungguhan
+
+| Order sheet | Hasil |
+|---|---|
+| Februari 2026 | 3 peringatan GENTING — DHAWAFEST (76 pcs + TOTAL W160) dan Defara (4 pcs di W33/34/39/40) |
+| Oktober 2026 | **0 GENTING**, sesuai: ke-13 PO-nya memang cocok |
+
+Angka Defara cocok persis dengan yang dicatat bagian 30 jauh sebelumnya.
+
+12 tes baru, termasuk dua yang menjaga dari alarm palsu: rumus bersel
+satuan (`=sum(W3,W7,W11:W16)`) tidak boleh dianggap melewatkan baris, dan
+rumus qty yang benar tidak boleh memunculkan peringatan apa pun.
+Tes 265 -> 277.
+
+`alat/audit_rumus.py` sekarang mengimpor pembaca rumusnya dari modul yang
+sama — satu sumber, supaya audit dan peringatan harian tidak pernah menyebut
+angka yang berbeda.

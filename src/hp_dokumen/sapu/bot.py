@@ -368,6 +368,27 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                         f"pemantauan rumus dilewati: {e}"
                     )
 
+            # Peringatan rumus salah (permintaan Yosua 20 Oktober 2026).
+            # Rumusnya memang sudah ditarik di atas untuk sidik jari, jadi
+            # tidak ada panggilan Google tambahan sama sekali.
+            if rumus_per_tab:
+                from .lembar_api import LembarNilai
+                from ..periksa_rumus import periksa as periksa_rumus_tab
+                for order in orders:
+                    nilai = rumus_per_tab.get(order.nama_tab)
+                    if nilai is None:
+                        continue
+                    try:
+                        order.peringatan += periksa_rumus_tab(
+                            buku[order.nama_tab],
+                            LembarNilai(order.nama_tab, nilai),
+                            order.blok,
+                        )
+                    except Exception as e:
+                        masalah.append(
+                            f"'{berkas.nama}' tab '{order.nama_tab}': "
+                            f"pemeriksaan rumus gagal: {e}")
+
             for order in orders:
                 tab_penuh = order.nama_tab      # sudah lengkap dari Sheets API
                 cust = cfg.customer.cari(tab_penuh)
