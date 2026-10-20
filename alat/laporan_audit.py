@@ -34,7 +34,7 @@ def lembar(wb, nama, judul, baris, lebar):
 def main():
     temuan = list(csv.DictReader(open("keluaran/AUDIT_TEMUAN.csv")))
     tab = list(csv.DictReader(open("keluaran/AUDIT_TAB.csv")))
-    periksa = Path("/tmp/periksa.txt").read_text() if Path("/tmp/periksa.txt").exists() else ""
+    periksa = Path("/tmp/periksa2.txt").read_text() if Path("/tmp/periksa2.txt").exists() else ""
 
     wb = openpyxl.Workbook()
     wb.remove(wb.active)

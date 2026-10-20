@@ -4727,7 +4727,7 @@ Dicatat karena ketiganya pasti terulang kalau audit ini ditulis ulang:
    `=sum(W3,W7,W11:W16)`. Yang cuma membaca rentang melaporkan W3 dan W7
    "tidak ikut dijumlah" padahal ikut. Empat alarm palsu.
 
-### Pencocokan penuh: 260 dari 263 PO COCOK
+### Pencocokan penuh: 261 dari 264 PO COCOK
 
 Tiga yang gagal, semuanya sudah tercatat sebelumnya dan sebabnya di SHEET:
 
