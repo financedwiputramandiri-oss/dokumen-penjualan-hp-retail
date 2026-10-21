@@ -4918,3 +4918,111 @@ Sepuluh order sheet lainnya **bersih dari GENTING** — termasuk Juli,
 September, dan Oktober 2026.
 
 Tes 277 -> 287.
+
+## 52. TANDA % HILANG dari rumus diskon — cacat paling mahal — 21 Oktober 2026
+
+> *"auditlah seluruh ordersheet dan periksa seluruh cell apakah ada kesalahan
+> formula atau hitungan harga, diskon dan diskon cbd ataupun cod. dan analisa
+> secara komprehensif dan menyeluruh"*
+
+Yosua memberi 11 link (Januari-Oktober 2026) sebagai daftar RESMI order
+sheet tahun ini. Diperiksa `alat/audit_lengkap.py` (baru): **239 tab,
+11.045 baris**.
+
+### Cacat yang ditemukan: `=AC3-(AC3*1.5)` — tanpa `%`
+
+Seharusnya `=AC3-(AC3*1.5%)`. Tanpa tanda persen, Excel menghitung
+`AC x (1 - 1,5)` = **AC x (-0,5)**, jadi nilai bersihnya NEGATIF.
+
+| | |
+|---|---:|
+| Tab kena | **16** (15 di April 2026, 1 di September 2026) |
+| Sel berumus salah | **249** |
+| Hasilnya negatif | **200** |
+
+### SATU dokumen benar-benar salah — dan pencocokan LULUS
+
+`PO 11 September - Katamama (Tapos)`:
+
+| | |
+|---|---:|
+| Kolom AC (TOTAL VALUE) | Rp24.152.232 |
+| AD terpakai (6 sel cacat) | **Rp22.790.915** |
+| AD seharusnya (AC x 0,985) | Rp23.789.949 |
+| **Invoice KURANG menagih** | **Rp999.034** |
+
+Kolom AD tab itu terisi penuh, jadi Aturan 2 memilih CBD — dan yang dipilih
+justru kolom yang rumusnya cacat. Pencocokan **LULUS**, sebab order sheet
+dan program sama-sama membaca angka yang sama salahnya. Ini pola yang sama
+persis dengan bagian 39: dokumen salah yang lolos seluruh pemeriksaan.
+
+### Lima belas tab April SELAMAT — karena kebetulan, bukan karena aman
+
+Di ke-15 tab April, kolom AD terisi SEBAGIAN, jadi Aturan 2 mengabaikannya
+dan memilih TOP. Dokumennya benar. **Tapi itu keberuntungan**: begitu Sales
+menarik kolom AD sampai penuh, Aturan 2 akan memilih kolom bernilai negatif
+itu dan 15 faktur sekaligus jadi salah besar.
+
+### Yang BERSIH — delapan pemeriksaan, nol temuan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Harga = VLOOKUP ke tab Harga Retail | 11.045 dari 11.045 |
+| Harga diketik tangan | 0 |
+| Kode artikel tidak ada di Harga Retail | 0 |
+| Harga beda dari Harga Retail | 0 |
+| `qty x harga = nilai kotor` | 0 selisih |
+| **Rumus menunjuk baris LAIN (meleset)** | **0** |
+| **CBD/COD menunjuk kolom sumber salah** | **0** |
+| Nilai bersih cocok persen di rumusnya | 0 selisih |
+
+Dua yang ditebalkan itu pemeriksaan BARU. Rumus per baris yang menyebut
+baris lain (`=Z3-(Z4*25%)`) memberi angka masuk akal tapi salah, dan tidak
+ada tanda apa pun di hasilnya — jadi perlu diperiksa walau hasilnya nol.
+
+### Kenapa audit bagian 51 melewatkan ini
+
+Bagian 51 membandingkan tarif di dalam RUMUS dengan judul kolom, dan
+`persen_dalam_rumus()` tidak mengenali `1.5` tanpa `%` — jadi sel itu
+dilewati sama sekali, bukan dilaporkan. Yang menangkapnya kali ini
+pemeriksaan **ANGKA**: `AD harus = AC x (1 - tarif judul)`.
+
+**Pelajaran: memeriksa RUMUS saja tidak cukup; periksa juga ANGKANYA.**
+Rumus yang tidak bisa diurai akan dilewati diam-diam, dan justru rumus yang
+bentuknya aneh itulah yang paling mungkin salah.
+
+### Peringatan harian bertambah dua
+
+| Pemeriksaan | Tingkat |
+|---|---|
+| tanda `%` hilang dari rumus diskon (pengali > 1 tanpa `%`) | **GENTING** |
+| nilai bersih NEGATIF, apa pun sebabnya | **GENTING** |
+
+Yang kedua sengaja jaring pengaman: apa pun penyebabnya, nilai bersih
+negatif tidak pernah benar. Ada tes yang memastikan `=AC3*0,985` — bentuk
+yang memang benar — TIDAK ikut diperingatkan.
+
+### Gambaran 2026 sesudah audit ini
+
+11 order sheet, 239 tab: **21 peringatan GENTING**, 56 POTENSI.
+
+| Jenis | Jumlah |
+|---|---|
+| tanda % hilang | 16 tab |
+| rumus qty berhenti terlalu awal | 2 tab (DHAWAFEST, Defara) |
+| baris TOTAL tidak lengkap | 2 tab (DHAWAFEST W160, Katamama Tapos Agu-Lama W116) |
+| kolom DISC beda dari rumus | 1 tab (Katamama Cikaret Maret) |
+
+`W116` Agustus Harga Lama **belum dibetulkan** walau sudah dilaporkan
+20 Oktober; berkasnya memang berubah 20 Okt 10:59, tapi bukan di sel itu.
+
+### Catatan: daftar Yosua TIDAK memuat `Juli 2026` yang Google Sheet
+
+Dari 12 berkas di folder order sheet 2026, 11 link yang diberikan memakai
+**`Juli 2026 New.xlsx`** dan tidak menyebut `7. (External) Order Sheet -
+Happy Pumpkin Juli 2026` (`1U0VXney...`). Pertanyaan bagian 49 tentang dua
+berkas Juli karena itu hampir terjawab — tapi berkas lamanya MASIH ADA di
+folder dan bot tetap akan menyapunya. Perlu ditegaskan Yosua supaya yang
+lama dipindahkan atau diarsipkan.
+
+Tes 287 -> 290.

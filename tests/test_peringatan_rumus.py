@@ -35,6 +35,7 @@ def _tab(wb, nama, rumus_qty_sampai="V", rumus_total=None, baris=3):
     ws.cell(1, 27, "LOSSES")
     ws.cell(1, 28, "DISC")
     ws.cell(1, 29, "TOTAL VALUE")
+    ws.cell(1, 30, "DISCOUNT CBD + 1,5%")
     return ws
 
 
@@ -241,3 +242,43 @@ def test_harga_VLOOKUP_tidak_memunculkan_peringatan():
 def test_persen_dalam_rumus_terbaca(rumus, harap):
     from hp_dokumen.periksa_rumus import persen_dalam_rumus
     assert persen_dalam_rumus(rumus) == harap
+
+
+# --------------------------------------------------- tanda % hilang
+def test_tanda_persen_hilang_di_rumus_diskon_diperingatkan_GENTING():
+    """`=AC3-(AC3*1.5)` bukan `*1.5%` — hasilnya AC x (-0,5), jadi NEGATIF.
+
+    Ditemukan 21 Oktober 2026 di 249 sel pada 16 tab. Satu di antaranya
+    sudah membuat invoice kurang menagih Rp999.033 dan pencocokan tetap
+    LULUS, sebab order sheet dan program sama-sama membaca angka yang
+    sama salahnya.
+    """
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.25, persen_disc=0.25)
+    for r in range(3, 6):
+        wr.cell(r, 30, f"=AC{r}-(AC{r}*1.5)")   # % HILANG
+        wn.cell(r, 30, wn.cell(r, 29).value * -0.5)
+    pesan = [p for p in periksa(wn, wr, _blok(wn)) if "TANDA % HILANG" in p]
+    assert pesan, periksa(wn, wr, _blok(wn))
+    assert "GENTING" in pesan[0]
+    assert "NEGATIF" in pesan[0]
+
+
+def test_rumus_diskon_memakai_pengali_pecahan_TIDAK_diperingatkan():
+    """`=AC3*0,985` memang bentuk yang benar — jangan dianggap cacat."""
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.25, persen_disc=0.25)
+    for r in range(3, 6):
+        wr.cell(r, 30, f"=AC{r}*0.985")
+        wn.cell(r, 30, wn.cell(r, 29).value * 0.985)
+    assert [p for p in periksa(wn, wr, _blok(wn)) if "TANDA % HILANG" in p] == []
+
+
+def test_nilai_bersih_negatif_selalu_diperingatkan():
+    """Apa pun sebabnya, nilai bersih negatif tidak pernah benar."""
+    wn, wr = _buku(rumus_qty_sampai=22)
+    _pasang_diskon(wn, wr, persen_rumus=0.25, persen_disc=0.25)
+    for r in range(3, 6):
+        wn.cell(r, 30, -100000)      # negatif, tanpa rumus bercacat
+    pesan = [p for p in periksa(wn, wr, _blok(wn)) if "NEGATIF" in p]
+    assert pesan and "GENTING" in pesan[0]

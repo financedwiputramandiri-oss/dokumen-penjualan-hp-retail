@@ -240,6 +240,51 @@ def periksa(ws_nilai, ws_rumus, blok_list, maks_baris: int = 2000) -> list[str]:
                 f"tab — {rinci}."
             )
 
+    # ---- 2b-2. TANDA % HILANG dari rumus diskon ------------------------
+    #
+    # `=AC3-(AC3*1.5)` bukan `=AC3-(AC3*1.5%)`. Hasilnya AC x (-0,5), jadi
+    # NEGATIF. Ditemukan 21 Oktober 2026 pada 249 sel di 16 tab (April 2026
+    # dan September 2026). Satu di antaranya sudah membuat invoice kurang
+    # menagih Rp999.033 — `PO 11 September - Katamama (Tapos)` — dan
+    # pencocokan tetap LULUS, sebab order sheet dan program sama-sama
+    # membaca angka yang sama salahnya.
+    for k in (tata0.nett or []):
+        salah, negatif = [], 0
+        for r in baris_data:
+            f = _rumus(ws_rumus, r, k.kolom)
+            if not f or "%" in f:
+                continue
+            m = re.search(r"\*\s*(\d+(?:[.,]\d+)?)\s*\)", f)
+            if not m or float(m.group(1).replace(",", ".")) <= 1:
+                continue      # `*0,985` memang bentuk yang benar
+            salah.append(f"{get_column_letter(k.kolom)}{r}")
+            v = ws_nilai.cell(r, k.kolom).value
+            if isinstance(v, (int, float)) and v < 0:
+                negatif += 1
+        if salah:
+            pesan.append(
+                f"RUMUS SALAH (GENTING): TANDA % HILANG di kolom "
+                f"{get_column_letter(k.kolom)} ({k.judul}) pada {len(salah)} "
+                f"sel — {', '.join(salah[:6])}"
+                + (f" dan {len(salah)-6} sel lain" if len(salah) > 6 else "")
+                + f". Contoh `*1.5)` seharusnya `*1.5%)`; {negatif} sel "
+                  "hasilnya NEGATIF. Nilai bersihnya jadi salah besar."
+            )
+
+    # ---- 2b-3. nilai bersih NEGATIF ------------------------------------
+    # Apa pun sebabnya, nilai bersih negatif tidak pernah benar.
+    for k in (tata0.nett or []):
+        neg = [f"{get_column_letter(k.kolom)}{r}" for r in baris_data
+               if isinstance(ws_nilai.cell(r, k.kolom).value, (int, float))
+               and ws_nilai.cell(r, k.kolom).value < 0]
+        if neg and not any("TANDA % HILANG" in p and
+                           get_column_letter(k.kolom) in p for p in pesan):
+            pesan.append(
+                f"RUMUS SALAH (GENTING): kolom {get_column_letter(k.kolom)} "
+                f"({k.judul}) berisi nilai bersih NEGATIF di {len(neg)} baris "
+                f"— {', '.join(neg[:6])}."
+            )
+
     # ---- 2c. harga diketik tangan, bukan VLOOKUP ke Harga Retail -------
     if tata0.kol_harga:
         diketik = [r for r in baris_data
