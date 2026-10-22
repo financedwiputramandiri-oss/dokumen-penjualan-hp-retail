@@ -36,134 +36,130 @@ TIPIS = Side(style="thin", color="BFBFBF")
 KOTAK = Border(left=TIPIS, right=TIPIS, top=TIPIS, bottom=TIPIS)
 MONO = Font(name="Consolas", size=10)
 
+PILIHAN_CBD = [f"DISCOUNT CBD + {t}" for t in
+               ("0%", "0,5%", "1%", "1,5%", "2%", "2,5%",
+                "3%", "3,5%", "4%", "4,5%", "5%")]
+PILIHAN_COD = [n.replace("CBD", "COD") for n in PILIHAN_CBD]
+
+# Rumus inti. Judul memuat SATU persen, jadi cukup REGEXEXTRACT — tidak
+# perlu SPLIT/ARRAYFORMULA seperti saat judulnya bisa bertingkat.
+# SUBSTITUTE koma->titik WAJIB: VALUE("1,5%") memberi #VALUE! di Google
+# Sheets, yang titik memberi 0,015. Sudah diuji 22 Oktober 2026.
+def _tarif(sel: str) -> str:
+    return (f'IFERROR(VALUE(REGEXEXTRACT(SUBSTITUTE({sel},",","."),'
+            f'"[0-9.]+%")),0)')
+
+
+RUMUS_AD = f"=AC3*(1-{_tarif('AD$1')})"
+RUMUS_AE = f"=AC3*(1-{_tarif('AE$1')})"
+
 LANGKAH = [
-    (1, "Buat tempat pilihannya",
-     "Buka tab PO. Klik sel AH2, ketik: Diskon dasar\n"
-     "AH3: Tambahan CBD    AH4: Tambahan COD    AH5: Tambahan ke-2",
-     "Kolom AH dan AI dipilih karena KOSONG. Jangan menyisipkan baris atau "
-     "kolom baru — letak kolom A sampai AE harus tetap, kalau bergeser "
-     "program pembuat Invoice berhenti mengenali tabnya."),
-    (2, "Pasang dropdown pertama",
-     "Klik sel AI2.  Menu  Insert  >  Dropdown",
-     "Panel 'Data validation rules' muncul di kanan layar."),
-    (3, "Isi daftar persennya",
-     "Di panel kanan, di bawah 'Criteria' sudah tertulis Dropdown.\n"
-     "Klik 'Add another item' untuk tiap pilihan, lalu ketik:\n\n"
-     "    0%    18%    20%    22%    25%    26.5%    27.5%    30%",
-     "WAJIB pakai TITIK, bukan koma. Tulis 26.5% — JANGAN 26,5%. "
-     "Sudah diuji: yang pakai koma membuat seluruh rumus jadi #VALUE!."),
+    (1, "Pasang dropdown di judul kolom AD",
+     "Klik judul kolom AD (sel gabungan AD1:AD2).\n"
+     "Menu  Insert  >  Dropdown",
+     "Aturannya menempel di sel kiri-atas, yaitu AD1. Kalau sel gabungan "
+     "rewel, lepas gabungannya dulu, pasang dropdown, lalu gabung lagi."),
+    (2, "Isi 11 pilihannya",
+     "Klik 'Add another item' lalu ketik satu per satu:\n\n"
+     "DISCOUNT CBD + 0%        DISCOUNT CBD + 0,5%\n"
+     "DISCOUNT CBD + 1%        DISCOUNT CBD + 1,5%\n"
+     "DISCOUNT CBD + 2%        DISCOUNT CBD + 2,5%\n"
+     "DISCOUNT CBD + 3%        DISCOUNT CBD + 3,5%\n"
+     "DISCOUNT CBD + 4%        DISCOUNT CBD + 4,5%\n"
+     "DISCOUNT CBD + 5%",
+     "Jenjang 0,5%. Isinya TULISAN JUDUL lengkap, bukan angka persen saja — "
+     "sebab sel ini memang judul kolomnya. Boleh pakai KOMA persis seperti "
+     "order sheet sekarang; rumusnya mengubahnya sendiri."),
+    (3, "Atur tampilannya",
+     "Di panel kanan:  Display style  >  Arrow",
+     "Kalau dibiarkan Chip, judulnya berubah jadi gelembung berwarna dan "
+     "baris judul tabel jadi tidak seragam dengan kolom lain."),
     (4, "Simpan",
-     "Klik tombol  Done  di bawah panel.",
-     "Sel AI2 sekarang punya panah kecil. Klik panahnya, pilih 25%."),
-    (5, "Pasang dropdown untuk tambahan CBD/COD",
-     "Klik sel AI3.  Insert > Dropdown.  Isi daftarnya:\n\n"
-     "    0%    1.5%    2%    2.5%    3%    5%\n\n"
-     "Klik Done. Lalu ulangi untuk AI4 dan AI5.",
-     "Cara cepat: sesudah AI3 jadi, klik AI3, tekan Ctrl+C, lalu pilih "
-     "AI4:AI5 dan tekan Ctrl+V. Dropdownnya ikut tersalin."),
-    (6, "Isi rumus kolom DISC (AB)",
-     "Klik sel AB3, ketik rumus ini lalu Enter:\n\n"
-     "    =$AI$2",
-     "Tanda $ WAJIB ada. Tanpa $, saat rumusnya disalin ke bawah ia akan "
-     "menunjuk AI4, AI5, dan seterusnya — bukan sel pilihan lagi."),
-    (7, "Isi rumus TOTAL VALUE (AC)",
-     "Klik sel AC3, ketik lalu Enter:\n\n"
-     "    =Z3*(1-$AI$2)",
-     "Inilah yang menggantikan =Z3-(Z3*25%). Persennya tidak lagi "
-     "ditulis di dalam rumus, jadi kolom DISC dan uangnya TIDAK MUNGKIN "
-     "berbeda lagi."),
-    (8, "Isi rumus DISCOUNT CBD (AD)",
-     "Klik sel AD3, ketik lalu Enter:\n\n"
-     "    =AC3*(1-$AI$3)*(1-$AI$5)",
-     "Dikali dua kali, BUKAN dijumlahkan. 2% lalu 2% sama dengan 3,96%, "
-     "bukan 4%. Kalau tidak ada tambahan ke-2, pilih 0% di AI5 dan "
-     "rumusnya tetap benar."),
-    (9, "Isi rumus DISCOUNT COD (AE)",
-     "Klik sel AE3, ketik lalu Enter:\n\n"
-     "    =AC3*(1-$AI$4)",
-     "KALAU tab ini tidak punya kolom COD, LEWATI langkah ini dan biarkan "
-     "AE kosong. Mengisinya dengan 0% membuat kolomnya terisi penuh, lalu "
-     "program menganggap ordernya COD padahal TOP."),
-    (10, "Salin ke seluruh baris",
-     "Pilih AB3:AE3.  Ctrl+C.\n"
-     "Pilih AB4 sampai baris data terakhir.  Ctrl+V.",
+     "Klik tombol  Done",
+     "Judul AD sekarang punya panah kecil. Klik panahnya untuk memilih."),
+    (5, "Ulangi untuk kolom AE",
+     "Klik judul kolom AE (AE1:AE2). Insert > Dropdown.\n"
+     "Isi 11 pilihan yang sama, tapi tulis COD:\n\n"
+     "DISCOUNT COD + 0%  ...  DISCOUNT COD + 5%",
+     "Cara cepat: klik AD1, Ctrl+C, lalu klik AE1 dan Ctrl+V — dropdownnya "
+     "ikut tersalin. Sesudah itu tinggal sunting daftarnya, ganti CBD "
+     "jadi COD."),
+    (6, "Isi rumus kolom AD",
+     f"Klik sel AD3, ketik lalu Enter:\n\n    {RUMUS_AD}",
+     "Panjang, tapi diketik SEKALI lalu disalin. Tanda $ pada AD$1 wajib — "
+     "tanpa itu rumusnya menunjuk AD2, AD3, dan seterusnya saat disalin "
+     "ke bawah."),
+    (7, "Isi rumus kolom AE",
+     f"Klik sel AE3, ketik lalu Enter:\n\n    {RUMUS_AE}",
+     "Sama persis dengan rumus AD, hanya AD$1 diganti AE$1."),
+    (8, "Salin ke seluruh baris",
+     "Pilih AD3:AE3.  Ctrl+C.\n"
+     "Pilih AD4 sampai baris data terakhir.  Ctrl+V.",
      "Salin HANYA sampai baris data terakhir. Jangan sampai kena baris "
      "TOTAL — baris TOTAL punya rumus SUM sendiri dan akan tertimpa."),
-    (11, "Buat judul kolom ikut berubah",
-     "Klik sel AD1, ketik lalu Enter:\n\n"
-     '    ="DISCOUNT CBD + "&ROUND($AI$3*100,2)&"%"\n'
-     '     &IF($AI$5>0," + "&ROUND($AI$5*100,2)&"%","")\n\n'
-     "Klik sel AE1, ketik lalu Enter:\n\n"
-     '    ="DISCOUNT COD + "&ROUND($AI$4*100,2)&"%"',
-     "Pakai ROUND, JANGAN TEXT. Sudah diuji: TEXT di Google Sheets "
-     'memberi "2.%" dengan titik menggantung, ROUND memberi "2%". '
-     "Sesudah ini judul kolom tidak mungkin lagi berbeda dari tarif "
-     "yang sebenarnya dipakai."),
-    (12, "Beri warna sel pilihannya",
-     "Pilih AI2:AI5.  Klik ikon ember cat.  Pilih kuning.",
-     "Supaya rekan kerja langsung tahu hanya sel kuning yang boleh diisi."),
-    (13, "PERIKSA sebelum ditinggalkan",
+    (9, "Sekalian kunci kolom DISC (dianjurkan)",
+     "Pilih AB3 sampai baris terakhir. Insert > Dropdown. Isi:\n\n"
+     "    0%   18%   20%   22%   25%   26,5%   27,5%   30%\n\n"
+     "Lalu ubah AC3 jadi:   =Z3*(1-AB3)   dan salin ke bawah.",
+     "Dengan ini kolom DISC dan uangnya membaca sel yang SAMA, jadi tidak "
+     "mungkin lagi berbeda. Inilah cacat yang ditemukan di PO 04 Maret - "
+     "Katamama Cikaret: DISC tertulis 25% tapi rumusnya memakai 22%."),
+    (10, "PERIKSA sebelum ditinggalkan",
      "Lihat baris TOTAL kolom AC, AD, dan AE.\n"
      "Bandingkan dengan angka SEBELUM diubah.",
-     "Kalau berbeda, URUNGKAN semuanya (Ctrl+Z berkali-kali) dan "
-     "tanyakan dulu. Jangan pernah meninggalkan tab yang angkanya "
-     "berubah tanpa sebab yang jelas."),
+     "Kalau berbeda, URUNGKAN semuanya (Ctrl+Z berkali-kali) dan tanyakan "
+     "dulu. Jangan pernah meninggalkan tab yang angkanya berubah tanpa "
+     "sebab yang jelas."),
 ]
 
 RUMUS = [
-    ("AB3", "Kolom DISC", "=$AI$2",
-     "Persen diskon dasar, dibaca dari sel pilihan"),
-    ("AC3", "TOTAL VALUE", "=Z3*(1-$AI$2)",
-     "Nilai kotor dikurangi diskon dasar"),
-    ("AD3", "DISCOUNT CBD", "=AC3*(1-$AI$3)*(1-$AI$5)",
-     "TOTAL VALUE dikurangi tambahan CBD, lalu tambahan ke-2 (BERUNTUN)"),
-    ("AE3", "DISCOUNT COD", "=AC3*(1-$AI$4)",
-     "TOTAL VALUE dikurangi tambahan COD"),
-    ("AD1", "Judul kolom CBD",
-     '="DISCOUNT CBD + "&ROUND($AI$3*100,2)&"%"&IF($AI$5>0," + "&ROUND($AI$5*100,2)&"%","")',
-     "Judul ikut persen yang dipilih"),
-    ("AE1", "Judul kolom COD",
-     '="DISCOUNT COD + "&ROUND($AI$4*100,2)&"%"',
-     "Judul ikut persen yang dipilih"),
+    ("AD3", "DISCOUNT CBD", RUMUS_AD,
+     "TOTAL VALUE dikurangi persen yang tertulis di judul AD1"),
+    ("AE3", "DISCOUNT COD", RUMUS_AE,
+     "TOTAL VALUE dikurangi persen yang tertulis di judul AE1"),
+    ("AC3", "TOTAL VALUE", "=Z3*(1-AB3)",
+     "Nilai kotor dikurangi diskon dasar di kolom DISC (langkah 9)"),
 ]
 
 UJI = [
-    ("Isi dropdown pakai KOMA", '=1000-(1000*"1,5%")', "#VALUE!",
-     "RUSAK — jangan pernah pakai koma di isi dropdown"),
-    ("Isi dropdown pakai TITIK", '=1000-(1000*"1.5%")', "985", "benar"),
-    ("Dropdown berisi teks persen",
-     '=24266100*(1-"25%")*(1-"2%")*(1-"2%")', "17.478.871,83", "benar"),
-    ("Kalau diisi angka biasa",
-     "=24266100*(1-0,25)*(1-0,02)*(1-0,02)", "17.478.871,83",
-     "sama persis — jadi teks maupun angka dua-duanya jalan"),
-    ("Judul pakai TEXT", '=TEXT(0,02;"0.##%")', "2.%",
-     "JELEK — ada titik menggantung"),
-    ("Judul pakai ROUND", '=ROUND(0,02*100;2)&"%"', "2%", "benar"),
-    ("Judul 1,5 persen", '=ROUND(0,015*100;2)&"%"', "1.5%", "benar"),
-    ("Judul 27,5 persen", '=ROUND(0,275*100;2)&"%"', "27.5%", "benar"),
+    ("Judul 0,5%", '"DISCOUNT CBD + 0,5%"', "0,5%  ->  18.108.577,13", "benar"),
+    ("Judul 1,5% pakai KOMA", '"DISCOUNT COD + 1,5%"', "1,5%  ->  17.926.581,38",
+     "benar — koma tidak masalah"),
+    ("Judul 2%", '"DISCOUNT CBD + 2%"', "2%  ->  17.835.583,50",
+     "benar — cocok dengan order sheet"),
+    ("Judul 2,5%", '"DISCOUNT CBD + 2,5%"', "2,5%", "benar"),
+    ("Judul 4,5%", '"DISCOUNT CBD + 4,5%"', "4,5%  ->  17.380.594,13", "benar"),
+    ("Judul 0%", '"DISCOUNT CBD + 0%"', "0%  ->  18.199.575", "benar"),
+    ("Judul tanpa persen", '"TOTAL VALUE"', "0%  ->  18.199.575",
+     "tidak error, dibaca 0%"),
+    ("Judul kosong", "sel kosong", "0%", "tidak error"),
+    ("Judul ada ganti barisnya", '"DISCOUNT" + enter + "COD + 1,5%"', "1,5%",
+     "benar — seperti judul di order sheet sekarang"),
 ]
 
 HATI = [
+    ("Isi dropdown harus TULISAN JUDUL, bukan angka persen",
+     "Sel itu adalah judul kolomnya. Kalau isinya cuma '2%', judul kolom "
+     "hilang dan yang terbaca orang hanya angka."),
     ("Tab yang persen diskonnya TIDAK seragam antar baris",
-     "Satu sel pilihan berlaku untuk SELURUH tab. Periksa dulu kolom DISC-nya "
-     "satu nilai atau tidak. Contoh yang sudah ketahuan: PO 04 Maret - "
-     "Katamama Cikaret, 55 baris 25% tapi 2 baris 22%."),
+     "Satu judul berlaku untuk SELURUH kolom di tab itu. Periksa dulu kolom "
+     "DISC-nya satu nilai atau tidak. Contoh yang sudah ketahuan: PO 04 "
+     "Maret - Katamama Cikaret, 55 baris 25% tapi 2 baris 22%."),
     ("Kolom AD atau AE yang lama HARUS ditimpa SELURUHNYA",
      "Kalau sebagian masih rumus lama, order sheet jadi campuran dua cara. "
      "Itu lebih membingungkan daripada sekarang, dan lebih sulit diperiksa."),
     ("Jangan mengisi kolom yang tab itu memang tidak punya",
-     "Mengisi AD dengan 0% membuat kolomnya terisi penuh, lalu Aturan 2 "
-     "memilihnya sebagai CBD padahal ordernya TOP. Angkanya kebetulan sama, "
-     "tapi CARA BAYAR yang tercatat jadi salah."),
+     "Memberi judul 'DISCOUNT CBD + 0%' pada tab yang tidak punya CBD membuat "
+     "kolomnya terisi penuh dengan angka yang sama dengan TOTAL VALUE, lalu "
+     "Aturan 2 memilihnya sebagai CBD padahal ordernya TOP. Angkanya "
+     "kebetulan sama, tapi CARA BAYAR yang tercatat jadi salah. "
+     "Biarkan judulnya kosong dan kolomnya kosong."),
     ("Jangan menyisipkan baris atau kolom",
-     "Letak kolom A sampai AE harus tetap. Sel pilihan sengaja ditaruh di "
-     "AH/AI yang kosong supaya tidak menggeser apa pun."),
+     "Letak kolom A sampai AE harus tetap, kalau bergeser program pembuat "
+     "Invoice berhenti mengenali tabnya."),
     ("Kerjakan SATU tab dulu, periksa, baru lanjut",
      "Jangan mengubah 16 tab sekaligus. Kalau ada yang salah, mencarinya "
      "jauh lebih sulit."),
-    ("Potongan BERUNTUN, bukan dijumlahkan",
-     "25% + 2% + 2% berarti dikali (1-25%) lalu (1-2%) lalu (1-2%). "
-     "Hasilnya 28,95%, BUKAN 29%. Selisihnya nyata di angka rupiah."),
 ]
 
 
@@ -215,7 +211,8 @@ def main() -> None:
     ws = wb.active
     ws.title = "LANGKAH DEMI LANGKAH"
     ws.cell(1, 1, "MEMASANG PILIHAN PERSEN DISKON DI GOOGLE SHEETS").font = Font(bold=True, size=15)
-    ws.cell(2, 1, "Lewat menu Insert > Dropdown · dikerjakan per tab PO · "
+    ws.cell(2, 1, "Dropdown dipasang LANGSUNG di judul kolom AD dan AE · "
+                  "dua komponen: CBD dan COD · jenjang 0,5% · "
                   "semua rumus sudah diuji langsung di Google Sheets").font = Font(italic=True, size=10, color="666666")
     _hdr(ws, [("NO", 5), ("LANGKAH", 30), ("YANG DIKETIK / DIKLIK", 56),
               ("KENAPA BEGITU", 60)], baris=4)
@@ -223,8 +220,10 @@ def main() -> None:
     for no, judul, aksi, kenapa in LANGKAH:
         _isi(ws, r, [no, judul, aksi, kenapa], mono_kolom=(3,))
         ws.cell(r, 2).font = Font(bold=True, size=10)
-        ws.row_dimensions[r].height = 14 * max(
-            2, _tinggi(aksi, 56), _tinggi(kenapa, 60))
+        # +1 baris kelonggaran: huruf Consolas lebih lebar, jadi lipatannya
+        # sering satu baris lebih banyak daripada perkiraan.
+        ws.row_dimensions[r].height = 14 * (max(
+            2, _tinggi(aksi, 50), _tinggi(kenapa, 60)) + 1)
         r += 1
     ws.sheet_view.showGridLines = False
 
@@ -237,8 +236,8 @@ def main() -> None:
     r = 5
     for sel, isi, rum, arti in RUMUS:
         _isi(ws, r, [sel, isi, rum, arti], mono_kolom=(3,))
-        ws.row_dimensions[r].height = 14 * max(
-            2, _tinggi(rum, 72), _tinggi(arti, 50))
+        ws.row_dimensions[r].height = 14 * (max(
+            2, _tinggi(rum, 62), _tinggi(arti, 50)) + 1)
         r += 1
     r += 1
     s = ws.cell(r, 1, "Tanda $ pada $AI$2 WAJIB ada. Tanpa $, rumusnya ikut "
@@ -252,8 +251,9 @@ def main() -> None:
     ws.cell(1, 1, "BUKTI: SUDAH DIUJI DI GOOGLE SHEETS, BUKAN DARI INGATAN").font = Font(bold=True, size=14)
     ws.cell(2, 1, "Diuji 22 Oktober 2026 di spreadsheet sungguhan, "
                   "lalu spreadsheet ujinya dihapus.").font = Font(italic=True, size=10, color="666666")
-    _hdr(ws, [("YANG DIUJI", 34), ("RUMUS UJINYA", 46),
-              ("HASILNYA", 18), ("KESIMPULAN", 46)], baris=4)
+    _hdr(ws, [("YANG DIUJI", 30), ("JUDUL DI AD1 / AE1", 40),
+              ("TARIF TERBACA -> NETT DARI 18.199.575", 38),
+              ("KESIMPULAN", 44)], baris=4)
     r = 5
     for a, b, c, d in UJI:
         _isi(ws, r, [a, b, c, d], mono_kolom=(2,))
@@ -261,7 +261,7 @@ def main() -> None:
             for i in (1, 3, 4):
                 ws.cell(r, i).font = MERAH
         ws.row_dimensions[r].height = 14 * max(
-            2, _tinggi(b, 46), _tinggi(d, 46))
+            2, _tinggi(b, 40), _tinggi(d, 44))
         r += 1
     ws.sheet_view.showGridLines = False
 
@@ -275,6 +275,20 @@ def main() -> None:
         ws.row_dimensions[r].height = 14 * max(
             2, _tinggi(a, 48), _tinggi(b, 86))
         r += 1
+    ws.sheet_view.showGridLines = False
+
+    ws = wb.create_sheet("DAFTAR PILIHAN", 1)
+    ws.cell(1, 1, "DAFTAR PILIHAN DROPDOWN — SALIN APA ADANYA").font = Font(bold=True, size=14)
+    ws.cell(2, 1, "Jenjang 0,5% · dua komponen saja: CBD dan COD").font = Font(italic=True, size=10, color="666666")
+    _hdr(ws, [("UNTUK JUDUL KOLOM AD (CBD)", 34),
+              ("UNTUK JUDUL KOLOM AE (COD)", 34)], baris=4)
+    for i, (a, b) in enumerate(zip(PILIHAN_CBD, PILIHAN_COD), start=5):
+        _isi(ws, i, [a, b], mono_kolom=(1, 2))
+    r = 5 + len(PILIHAN_CBD) + 1
+    s2 = ws.cell(r, 1, "Boleh pakai KOMA persis seperti order sheet sekarang — "
+                       "rumusnya mengubahnya sendiri. Sudah diuji.")
+    s2.font = Font(size=10, italic=True, color="7F6000")
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=2)
     ws.sheet_view.showGridLines = False
 
     out = AKAR / "keluaran/PANDUAN_DROPDOWN_DISKON.xlsx"
