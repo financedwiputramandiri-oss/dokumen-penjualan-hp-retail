@@ -181,9 +181,14 @@ def _panel(ws, pakai_cbd: bool, pakai_cod: bool, tambahan: float) -> None:
 def _judul_kolom(ws, pakai_cbd: bool, pakai_cod: bool) -> None:
     """Judul AD/AE dibentuk dari sel pilihan, jadi tidak bisa berbeda lagi."""
     p = f"${L(K_PILIH)}$"
-    ad = (f'="DISCOUNT CBD + "&TEXT({p}{B_CBD},"0.##%")'
-          f'&IF({p}{B_TAMBAH}>0," + "&TEXT({p}{B_TAMBAH},"0.##%"),"")')
-    ae = f'="DISCOUNT COD + "&TEXT({p}{B_COD},"0.##%")'
+    # Persennya ditulis ROUND(x*100,2)&"%", BUKAN TEXT(x,"0.##%").
+    # Diuji langsung di Google Sheets 22 Okt 2026: TEXT(0,02;"0.##%") di sana
+    # menghasilkan "2.%" — ada TITIK menggantung sesudah angkanya. Bentuk
+    # ROUND ini memberi "2%", "1.5%", "27.5%" dengan benar di Google Sheets
+    # MAUPUN Excel.
+    ad = (f'="DISCOUNT CBD + "&ROUND({p}{B_CBD}*100,2)&"%"'
+          f'&IF({p}{B_TAMBAH}>0," + "&ROUND({p}{B_TAMBAH}*100,2)&"%","")')
+    ae = f'="DISCOUNT COD + "&ROUND({p}{B_COD}*100,2)&"%"'
     pasang = ([(K_AD, ad)] if pakai_cbd else []) + ([(K_AE, ae)] if pakai_cod else [])
     for kol, rumus in pasang:
         sel = ws.cell(1, kol, rumus)
