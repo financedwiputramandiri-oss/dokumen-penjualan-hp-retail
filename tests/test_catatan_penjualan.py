@@ -195,7 +195,7 @@ def test_revisi_MENGGANTI_baris_lama():
                 ["14/10/2026", "", "JONNI SETIADI", "Z", "W", 1, 2, 3]]
     s = _SambunganPalsu(isi={"DATA_INVOICE": lama_inv,
                              "DATA_ARTIKEL": lama_art})
-    hasil = PenulisCatatan(s, "id").catat(_catatan())
+    hasil = PenulisCatatan(s, "id").catat(_catatan(), paksa=True)
     assert "DIGANTI" in hasil
     assert sorted(s.dihapus) == [("DATA_ARTIKEL", 2), ("DATA_ARTIKEL", 3),
                                  ("DATA_INVOICE", 2)]
@@ -253,3 +253,46 @@ def test_buat_berkas_mengembalikan_bahan_catatan(tmp_path):
     # jumlah nett tiap baris HARUS sama dengan total fakturnya
     assert sum(b.nett for b in ringkas["baris_faktur"]) == pytest.approx(
         ringkas["nett"], abs=1.0)
+
+
+# ------------------------------------------------- lewati yang sudah ada
+def test_yang_sudah_tercatat_dilewati_tanpa_menulis():
+    """Sapuan yang tidak mengubah apa pun tidak boleh menulis sama sekali.
+
+    Dua sapuan sehari x ratusan baris berarti menulis ulang seluruh
+    laporan tiap 9 jam, memboroskan kuota Google dan membuat kolom
+    Dicatat berubah tanpa sebab.
+    """
+    lama = [["14/10/2026", "", "JONNI SETIADI", 1, 2, 3]]
+    s = _SambunganPalsu(isi={"DATA_INVOICE": lama, "DATA_ARTIKEL": []})
+    p = PenulisCatatan(s, "id")
+    assert p.sudah_tercatat(_catatan())
+    assert "dilewati" in p.catat(_catatan())
+    assert s.ditulis == [] and s.dihapus == []
+
+
+def test_revisi_tetap_menulis_walau_kuncinya_sudah_ada():
+    """paksa=True dipakai saat PO-nya memang direvisi."""
+    lama = [["14/10/2026", "", "JONNI SETIADI", 1, 2, 3]]
+    s = _SambunganPalsu(isi={"DATA_INVOICE": lama, "DATA_ARTIKEL": []})
+    hasil = PenulisCatatan(s, "id").catat(_catatan(), paksa=True)
+    assert "DIGANTI" in hasil
+    assert s.ditulis
+
+
+def test_kunci_dibaca_sekali_lalu_diingat():
+    """Memeriksa 16 PO tidak boleh berarti 16 kali membaca tab yang sama."""
+    s = _SambunganPalsu(isi={"DATA_INVOICE": [], "DATA_ARTIKEL": []})
+    p = PenulisCatatan(s, "id")
+    for tgl in (date(2026, 10, 1), date(2026, 10, 2), date(2026, 10, 3)):
+        p.sudah_tercatat(_catatan(tgl=tgl))
+    assert p._kunci is not None
+
+
+def test_sesudah_dicatat_kuncinya_langsung_dikenali():
+    """Tanpa ini, PO yang sama dalam satu sapuan bisa masuk dua kali."""
+    s = _SambunganPalsu(isi={"DATA_INVOICE": [], "DATA_ARTIKEL": []})
+    p = PenulisCatatan(s, "id")
+    assert "tercatat" in p.catat(_catatan())
+    assert p.sudah_tercatat(_catatan())
+    assert "dilewati" in p.catat(_catatan())

@@ -44,6 +44,7 @@ class PenulisCatatan:
         self.s = sambungan
         self.id = id_sheet
         self._gid: dict[str, int] = {}
+        self._kunci: set[tuple[str, str]] | None = None
 
     # ------------------------------------------------------------ pagar
     @staticmethod
@@ -94,6 +95,25 @@ class PenulisCatatan:
                 cocok.append(i)
         return cocok
 
+    def muat_kunci(self) -> set[tuple[str, str]]:
+        """Kunci semua invoice yang SUDAH tercatat, dibaca sekali per sapuan.
+
+        Tanpa cache ini, memeriksa 16 PO berarti 16 kali membaca tab yang
+        sama. Dengan cache, sapuan yang tidak mengubah apa pun tidak
+        menulis sama sekali dan hanya sekali membaca.
+        """
+        if self._kunci is None:
+            self._kunci = {
+                kunci(b[KOL_CUSTOMER] if len(b) > KOL_CUSTOMER else "",
+                      b[KOL_TANGGAL] if len(b) > KOL_TANGGAL else "")
+                for b in self._nilai(TAB_INVOICE)
+                if any(str(x).strip() for x in b)
+            }
+        return self._kunci
+
+    def sudah_tercatat(self, catatan: Catatan) -> bool:
+        return catatan.kunci in self.muat_kunci()
+
     # ------------------------------------------------------------ tulis
     def _hapus(self, judul: str, baris: list[int]) -> None:
         """Hapus baris tertentu. Dari BAWAH ke atas, supaya nomor baris di
@@ -123,9 +143,20 @@ class PenulisCatatan:
             body={"values": baris},
         ).execute()
 
-    def catat(self, catatan: Catatan) -> str:
-        """Tambahkan satu invoice, mengganti yang lama kalau sudah ada."""
+    def catat(self, catatan: Catatan, *, paksa: bool = False) -> str:
+        """Tambahkan satu invoice, mengganti yang lama kalau sudah ada.
+
+        `paksa=False` dan kuncinya sudah tercatat -> tidak ditulis ulang.
+        Itu keadaan biasa pada sapuan yang tidak mengubah apa pun, dan
+        menulis ulang ratusan baris tiap 9 jam hanya memboroskan kuota
+        Google serta membuat kolom Dicatat berubah tanpa sebab.
+
+        `paksa=True` dipakai saat PO-nya memang DIREVISI — di situ baris
+        lamanya wajib diganti.
+        """
         k = catatan.kunci
+        if not paksa and k in self.muat_kunci():
+            return "dilewati — sudah tercatat"
         lama_inv = self._baris_berkunci(TAB_INVOICE, k)
         lama_art = self._baris_berkunci(TAB_ARTIKEL, k)
 
@@ -140,6 +171,7 @@ class PenulisCatatan:
         # rinciannya.
         self._tambah(TAB_ARTIKEL, catatan.baris_artikel())
         self._tambah(TAB_INVOICE, [catatan.baris_invoice()])
+        self.muat_kunci().add(k)
 
         n = len(catatan.artikel)
         if lama_inv or lama_art:

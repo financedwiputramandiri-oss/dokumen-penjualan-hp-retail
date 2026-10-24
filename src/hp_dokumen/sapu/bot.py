@@ -219,15 +219,41 @@ def sapu(
                 cetak(f"Kunci sapuan gagal dilepas: {e}")
 
 
-def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict) -> str:
-    """Catat satu invoice yang baru dibuat ke laporan penjualan.
+def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict,
+                     master=None, *, direvisi: bool = False) -> str:
+    """Catat satu invoice ke laporan penjualan.
 
     Angkanya diambil dari `ringkas`, yaitu keluaran pembuat faktur yang
     SAMA — tidak pernah dihitung ulang di sini. Kalau dihitung ulang,
     cepat atau lambat laporan penjualan menyebut angka yang berbeda dari
     fakturnya dan tidak ada yang tahu mana yang benar.
+
+    `ringkas` kosong berarti drafnya tidak dibuat ulang pada sapuan ini
+    (order sheetnya tidak berubah). Kalau PO itu juga SUDAH tercatat,
+    tidak ada yang perlu dikerjakan. Kalau BELUM tercatat — misalnya PO
+    lama yang terbit sebelum fitur ini ada — fakturnya dibangun ke folder
+    sementara hanya untuk mengambil angkanya, lalu dibuang. Mahal, tapi
+    hanya sekali per PO seumur hidup, dan itulah yang membuat seluruh PO
+    lama ikut masuk tanpa ada yang perlu menyalin apa pun.
     """
+    import tempfile
+    from pathlib import Path
+
     from .. import catatan_penjualan as cat
+    from ..berkas_dokumen import buat_berkas
+
+    if not ringkas:
+        cust0 = cfg.customer.cari(order.customer_kunci)
+        nama0 = (cust0.nama_di_dokumen if cust0 else "") or order.customer_kunci
+        if not nama0.strip() and " - " in order.nama_tab:
+            nama0 = order.nama_tab.split(" - ", 1)[-1].strip()
+        if penulis.sudah_tercatat(cat.Catatan(
+                nomor="", customer=nama0, tanggal=order.tanggal_po,
+                dpp=0, ppn=0, total=0, jatuh_tempo=None)):
+            return ""
+        with tempfile.TemporaryDirectory() as tmp:
+            buat_berkas(cfg, order, keputusan, Path(tmp), "",
+                        master=master, ringkas=ringkas)
 
     cust = ringkas.get("customer")
     catatan = cat.susun(
@@ -241,7 +267,7 @@ def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict) -> str:
         # dikirim. Laporan penjualan yang salah lebih berbahaya daripada
         # laporan yang kurang satu baris, sebab tidak ada yang menyangka.
         return "TIDAK dicatat — " + "; ".join(masalah)
-    return penulis.catat(catatan)
+    return penulis.catat(catatan, paksa=direvisi)
 
 
 def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
@@ -446,6 +472,8 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                     hr = periksa_order(order, keputusan, cfg.pengaturan, master, cust)
                     if hr.lolos:
                         siap, keterangan = True, "angka cocok dengan order sheet"
+                        ringkas_inv: dict = {}
+                        alasan_draf = None
                         if p.buat_draf:
                             # Dokumen HANYA dibuat kalau angkanya sudah cocok
                             # dengan order sheet. Aturan yang sama dipakai
@@ -454,9 +482,9 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                             folder_po = (p.folder_draf / nama_aman(berkas.nama)
                                          / nama_aman(tab_penuh))
                             alasan = perlu_draf(lama_sidik, baru_sidik, folder_po)
+                            alasan_draf = alasan
                             if alasan:
                                 try:
-                                    ringkas_inv: dict = {}
                                     hd = buat_draf(
                                         cfg, order, keputusan, lama_sidik,
                                         baru_sidik, alasan, p.folder_draf,
@@ -465,22 +493,6 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                                     )
                                     draf.append(hd)
                                     cetak(f"    draf {alasan}: {hd.ringkas()}")
-                                    if penulis_catatan is not None:
-                                        # Pencatatan ke laporan penjualan
-                                        # TIDAK BOLEH menggagalkan sapuan:
-                                        # dokumennya sudah jadi dan sudah
-                                        # benar. Kegagalan di sini dicatat
-                                        # sebagai masalah, lalu sapuan lanjut.
-                                        try:
-                                            cat_hasil = _catat_penjualan(
-                                                penulis_catatan, cfg, order,
-                                                keputusan, ringkas_inv)
-                                            cetak(f"      laporan penjualan: {cat_hasil}")
-                                        except Exception as e:
-                                            masalah.append(
-                                                f"'{tab_penuh}' gagal dicatat ke "
-                                                f"laporan penjualan: {e}")
-                                            cetak(f"      GAGAL mencatat ke laporan penjualan: {e}")
                                     if pengunggah:
                                         hu = pengunggah.unggah(hd, berkas.nama)
                                         cetak(f"      -> {hu.jumlah} berkas naik ke Drive")
@@ -500,6 +512,28 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                                     masalah.append(
                                         f"'{tab_penuh}' drafnya gagal dibuat: {e}"
                                     )
+                        # ---- laporan penjualan ----------------------
+                        # SENGAJA di luar blok `if alasan:`. Draf hanya
+                        # dibuat ulang kalau order sheetnya berubah, jadi
+                        # kalau pencatatan ikut di dalamnya, PO lama yang
+                        # drafnya sudah ada TIDAK AKAN PERNAH tercatat —
+                        # laporan penjualan diam-diam kosong untuk seluruh
+                        # PO yang terbit sebelum fitur ini ada.
+                        if penulis_catatan is not None:
+                            # Kegagalan mencatat TIDAK BOLEH menggagalkan
+                            # sapuan: dokumennya sudah jadi dan sudah benar.
+                            try:
+                                cat_hasil = _catat_penjualan(
+                                    penulis_catatan, cfg, order, keputusan,
+                                    ringkas_inv, master,
+                                    direvisi=bool(alasan_draf))
+                                if cat_hasil:
+                                    cetak(f"      laporan penjualan: {cat_hasil}")
+                            except Exception as e:
+                                masalah.append(
+                                    f"'{tab_penuh}' gagal dicatat ke "
+                                    f"laporan penjualan: {e}")
+                                cetak(f"      GAGAL mencatat ke laporan penjualan: {e}")
                     else:
                         keterangan = "angka belum cocok: " + ", ".join(
                             x.nama for x in hr.yang_gagal
