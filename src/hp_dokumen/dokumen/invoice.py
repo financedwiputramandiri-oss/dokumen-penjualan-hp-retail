@@ -257,11 +257,33 @@ def _persen_tertulis(order: Order, keputusan: KeputusanNett, pengaturan) -> tupl
     Yang kedua dipakai kalau nilai bersihnya diambil dari kolom CBD/COD, karena
     di situ ada potongan tambahan di atas diskon dasar.
     """
-    from ..nilai_bersih import daftar_tarif_tertulis, tarif_tambahan_tertulis
+    from ..nilai_bersih import (daftar_tarif_tertulis, nett_baris,
+                                tarif_tambahan_tertulis)
 
     kotor = sum(b.nilai_kotor for blok in order.blok for b in blok.baris)
     efektif = persen_diskon_efektif(kotor, keputusan.nett_total)
     tambahan = tarif_tambahan_tertulis(keputusan.kolom_sumber)
+
+    # Kalau nilai bersihnya diambil dari kolom CBD/COD, kedua persennya
+    # dihitung dari ANGKA KOLOMNYA SENDIRI, bukan dari judul kolom.
+    #
+    # Judul tidak selalu jujur: PO 19 Okt - Joy Baby berjudul
+    # 'DISCOUNT CBD + 2%' padahal kolomnya berisi 1,95%. Memakai judul
+    # membuat faktur mencetak '19.96% + 2%' — dua-duanya meleset, padahal
+    # yang sebenarnya 20% + 1,95%. Totalnya tetap benar (nett diambil dari
+    # kolomnya, Aturan 2), tapi faktur memberi tahu customer persen yang
+    # berbeda dari yang dipakai menghitung. Lihat CLAUDE.md bagian 43.
+    if tambahan and keputusan.cara_bayar != "TOP":
+        kol_top = next(
+            (k for k in order.kolom_nett() if k.jenis == "TOP"), None)
+        if kol_top is not None and kotor > 0:
+            top = sum(nett_baris(b, kol_top.kunci) for b in order.semua_baris)
+            if top > 0 and keputusan.nett_total > 0:
+                dasar_nyata = 1.0 - top / kotor
+                tambah_nyata = 1.0 - keputusan.nett_total / top
+                if dasar_nyata >= 0 and tambah_nyata >= 0:
+                    return (_persen_ringkas(dasar_nyata) + " + "
+                            + _persen_ringkas(tambah_nyata)), None
     if tambahan:
         # Judul kolom bisa memuat beberapa potongan, contoh
         # 'DISCOUNT CBD + 2% + 2%'. Semuanya ditulis apa adanya; yang
