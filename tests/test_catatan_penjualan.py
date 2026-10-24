@@ -222,3 +222,34 @@ def test_baris_dihapus_dari_BAWAH_ke_atas():
     PenulisCatatan(s, "id").catat(_catatan())
     baris = [r for t, r in s.dihapus if t == "DATA_ARTIKEL"]
     assert baris == sorted(baris, reverse=True)
+
+
+# ------------------------------------------------- sambungan ke pembuat draf
+def test_buat_berkas_mengembalikan_bahan_catatan(tmp_path):
+    """Angka laporan penjualan diambil dari pembuat faktur yang SAMA.
+
+    Kalau `ringkas` tidak terisi, bot terpaksa menghitung ulang sendiri dan
+    cepat atau lambat laporan penjualan menyebut angka yang berbeda dari
+    fakturnya.
+    """
+    from hp_dokumen.berkas_dokumen import buat_berkas
+    from buat_contoh import buat_contoh
+    from hp_dokumen.konfigurasi import Konfigurasi
+    from hp_dokumen.nilai_bersih import tentukan_nett
+    from hp_dokumen.pemindai import baca_order_sheet
+
+    cfg = Konfigurasi.muat()
+    berkas = buat_contoh(tmp_path / "contoh.xlsx")
+    orders = baca_order_sheet(berkas, cfg.customer, tahun_bawaan=2026)
+    order = orders[0]
+    keputusan = tentukan_nett(order, cfg.customer.cari(order.customer_kunci))
+
+    ringkas: dict = {}
+    buat_berkas(cfg, order, keputusan, tmp_path / "out", "",
+                ringkas=ringkas)
+
+    assert ringkas["baris_faktur"], "baris faktur tidak ikut dikembalikan"
+    assert "nett" in ringkas and "dpp" in ringkas and "ppn" in ringkas
+    # jumlah nett tiap baris HARUS sama dengan total fakturnya
+    assert sum(b.nett for b in ringkas["baris_faktur"]) == pytest.approx(
+        ringkas["nett"], abs=1.0)

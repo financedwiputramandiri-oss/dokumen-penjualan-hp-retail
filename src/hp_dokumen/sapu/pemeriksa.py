@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from ..catatan_penjualan import TAB_ARTIKEL, TAB_INVOICE
+
 LULUS = "OK"
 GAGAL = "BELUM"
 
@@ -172,6 +174,41 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
             ))
         else:
             hasil.append(Hasil("Sheet OTOMATISASI", LULUS, f"{len(tab)} tab terbaca"))
+
+    # ---- sheet LAPORAN PENJUALAN --------------------------------------
+    # Id yang KOSONG adalah pilihan pemasangan yang sah (bot dipakai tanpa
+    # pencatatan penjualan), jadi dilaporkan LULUS — bukan GAGAL. Aturan
+    # yang sama dengan folder tujuan, CLAUDE.md bagian 24.
+    id_lap = getattr(pengaturan, "sheet_laporan_penjualan_id", "")
+    if not id_lap:
+        hasil.append(Hasil(
+            "Laporan penjualan", LULUS, "sengaja dikosongkan",
+            "Invoice tidak dicatat ke spreadsheet laporan penjualan. Isi "
+            "sheet_laporan_penjualan_id di config/bot.yaml kalau mau "
+            "dinyalakan.",
+        ))
+    else:
+        try:
+            tab = sambung.nama_tab(id_lap)
+        except Exception as e:
+            hasil.append(Hasil(
+                "Laporan penjualan", GAGAL, f"tidak bisa dibaca: {e}",
+                _saran(e, f"Share BERKAS laporan penjualan ke {email} sebagai "
+                          "Editor. Cukup berkasnya saja, jangan seluruh folder."),
+            ))
+        else:
+            kurang = [t for t in (TAB_INVOICE, TAB_ARTIKEL) if t not in tab]
+            if kurang:
+                hasil.append(Hasil(
+                    "Laporan penjualan", GAGAL,
+                    f"tab belum ada: {', '.join(kurang)}",
+                    "Buat tab itu beserta judul kolomnya di spreadsheet "
+                    "laporan penjualan. Program sengaja TIDAK membuatnya "
+                    "sendiri, supaya tab yang hilang selalu ketahuan.",
+                ))
+            else:
+                hasil.append(Hasil("Laporan penjualan", LULUS,
+                                   "DATA_INVOICE dan DATA_ARTIKEL terbaca"))
 
     hasil.append(_periksa_banyak_perangkat(pengaturan))
     return hasil

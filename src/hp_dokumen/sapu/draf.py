@@ -112,13 +112,14 @@ def buat_draf(
     master: dict | None = None,
     pdf: bool = False,
     waktu: Optional[datetime] = None,
+    ringkas: dict | None = None,
 ) -> HasilDraf:
     """Buat draf dokumen satu PO, mengarsipkan draf lama kalau ada."""
     waktu = waktu or datetime.now()
     folder = folder_induk / nama_aman(baru.nama_sheet) / nama_aman(order.nama_tab)
     arsip = arsipkan(folder, folder_induk / "_KEDALUWARSA", waktu) if alasan == REVISI else None
     berkas = buat_berkas(cfg, order, keputusan, folder, nomor,
-                         master=master, pdf=pdf)
+                         master=master, pdf=pdf, ringkas=ringkas)
     return HasilDraf(
         tab=order.nama_tab,
         alasan=alasan,
