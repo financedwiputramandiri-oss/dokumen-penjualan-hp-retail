@@ -267,16 +267,12 @@ def perintah_catat(args) -> int:
                     master=master, ringkas=ringkas)
 
     cust = ringkas.get("customer")
-    try:
-        catatan = cat.susun(
-            h.order, h.keputusan, ringkas["baris_faktur"], ringkas,
-            nomor=args.nomor or "",
-            nama_customer=(cust.nama_di_dokumen if cust else ""),
-            tanggal=h.order.tanggal_po,
-        )
-    except cat.NomorKosong as e:
-        print(f"\nBERHENTI. {e}")
-        return 2
+    catatan = cat.susun(
+        h.order, h.keputusan, ringkas["baris_faktur"], ringkas,
+        nomor=args.nomor or "",
+        nama_customer=(cust.nama_di_dokumen if cust else ""),
+        tanggal=h.order.tanggal_po,
+    )
 
     masalah = cat.periksa(catatan)
     print(f"\nDATA_INVOICE — 1 baris")
@@ -298,6 +294,8 @@ def perintah_catat(args) -> int:
 
     if not args.kirim:
         print("\nBELUM dikirim ke Google Sheets. Tambahkan --kirim kalau sudah benar.")
+        print("Kalau Customer + Tanggal ini sudah pernah dicatat, barisnya "
+              "DIGANTI, bukan ditambah.")
         return 0
 
     from .sapu.google import Sambungan
@@ -526,7 +524,9 @@ def buat_parser() -> argparse.ArgumentParser:
         "catat",
         help="Catat satu invoice ke laporan penjualan (DATA_INVOICE/DATA_ARTIKEL)")
     k.add_argument("po", help="Nama tab PO")
-    k.add_argument("--nomor", default="", help="Nomor invoice, WAJIB")
+    k.add_argument("--nomor", default="",
+                   help="Nomor invoice. Boleh kosong — keputusan Yosua "
+                        "24 Okt 2026, urutan barisnya yang menentukan")
     k.add_argument("--kirim", action="store_true",
                    help="Kirim ke Google Sheets, bukan pratinjau saja")
     k.add_argument("--abaikan-pencocokan", action="store_true")

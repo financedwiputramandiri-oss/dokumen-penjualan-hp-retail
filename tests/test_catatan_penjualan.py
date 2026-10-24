@@ -11,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from hp_dokumen.catatan_penjualan import (JUDUL_ARTIKEL, JUDUL_INVOICE,
-                                          NomorKosong, periksa, susun)
+                                          kunci, periksa, susun)
 from hp_dokumen.sapu.tulis_catatan import TAB_DIIZINKAN, PenulisCatatan
 
 
@@ -52,11 +52,28 @@ def test_jumlah_artikel_sama_dengan_total_invoice():
     assert periksa(c) == []
 
 
-def test_nomor_kosong_ditolak():
+def test_nomor_boleh_kosong_dan_penampung_dibersihkan():
+    """Keputusan Yosua 24 Okt 2026: No Invoice dikosongkan.
+
+    Nomor penampung dari pembuat dokumen ("________") tidak boleh ikut
+    tertulis — kolomnya jadi penuh garis bawah yang tidak berarti apa-apa.
+    """
     order, baris, hasil, _ = _bahan()
     for nomor in ("", "   ", "________", "---"):
-        with pytest.raises(NomorKosong):
-            susun(order, None, baris, hasil, nomor=nomor)
+        c = susun(order, None, baris, hasil, nomor=nomor)
+        assert c.nomor == ""
+        assert c.baris_invoice()[1] == ""
+    c = susun(order, None, baris, hasil, nomor="0010826")
+    assert c.baris_invoice()[1] == "0010826"
+
+
+def test_kunci_dari_customer_dan_tanggal():
+    """Karena nomor kosong, inilah satu-satunya pengenal barisnya."""
+    order, baris, hasil, _ = _bahan()
+    c = susun(order, None, baris, hasil, nomor="",
+              nama_customer="jonni setiadi ", tanggal=date(2026, 10, 19))
+    assert c.kunci == ("JONNI SETIADI", "19/10/2026")
+    assert kunci("  Jonni Setiadi", "19/10/2026") == c.kunci
 
 
 def test_mtn_tanpa_ppn_dpp_sama_dengan_total():
@@ -92,13 +109,14 @@ def test_tanpa_padanan_memakai_nama_tab():
 class _SambunganPalsu:
     """Tiruan Sheets API — tidak menyentuh Google sama sekali."""
 
-    def __init__(self, tab=("DATA_INVOICE", "DATA_ARTIKEL"), nomor=()):
+    def __init__(self, tab=("DATA_INVOICE", "DATA_ARTIKEL"), isi=None):
         self._tab = list(tab)
-        self._nomor = list(nomor)
+        self._isi = isi or {}
         self.ditulis: list[tuple[str, int]] = []
+        self.dihapus: list[tuple[str, int]] = []
         self.sheets = self
+        self._range = ""
 
-    # bentuk rantai panggilan Google dipalsukan seadanya
     def nama_tab(self, _id):
         return list(self._tab)
 
@@ -108,23 +126,39 @@ class _SambunganPalsu:
     def values(self):
         return self
 
-    def get(self, spreadsheetId, range):
-        self._range = range
+    def get(self, spreadsheetId, range=None, fields=None):
+        self._range = range or ""
+        self._fields = fields
         return self
 
     def append(self, spreadsheetId, range, valueInputOption,
                insertDataOption, body):
-        judul = range.split("'")[1]
-        self.ditulis.append((judul, len(body["values"])))
+        self.ditulis.append((range.split("'")[1], len(body["values"])))
         return SimpleNamespace(execute=lambda: {})
 
+    def batchUpdate(self, spreadsheetId, body):
+        for r in body["requests"]:
+            d = r["deleteDimension"]["range"]
+            nama = next(k for k, v in self._gid().items()
+                        if v == d["sheetId"])
+            self.dihapus.append((nama, d["startIndex"] + 1))
+        return SimpleNamespace(execute=lambda: {})
+
+    def _gid(self):
+        return {t: i for i, t in enumerate(self._tab)}
+
     def execute(self):
-        return {"values": [[n] for n in self._nomor]}
+        if self._fields:
+            return {"sheets": [{"properties": {"title": t, "sheetId": i}}
+                               for i, t in enumerate(self._tab)]}
+        judul = self._range.split("'")[1] if "'" in self._range else ""
+        return {"values": self._isi.get(judul, [])}
 
 
-def _catatan(nomor="0010826"):
+def _catatan(cust="JONNI SETIADI", tgl=date(2026, 10, 14)):
     order, baris, hasil, _ = _bahan()
-    return susun(order, None, baris, hasil, nomor=nomor)
+    return susun(order, None, baris, hasil, nomor="",
+                 nama_customer=cust, tanggal=tgl)
 
 
 def test_hanya_dua_tab_itu_yang_boleh_ditulis():
@@ -143,19 +177,48 @@ def test_tab_yang_belum_ada_TIDAK_dibuat_sendiri():
         p.catat(_catatan())
 
 
-def test_nomor_yang_sudah_tercatat_dilewati():
-    s = _SambunganPalsu(nomor=["0010826"])
-    hasil = PenulisCatatan(s, "id").catat(_catatan("0010826"))
-    assert "dilewati" in hasil
-    assert s.ditulis == []          # tidak ada yang ditulis sama sekali
-
-
-def test_nomor_baru_ditulis_artikel_dulu_baru_invoice():
+def test_invoice_baru_ditulis_artikel_dulu_baru_invoice():
     """Urutannya penting: kalau dibalik lalu artikelnya gagal, laporan
-    memuat invoice tanpa rincian dan nomornya terlanjur dianggap ada."""
-    s = _SambunganPalsu(nomor=["0009999"])
-    hasil = PenulisCatatan(s, "id").catat(_catatan("0010826"))
+    memuat invoice tanpa rincian."""
+    s = _SambunganPalsu()
+    hasil = PenulisCatatan(s, "id").catat(_catatan())
     assert "tercatat" in hasil
     assert [t[0] for t in s.ditulis] == ["DATA_ARTIKEL", "DATA_INVOICE"]
-    assert s.ditulis[0][1] == 2     # dua baris artikel
-    assert s.ditulis[1][1] == 1
+    assert s.ditulis[0][1] == 2 and s.ditulis[1][1] == 1
+    assert s.dihapus == []
+
+
+def test_revisi_MENGGANTI_baris_lama():
+    """Keputusan Yosua 24 Okt 2026: revisi mengganti, bukan menambah."""
+    lama_inv = [["14/10/2026", "", "JONNI SETIADI", 1, 2, 3]]
+    lama_art = [["14/10/2026", "", "JONNI SETIADI", "X", "Y", 1, 2, 3],
+                ["14/10/2026", "", "JONNI SETIADI", "Z", "W", 1, 2, 3]]
+    s = _SambunganPalsu(isi={"DATA_INVOICE": lama_inv,
+                             "DATA_ARTIKEL": lama_art})
+    hasil = PenulisCatatan(s, "id").catat(_catatan())
+    assert "DIGANTI" in hasil
+    assert sorted(s.dihapus) == [("DATA_ARTIKEL", 2), ("DATA_ARTIKEL", 3),
+                                 ("DATA_INVOICE", 2)]
+    assert [t[0] for t in s.ditulis] == ["DATA_ARTIKEL", "DATA_INVOICE"]
+
+
+def test_customer_atau_tanggal_berbeda_TIDAK_ikut_terhapus():
+    """Pagar paling penting: jangan menghapus invoice orang lain."""
+    lama_inv = [["14/10/2026", "", "BABY WISE", 1, 2, 3],
+                ["13/10/2026", "", "JONNI SETIADI", 1, 2, 3]]
+    s = _SambunganPalsu(isi={"DATA_INVOICE": lama_inv, "DATA_ARTIKEL": []})
+    hasil = PenulisCatatan(s, "id").catat(_catatan())
+    assert "tercatat" in hasil
+    assert s.dihapus == []
+
+
+def test_baris_dihapus_dari_BAWAH_ke_atas():
+    """Kalau dihapus dari atas, nomor baris di bawahnya bergeser dan
+    penghapusan berikutnya mengenai baris yang salah."""
+    lama = [["14/10/2026", "", "JONNI SETIADI", "A", "a", 1, 2, 3],
+            ["14/10/2026", "", "JONNI SETIADI", "B", "b", 1, 2, 3],
+            ["14/10/2026", "", "JONNI SETIADI", "C", "c", 1, 2, 3]]
+    s = _SambunganPalsu(isi={"DATA_INVOICE": [], "DATA_ARTIKEL": lama})
+    PenulisCatatan(s, "id").catat(_catatan())
+    baris = [r for t, r in s.dihapus if t == "DATA_ARTIKEL"]
+    assert baris == sorted(baris, reverse=True)

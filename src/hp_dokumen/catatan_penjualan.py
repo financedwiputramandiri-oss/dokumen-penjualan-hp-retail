@@ -25,10 +25,15 @@ Tiga keputusan yang jangan diubah tanpa alasan:
    dicocokkan. Kalau diisi nilai kotor, keduanya selalu beda sebesar
    diskon dan tidak ada yang tahu mana yang benar.
 
-2. `No Invoice` WAJIB diisi. Tanpa nomor, baris di kedua tab tidak bisa
-   dikenali, tidak bisa dicocokkan satu sama lain, dan tidak bisa dicegah
-   masuk dua kali saat PO-nya direvisi. Penyusun ini menolak bekerja
-   tanpa nomor, bukan mengisinya dengan tebakan.
+2. `No Invoice` DIKOSONGKAN — keputusan Yosua 24 Oktober 2026: *"untuk
+   pola nomor invoice biarkan kosong tapi urutannya sesuai dengan waktu
+   invoice dibuat"*. Baris baru selalu ditambahkan di BAWAH, jadi urutan
+   barisnya sama dengan urutan pembuatannya. Nomor boleh diisi lewat
+   `--nomor` kalau suatu saat polanya sudah ditetapkan.
+
+   Karena nomornya kosong, kunci pengenal satu invoice adalah
+   **Customer + Tanggal** (KUNCI, di bawah). Dua kolom itu sudah ada di
+   sheet, jadi tidak perlu kolom tambahan.
 
 3. MTN tidak kena PPN, jadi DPP = Total dan PPN = 0 — bukan dihitung
    mundur dari 111%. Mengisi PPN untuk MTN berarti melaporkan pajak yang
@@ -50,13 +55,18 @@ TAB_ARTIKEL = "DATA_ARTIKEL"
 FORMAT_TANGGAL = "%d/%m/%Y"
 
 
-class NomorKosong(ValueError):
-    """Dilempar kalau nomor invoice belum diisi.
+def kunci(customer: str, tanggal_teks: str) -> tuple[str, str]:
+    """Pengenal satu invoice di laporan penjualan.
 
-    Sengaja berupa galat, bukan peringatan: baris tanpa nomor masuk ke
-    laporan penjualan dan tidak akan pernah bisa dicocokkan kembali dengan
-    fakturnya.
+    Nomor invoice sengaja dikosongkan (keputusan Yosua 24 Oktober 2026),
+    jadi yang dipakai mengenali baris adalah Customer + Tanggal. Keduanya
+    sudah menjadi kolom di sheet, jadi tidak ada kolom bantu yang perlu
+    ditambahkan ke berkas Yosua.
+
+    Dibandingkan setelah diseragamkan huruf besar-kecil dan spasi tepinya,
+    sebab nama customer di sheet pernah diketik tangan.
     """
+    return ((customer or "").strip().upper(), (tanggal_teks or "").strip())
 
 
 @dataclass
@@ -71,6 +81,10 @@ class Catatan:
     total: float
     jatuh_tempo: date | None
     artikel: list[list] = field(default_factory=list)
+
+    @property
+    def kunci(self) -> tuple[str, str]:
+        return kunci(self.customer, self.tanggal.strftime(FORMAT_TANGGAL))
 
     def baris_invoice(self, dicatat: datetime | None = None) -> list:
         d = dicatat or datetime.now()
@@ -100,12 +114,12 @@ def susun(order, keputusan, baris_invoice, hasil: dict, *,
     dipakai apa adanya supaya angka di laporan penjualan TIDAK PERNAH
     dihitung ulang dengan cara yang berbeda dari fakturnya.
     """
+    # Nomor penampung dari pembuat dokumen ("________") dianggap kosong —
+    # kalau ikut tertulis, kolom No Invoice penuh garis bawah yang tidak
+    # berarti apa-apa.
     nomor = (nomor or "").strip()
-    if not nomor or set(nomor) <= {"_", "-", " "}:
-        raise NomorKosong(
-            "Nomor invoice belum diisi, jadi barisnya tidak bisa dicatat ke "
-            "laporan penjualan. Jalankan ulang dengan --nomor <nomor faktur>."
-        )
+    if set(nomor) <= {"_", "-", " "}:
+        nomor = ""
 
     tgl = tanggal or date.today()
     cust = (nama_customer or "").strip() or order.customer_kunci
