@@ -105,7 +105,7 @@ class Catatan:
 
 
 def susun(order, keputusan, baris_invoice, hasil: dict, *,
-          nomor: str, nama_customer: str = "",
+          nomor: str = "", nama_customer: str = "",
           tanggal: date | None = None) -> Catatan:
     """Susun catatan dari satu invoice yang baru dibuat.
 
