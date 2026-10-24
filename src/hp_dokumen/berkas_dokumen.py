@@ -41,6 +41,7 @@ def buat_berkas(
     pdf: bool = False,
     sertakan_packing_list: bool = True,
     cetak=None,
+    ringkas: dict | None = None,
 ) -> list[Path]:
     """Tulis dokumen satu PO ke `folder`. Mengembalikan daftar berkas yang jadi.
 
@@ -139,6 +140,23 @@ def buat_berkas(
     # buat_invoice* menyetel ws.title sendiri; dikembalikan supaya nama
     # lembarnya sama untuk DPM maupun MTN, sebab rumus menunjuk ke nama itu.
     ws_inv.title = rms.TAB_INVOICE
+
+    # Bahan untuk laporan penjualan (DATA_INVOICE / DATA_ARTIKEL). Diambil
+    # dari pembuat faktur yang SAMA, bukan dihitung ulang — kalau dihitung
+    # ulang, cepat atau lambat laporan penjualan menyebut angka yang
+    # berbeda dari fakturnya dan tidak ada yang tahu mana yang benar.
+    if ringkas is not None:
+        from .dokumen.invoice import susun_baris
+        ringkas.update(hasil_inv)
+        # susun_baris() murni dan deterministik, jadi memanggilnya sekali
+        # lagi memberi baris yang SAMA PERSIS dengan yang dicetak di faktur.
+        ringkas["baris_faktur"] = susun_baris(
+            order, keputusan,
+            pecah_per_ukuran=bool(cust and cust.pecah_per_ukuran),
+            akhiran_y=cfg.pengaturan.akhiran_y_untuk_angka,
+        )
+        ringkas["customer"] = cust
+        ringkas["perusahaan_pt"] = pt
 
     if master:
         tarif = cfg.pengaturan.tarif_ppn if pt.kenakan_ppn else 0.0

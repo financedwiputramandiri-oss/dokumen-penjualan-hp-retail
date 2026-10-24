@@ -178,3 +178,15 @@ berkas_kredensial: "config/kredensial_bot.json"
 # pertama ke _KEDALUWARSA tanpa alasan. Bot memperingatkan kalau
 # mendeteksi keadaan itu.
 berkas_kondisi: "data/kondisi_sapu.json"
+
+# ---- LAPORAN PENJUALAN ------------------------------------
+# Spreadsheet tempat tiap invoice dicatat (tab DATA_INVOICE dan
+# DATA_ARTIKEL). Permintaan Yosua 24 Oktober 2026.
+#
+# Akun layanan bot HARUS diberi akses Editor ke berkas ini, dan hanya
+# berkas ini — jangan ke seluruh folder. Tanpa itu, pencatatan ditolak
+# Google dengan galat izin.
+#
+# Menulis ke berkas yang SUDAH ADA tidak memakan jatah penyimpanan, jadi
+# batasan storageQuotaExceeded tidak pernah kena di sini.
+sheet_laporan_penjualan_id: "1wPH-CAKkS63vp29V4kLAxPrLvYDWaGdgGaPik2NT1k0"

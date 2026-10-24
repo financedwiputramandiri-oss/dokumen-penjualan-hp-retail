@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 
 from .berkas_dokumen import buat_berkas, nama_aman
 from .konfigurasi import Konfigurasi, AKAR
-from .laporan import cetak_rinci, cetak_ringkas, tulis_laporan_pencocokan, tulis_rekap_penjualan
+from .laporan import (cetak_rinci, cetak_ringkas, tulis_laporan_pencocokan,
+                      tulis_pratinjau_catatan, tulis_rekap_penjualan)
 from .model import Order
 from .nilai_bersih import tentukan_nett
 from .pemindai import baca_master_harga, baca_order_sheet
@@ -235,6 +237,80 @@ def perintah_buat(args) -> int:
     return 0
 
 
+def perintah_catat(args) -> int:
+    """Susun baris DATA_INVOICE / DATA_ARTIKEL untuk laporan penjualan.
+
+    Bawaannya hanya MENAMPILKAN dan menulis pratinjau .xlsx. Barisnya baru
+    dikirim ke Google Sheets kalau --kirim diberikan — sengaja begitu,
+    sebab baris yang terlanjur masuk ke laporan penjualan jauh lebih
+    merepotkan daripada pratinjau yang perlu dibuat dua kali.
+    """
+    from . import catatan_penjualan as cat
+
+    cfg, orders, master, berkas = _muat(args)
+    orders = _saring(orders, args.po)
+    if len(orders) != 1:
+        print(f"Perintah ini untuk SATU PO. Yang cocok: {len(orders)}.")
+        return 2
+
+    hasil = _periksa_semua(cfg, orders, master)
+    h = hasil[0]
+    if not h.lolos and not args.abaikan_pencocokan:
+        print("\nBERHENTI. Angka belum cocok dengan order sheet.")
+        cetak_rinci(h)
+        print("\nTidak ada yang dicatat. Perbaiki dulu order sheetnya.")
+        return 1
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ringkas: dict = {}
+        buat_berkas(cfg, h.order, h.keputusan, Path(tmp), args.nomor or "",
+                    master=master, ringkas=ringkas)
+
+    cust = ringkas.get("customer")
+    try:
+        catatan = cat.susun(
+            h.order, h.keputusan, ringkas["baris_faktur"], ringkas,
+            nomor=args.nomor or "",
+            nama_customer=(cust.nama_di_dokumen if cust else ""),
+            tanggal=h.order.tanggal_po,
+        )
+    except cat.NomorKosong as e:
+        print(f"\nBERHENTI. {e}")
+        return 2
+
+    masalah = cat.periksa(catatan)
+    print(f"\nDATA_INVOICE — 1 baris")
+    for nama, nilai in zip(cat.JUDUL_INVOICE, catatan.baris_invoice()):
+        print(f"  {nama:<14} {nilai}")
+    print(f"\nDATA_ARTIKEL — {len(catatan.artikel)} baris, contoh 3 pertama:")
+    for a in catatan.artikel[:3]:
+        print("  " + " | ".join(str(x) for x in a))
+
+    if masalah:
+        print("\nTIDAK DIKIRIM — pemeriksaan gagal:")
+        for m in masalah:
+            print(f"  - {m}")
+        return 1
+
+    out = FOLDER_KELUARAN / f"CATATAN_PENJUALAN_{nama_aman(h.order.nama_tab)}.xlsx"
+    tulis_pratinjau_catatan(catatan, out)
+    print(f"\nPratinjau: {out.relative_to(AKAR)}")
+
+    if not args.kirim:
+        print("\nBELUM dikirim ke Google Sheets. Tambahkan --kirim kalau sudah benar.")
+        return 0
+
+    from .sapu.google import Sambungan
+    from .sapu.tulis_catatan import PenulisCatatan
+    id_sheet = (cfg.bot.get("sheet_laporan_penjualan_id") or "").strip()
+    if not id_sheet:
+        print("\nBERHENTI. Isi dulu sheet_laporan_penjualan_id di config/bot.yaml.")
+        return 2
+    p = PenulisCatatan(Sambungan(AKAR / cfg.bot["berkas_kredensial"]), id_sheet)
+    print("\n" + p.catat(catatan))
+    return 0
+
+
 def perintah_rekap(args) -> int:
     cfg, orders, master, berkas = _muat(args)
     hasil = _periksa_semua(cfg, orders, master)
@@ -445,6 +521,16 @@ def buat_parser() -> argparse.ArgumentParser:
     d.add_argument("--abaikan-pencocokan", dest="abaikan_pencocokan", action="store_true",
                    help="Tetap buat walau angka tidak cocok (tidak disarankan)")
     d.set_defaults(fungsi=perintah_buat, po=None)
+
+    k = sub.add_parser(
+        "catat",
+        help="Catat satu invoice ke laporan penjualan (DATA_INVOICE/DATA_ARTIKEL)")
+    k.add_argument("po", help="Nama tab PO")
+    k.add_argument("--nomor", default="", help="Nomor invoice, WAJIB")
+    k.add_argument("--kirim", action="store_true",
+                   help="Kirim ke Google Sheets, bukan pratinjau saja")
+    k.add_argument("--abaikan-pencocokan", action="store_true")
+    k.set_defaults(fungsi=perintah_catat)
 
     e = sub.add_parser("rekap", help="Rekap penjualan sebulan (bahan laporan keuangan & pajak)")
     e.set_defaults(fungsi=perintah_rekap)

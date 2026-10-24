@@ -241,3 +241,38 @@ def tulis_rekap_penjualan(hasil: list[HasilRekonsiliasi], berkas: Path, tarif_pp
     berkas.parent.mkdir(parents=True, exist_ok=True)
     wb.save(berkas)
     return berkas
+
+
+def tulis_pratinjau_catatan(catatan, berkas):
+    """Pratinjau baris yang akan masuk ke laporan penjualan.
+
+    Dibuat supaya Yosua bisa melihat persis apa yang akan ditambahkan
+    SEBELUM ada satu baris pun yang menyentuh spreadsheet laporan.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from .catatan_penjualan import JUDUL_ARTIKEL, JUDUL_INVOICE
+
+    judul_font = Font(bold=True, size=10, color="FFFFFF")
+    isi = PatternFill("solid", fgColor="2F5597")
+
+    wb = Workbook()
+    wb.remove(wb.active)
+    for nama, kolom, baris in (
+        ("DATA_INVOICE", JUDUL_INVOICE, [catatan.baris_invoice()]),
+        ("DATA_ARTIKEL", JUDUL_ARTIKEL, catatan.baris_artikel()),
+    ):
+        ws = wb.create_sheet(nama)
+        for i, j in enumerate(kolom, start=1):
+            sel = ws.cell(1, i, j)
+            sel.font = judul_font
+            sel.fill = isi
+            sel.alignment = Alignment(horizontal="center")
+            ws.column_dimensions[sel.column_letter].width = max(12, len(j) + 4)
+        for r, b in enumerate(baris, start=2):
+            for c, v in enumerate(b, start=1):
+                ws.cell(r, c, v)
+        ws.freeze_panes = "A2"
+    berkas.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(berkas)
+    return berkas
