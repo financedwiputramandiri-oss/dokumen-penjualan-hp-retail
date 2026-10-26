@@ -5026,3 +5026,145 @@ folder dan bot tetap akan menyapunya. Perlu ditegaskan Yosua supaya yang
 lama dipindahkan atau diarsipkan.
 
 Tes 287 -> 290.
+
+## 53. Laporan penjualan: tiap invoice dicatat ke DATA_INVOICE/DATA_ARTIKEL — 24 Oktober 2026
+
+> *"jika saya membuat suatu invoice dan sj, data invoice yang diperlukan harus
+> masuk ke dalam file di spreadsheet ini"*
+
+Berkas tujuan: `LAPORAN_PENJUALAN_DPM_JAN-OKT_2026_DENGAN_TAGIHAN`
+(`1wPH-CAKkS63vp29V4kLAxPrLvYDWaGdgGaPik2NT1k0`), milik Yosua. Dua tab
+tujuan sudah disiapkan Yosua dan kosong, hanya berisi judul kolom:
+
+    DATA_INVOICE : Tanggal | No Invoice | Customer | DPP | PPN | Total
+                   | Tanggal Bayar | Jatuh Tempo | Dicatat
+    DATA_ARTIKEL : Tanggal | No Invoice | Customer | Artikel | Nama Barang
+                   | Qty | Harga | Jumlah
+
+Tab lain di berkas itu — `TAGIHAN`, dan `LAP`/`BUKU`/`ARTIKEL` per bulan —
+hasil kerja berbulan-bulan Yosua dan TIDAK ADA SALINANNYA.
+
+### Tiga keputusan Yosua yang sudah final
+
+| Hal | Keputusan |
+|---|---|
+| Nomor invoice | **DIKOSONGKAN.** "urutannya sesuai dengan waktu invoice dibuat" — baris selalu ditambahkan di bawah |
+| PO direvisi | **DIGANTI**, bukan ditambah baris kedua |
+| MTN | **IKUT** dicatat, dengan DPP = Total dan PPN = 0 |
+
+Karena nomornya kosong, kunci pengenal satu invoice jadi **Customer +
+Tanggal** — dua kolom yang sudah ada, jadi berkas Yosua tidak perlu kolom
+bantu. Dibandingkan sesudah huruf besar-kecil dan spasi tepi diseragamkan.
+
+**Risiko yang melekat pada kunci ini:** satu customer dengan DUA invoice di
+tanggal yang sama akan saling menimpa. Belum terjadi di Oktober 2026, tapi
+pola tanggal kembar pernah ada (`PO 17 September - Satu Sama (Ve/Ta/Go/Bo)`,
+selamat hanya karena nama customernya berbeda). Obatnya mengisi `--nomor`,
+atau nanti menambah kolom berisi nama tab PO.
+
+### Berkas
+
+| Berkas | Isi |
+|---|---|
+| `catatan_penjualan.py` | menyusun barisnya, TIDAK menyentuh Google sama sekali |
+| `sapu/tulis_catatan.py` | menambah/mengganti baris lewat Sheets API |
+| perintah `catat` | pratinjau .xlsx; kirim hanya kalau `--kirim` |
+
+### Pagar yang jangan dilonggarkan
+
+Tab tujuan milik Yosua sendiri, jadi pagarnya dibuat LEBIH KETAT daripada
+`tulis_sheet.py` (yang hanya boleh menyentuh tab `BOT_`):
+
+1. Hanya `DATA_INVOICE` dan `DATA_ARTIKEL`. Nama lain ditolak, diuji satu
+   per satu termasuk `LAP OKT`, `BUKU OKT`, `TAGIHAN`.
+2. Tab yang belum ada TIDAK dibuat sendiri — tab hilang harus ketahuan.
+3. Tidak ada `clear` seluruh tab di mana pun. Hanya baris yang KUNCInya
+   cocok persis yang dihapus, dan jumlahnya dilaporkan.
+4. Penghapusan dari BAWAH ke atas; kalau dari atas, nomor baris di bawahnya
+   bergeser dan yang terhapus jadi baris lain.
+5. Yang lama dihapus LEBIH DULU, baru yang baru ditulis — kalau dibalik,
+   pencarian menemukan baris yang baru saja ditambahkan.
+6. `DATA_ARTIKEL` ditulis sebelum `DATA_INVOICE`; kalau dibalik lalu gagal
+   di tengah, laporan memuat invoice tanpa rinciannya.
+
+Kolom `Jumlah` berisi nilai BERSIH per baris, bukan `qty x harga`, supaya
+jumlahnya sama persis dengan `Total` di DATA_INVOICE. `cat.periksa()`
+menolak mengirim kalau keduanya tidak cocok.
+
+### Celah yang hampir lolos: pencatatan hanya ikut draf BARU
+
+Versi pertama memasang pencatatan di dalam blok `if alasan:` di `bot.py`,
+yang hanya berjalan saat draf dibuat atau dibuat ulang — dan draf hanya
+dibuat ulang kalau order sheetnya berubah.
+
+Akibatnya seluruh PO yang drafnya sudah ada TIDAK AKAN PERNAH tercatat.
+Untuk Oktober 2026 itu ke-16 PO-nya, dan tidak ada galat apa pun yang
+memberi tahu; laporan penjualan tinggal kosong diam-diam.
+
+Sekarang pencatatan berdiri SENDIRI di luar blok draf dan berjalan untuk
+setiap PO yang lolos pencocokan. Supaya tidak boros: kunci yang sudah
+tercatat dibaca sekali per sapuan lalu diingat, PO yang sudah tercatat dan
+tidak direvisi dilewati, dan faktur hanya dibangun ke folder sementara
+kalau PO itu belum tercatat DAN drafnya tidak dibuat ulang.
+
+**Pelajaran umum: kalau sebuah pekerjaan dipasang di dalam blok yang
+berjalan bersyarat, periksa apa yang terjadi pada data LAMA yang tidak
+memenuhi syarat itu.** Pola yang sama dengan jebakan `SidikPO` di bagian
+26, 27, 32, dan 34.
+
+### Yang TIDAK BISA dikerjakan dari sesi Claude ini — sudah diperiksa, bukan dikira
+
+Yosua meminta dua kali supaya dikerjakan sendiri tanpa bantuannya. Setiap
+jalan diperiksa satu per satu:
+
+| Jalan | Hasil |
+|---|---|
+| Konektor Drive menulis per sel | tidak ada; `update_file` hanya judul & parent |
+| Alat Google Sheets terpisah | tidak ada di sesi ini |
+| Jalur bot `--kirim` | butuh `config/kredensial_bot.json` di komputer Yosua |
+| Menjangkau komputer Yosua lewat sesi lain | `ListAgents` kosong |
+
+Satu-satunya cara menimpa lewat konektor adalah mengganti SELURUH isi
+berkas — itu menghapus TAGIHAN dan seluruh tab bulanan. Jangan pernah.
+
+Mengetik ulang 492 baris rincian ke `textContent` juga DITOLAK: 3.900 nilai
+disalin tangan adalah kelas kesalahan yang sudah dua kali membakar proyek
+ini (bagian 42 dan 46), dan salah satu digit Qty tidak akan tertangkap
+pemeriksaan jumlah.
+
+### Keadaan saat ditunda — 26 Oktober 2026
+
+Yosua: *"saya akan lanjutkan itu nanti"*.
+
+| Hal | Keadaan |
+|---|---|
+| Kode | SELESAI, 313 tes lolos, sudah di-push |
+| Akses akun layanan ke berkas laporan | SUDAH diberi, diverifikasi `role: writer` |
+| `sheet_laporan_penjualan_id` di `config/bot.yaml` | sudah terisi di repo |
+| Kode di komputer Yosua | **BELUM** — ini satu-satunya yang tersisa |
+| Backfill Oktober 2026 | belum masuk; 16 invoice, 492 baris artikel, Rp389.057.214,48 |
+
+Dua jalan menyelesaikannya, dua-duanya sekali saja:
+
+1. Unduh ulang ZIP lalu jalankan `jadwal/sapu-sekarang.bat`. Sesudah itu
+   seluruh pencatatan berjalan sendiri SELAMANYA, termasuk backfill
+   Oktober — sebab celah di atas sudah ditutup.
+2. Import dua CSV yang sudah dikirim ke Yosua (File > Import > Append to
+   current sheet). Oktober beres, tapi bulan depan berulang.
+
+Jalan 1 yang benar. Jalan 2 hanya menambal sekali.
+
+Sudah ada di Drive Yosua sebagai cadangan:
+`UNTUK DATA_INVOICE - OKTOBER 2026` (`1DHAb8lhKJWoqrxnSU9_JeEF74gnWcJdicvP8P3vhIcE`),
+16 baris, sudah dibaca ulang dan cocok.
+
+### Delapan customer masih memakai NAMA TAB, bukan nama resmi
+
+Terlihat jelas begitu barisnya disusun: `Miniku`, `Joy Baby`,
+`Halo Baby (Cileungs` (terpotong 31 huruf), `Katamama (Cikaret)`,
+`Caroline Mom, Baby`, `Event Hai Baby`, `KSO Greenwoods East`,
+`Halo Baby (Harvest)`. Kedelapannya belum ada di `config/customer.csv`,
+jadi nama dan alamatnya juga kosong di invoice yang dicetak.
+
+Jangan ditebak — tunggu Yosua mengirim nama resmi dan alamatnya
+(aturan bagian 33 dan 45).
