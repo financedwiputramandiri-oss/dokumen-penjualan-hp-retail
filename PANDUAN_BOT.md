@@ -250,7 +250,8 @@ berkas siap pakai:
 5. Tunggu sampai tertulis `JADWAL BERHASIL DIPASANG`, lalu tekan sembarang
    tombol untuk menutup
 
-Selesai. Bot jalan sendiri jam **06:00** dan **18:00** setiap hari.
+Selesai. Bot jalan sendiri jam **09:00** dan **17:00**, Senin sampai
+Sabtu. Yang terpasang ADA DUA jadwal — `... - Pagi` dan `... - Sore`.
 
 **Mencoba tanpa menunggu jamnya.** Klik dua kali `sapu.bat`. Kalau selesai
 tanpa galat, jadwalnya pasti jalan juga.
@@ -268,8 +269,9 @@ Itu bukan kekurangan, itu keharusan: `folder_draf` menunjuk ke
 ada sebelum Bapak login. Kalau bot dipaksa jalan saat belum login, semua
 dokumennya gagal ditulis.
 
-Kalau jam 06:00 komputernya mati, Windows menjalankan sapuan yang terlewat
-begitu komputer menyala. Tidak ada sapuan yang hilang.
+Kalau jam 09:00 komputernya mati atau Bapak belum login, sapuan itu
+dilewati. Sapuan jam 17:00 tetap jalan, dan lingkupnya sama, jadi tidak
+ada PO yang hilang — paling lambat ikut sore harinya.
 
 **2. Kalau bot dipindahkan ke komputer lain, hapus jadwal di komputer lama.**
 Klik kanan `hapus-jadwal.bat` → Run as administrator. Dua bot yang menyapu
@@ -278,24 +280,47 @@ kacau.
 
 #### Kalau `pasang-jadwal.bat` gagal
 
-Pasang manual lewat Task Scheduler:
+Pasang manual lewat Task Scheduler. **Satu tugas dengan DUA pemicu** —
+lebih sedikit kliknya daripada membuat dua tugas terpisah, dan hasilnya sama.
 
 1. Tekan tombol Windows, ketik `Task Scheduler`, buka
-2. Menu kanan: **Create Task** (bukan *Create Basic Task*)
+2. Menu kanan: **Create Task** (bukan *Create Basic Task* — yang itu tidak
+   punya tab Conditions)
 3. Tab **General**
    - Name: `Sapu Order Sheet Happy Pumpkin`
-   - Pilih **Run only when user is logged on** ← penting, jangan yang satunya
-4. Tab **Triggers** → **New**
-   - Begin the task: **On a schedule**, **Daily**, mulai jam `06:00`
-   - Centang **Repeat task every** → ketik `12 hours`
-   - For a duration of: **Indefinitely**
-5. Tab **Actions** → **New**
+   - Pilih **Run only when user is logged on** <- penting, jangan yang satunya
+4. Tab **Triggers** -> **New** (pemicu PERTAMA)
+   - Begin the task: **On a schedule**
+   - Pilih **Weekly**, Recur every `1` weeks
+   - Centang **Mon, Tue, Wed, Thu, Fri, Sat** — **Sun JANGAN dicentang**
+   - Start: isi jamnya `09:00:00`
+   - **JANGAN centang "Repeat task every"** — justru pengaturan itu yang
+     ditolak Windows waktu `pasang-jadwal.bat` dipakai
+   - OK
+5. Tab **Triggers** -> **New** lagi (pemicu KEDUA)
+   - Sama persis seperti langkah 4, hanya jamnya `17:00:00`
+   - OK
+6. Tab **Actions** -> **New**
    - Action: **Start a program**
-   - Program/script: tekan **Browse**, pilih `jadwal\sapu.bat` di folder proyek
-6. Tab **Conditions** → hilangkan centang
+   - Program/script: tekan **Browse**, pilih `jadwal\sapu.bat` di folder
+     proyek. Contoh alamatnya:
+     `C:\Users\User\Documents\happy-pumpkin\jadwal\sapu.bat`
+   - OK
+7. Tab **Conditions** -> hilangkan centang
    **Start the task only if the computer is on AC power**, supaya laptop tetap
    menyapu walau sedang tidak dicolok
-7. **OK**
+8. **OK**
+
+Di daftar Task Scheduler, tugas itu harus memperlihatkan **dua baris pemicu**
+("At 09:00 every Mon, Tue, ..." dan "At 17:00 every Mon, Tue, ...").
+
+**Mencobanya tanpa menunggu jamnya:** klik kanan tugas itu -> **Run**. Kalau
+`keluaran\sapuan\log-sapuan.txt` bertambah baris `MULAI` dan `SELESAI`,
+jadwalnya sudah benar.
+
+**Menghapusnya nanti:** klik kanan tugas itu -> **Delete**. Kalau dipasang
+lewat `pasang-jadwal.bat`, yang dihapus ADA DUA (`- Pagi` dan `- Sore`),
+atau cukup jalankan `hapus-jadwal.bat`.
 
 ### Kalau memakai Linux atau Mac
 

@@ -5539,3 +5539,28 @@ Pagi dan Sore. Pemeriksaan jumlah jadwal menghitung **baris perintahnya
 saja** — blok `REM` juga menyebut `/SC WEEKLY` dan sempat membuat tesnya
 gagal karena alasan yang salah (pola yang sama dengan "langsung" vs `SUN`
 di bagian 30). Tes 354 -> 357.
+
+### Langkah manual Task Scheduler diperbarui — 28 Oktober 2026
+
+Yosua bertanya apakah jadwalnya bisa dipasang manual. Bisa, tapi langkah di
+`PANDUAN_BOT.md` ternyata **sudah basi dan justru menyuruh hal yang ditolak
+Windows**:
+
+| Yang tertulis | Masalahnya |
+|---|---|
+| mulai jam `06:00` | jadwalnya 09:00 dan 17:00 sejak bagian 54 |
+| **Centang "Repeat task every" -> 12 hours** | itu persis pengulangan yang ditolak `Duration:PT1H0M` |
+| Trigger **Daily** | sekarang Senin-Sabtu, Minggu libur |
+
+Jadi orang yang mengikutinya akan kena galat yang SAMA, lewat jalur yang
+katanya jalan keluar. Pola berulang bagian 46: perilaku diubah, keterangan
+dan panduannya tidak ikut disisir.
+
+Sekarang: **satu tugas dengan DUA pemicu** (Weekly Mon-Sat, 09:00 dan
+17:00), tanpa "Repeat task every" sama sekali, plus cara mencobanya
+(klik kanan -> Run, lalu lihat `log-sapuan.txt`) dan cara menghapusnya.
+
+Satu tugas dua pemicu dipilih untuk jalur manual — lebih sedikit kliknya
+daripada dua tugas, dan Task Scheduler memang mengizinkannya. `.bat`-nya
+tetap membuat dua tugas, sebab `schtasks` tidak bisa menambah pemicu kedua
+ke tugas yang sudah ada.
