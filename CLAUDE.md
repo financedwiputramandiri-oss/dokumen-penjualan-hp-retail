@@ -5352,3 +5352,39 @@ Isinya karena itu disimpan sebagai `keluaran/EMAIL_PENAGIHAN_28_OKTOBER_2026.htm
 siap disalin-tempel ke Gmail.
 
 Tes 323 -> 346.
+
+### Pagar TAHUN — invoice 2025 jangan masuk laporan 2026 — 28 Oktober 2026
+
+Ketahuan saat menyusun langkah pemasangan, SEBELUM sapuan penuh dijalankan.
+
+Tab di berkas laporan penjualan hanya menyebut BULAN: `LAP JAN`, `BUKU JAN`.
+Tahunnya hanya ada di nama berkas (`..._JAN-OKT_2026_...`). Sementara
+`sapu-semua-bulan.bat` membaca **22 order sheet, termasuk seluruh 2025**.
+
+Jadi tanpa pagar, PO Januari 2025 akan disisipkan ke `LAP JAN` milik laporan
+2026 dan **menambah total penjualan setahun — tanpa galat apa pun**. Pola
+yang sama persis dengan cacat-cacat paling mahal di catatan ini (bagian 39
+dan 52): salah yang lolos seluruh pemeriksaan.
+
+`config/bot.yaml` -> `tahun_laporan: 2026`. PO di luar tahun itu dilewati
+sebelum fakturnya dibangun, jadi tidak ada ongkos yang terbuang.
+
+**Ganti angkanya tiap kali Yosua membuat berkas laporan tahun baru.** Ada tes
+yang menolak `sheet_laporan_penjualan_id` terisi sementara `tahun_laporan`
+kosong.
+
+### Repo ini PUBLIK — perlu diketahui Yosua
+
+Diperiksa lewat GitHub API: `"private": false`. Itulah sebabnya pembaruan
+otomatis bisa jalan tanpa kredensial apa pun di komputer Yosua.
+
+Yang TIDAK ikut (sudah di-gitignore): `config/kredensial_bot.json`,
+`data/**/*.xlsx`, `keluaran/`. Jadi kunci bot dan order sheet aman.
+
+Yang IKUT terlihat umum: `config/customer.csv` (nama & alamat customer),
+dan CLAUDE.md ini sendiri — berisi nomor rekening BCA, email akun layanan,
+ID berkas Drive, nama customer, dan angka penjualan. Perlu dipastikan Yosua
+apakah itu memang boleh publik; kalau tidak, repo diubah jadi privat dan
+`alat/perbarui.py` perlu token.
+
+Tes 346 -> 348.

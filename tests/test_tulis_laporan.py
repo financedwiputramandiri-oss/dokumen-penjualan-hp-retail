@@ -249,3 +249,44 @@ def test_npwp_dan_nomor_faktur_pajak_dikosongkan():
     b = baris_lap(c, 3)
     assert b[3] == "" and b[4] == ""
     assert b[2] == "0391026" and b[5] == "JOY BABY"
+
+
+# --------------------------------------------------------------- pagar tahun
+
+def test_pagar_tahun_menolak_po_tahun_lain():
+    """Tab LAP/BUKU hanya menyebut BULAN, tidak menyebut tahun.
+
+    Tanpa pagar ini, sapuan penuh (yang membaca order sheet 2025 juga)
+    akan menyisipkan invoice Januari 2025 ke tab `LAP JAN` milik laporan
+    2026 dan menambah total penjualan setahun - tanpa galat apa pun.
+    """
+    import ast
+    import pathlib
+
+    sumber = (pathlib.Path(__file__).resolve().parent.parent
+              / "src/hp_dokumen/sapu/bot.py").read_text()
+    pohon = ast.parse(sumber)
+    fn = next(n for n in pohon.body
+              if isinstance(n, ast.FunctionDef) and n.name == "_catat_penjualan")
+
+    arg = [a.arg for a in fn.args.kwonlyargs]
+    assert "tahun_laporan" in arg, "pagar tahun hilang dari _catat_penjualan"
+
+    # Pagarnya harus KELUAR lebih dulu, sebelum faktur dibangun - kalau
+    # tidak, PO tahun lain tetap memakan waktu membangun berkas sementara.
+    badan = ast.dump(fn)
+    assert "tahun_laporan" in badan.split("buat_berkas")[0], \
+        "pemeriksaan tahun harus dilakukan SEBELUM faktur dibangun"
+
+
+def test_bot_yaml_mengisi_tahun_laporan_kalau_sheet_laporan_dipakai():
+    import pathlib
+    import yaml
+
+    akar = pathlib.Path(__file__).resolve().parent.parent
+    d = yaml.safe_load((akar / "config/bot.yaml").read_text()) or {}
+    if (d.get("sheet_laporan_penjualan_id") or "").strip():
+        assert int(d.get("tahun_laporan") or 0) >= 2026, (
+            "sheet_laporan_penjualan_id terisi tapi tahun_laporan kosong - "
+            "sapuan penuh akan mencampur invoice tahun lain"
+        )

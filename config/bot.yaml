@@ -195,3 +195,13 @@ sheet_laporan_penjualan_id: "1wPH-CAKkS63vp29V4kLAxPrLvYDWaGdgGaPik2NT1k0"
 # yang terbit. Isinya seluruhnya milik bot, jadi tab REKAP INVOICE di
 # dalamnya dibuat sendiri kalau belum ada. Kosongkan kalau tidak dipakai.
 sheet_rekap_invoice_id: "1cVp0JiDZGzyMg2zLdzlIm0ZlfATJd3Xn9PsDWZmoxrQ"
+
+# Tahun yang dicakup berkas laporan penjualan di atas.
+#
+# WAJIB diisi kalau sheet_laporan_penjualan_id dipakai. Tab di sana hanya
+# menyebut BULAN ("LAP JAN", "BUKU JAN") tanpa tahun, jadi tanpa pagar ini
+# sapuan penuh akan menyisipkan invoice Januari 2025 ke laporan Januari
+# 2026 dan menambah total penjualan setahun - tanpa galat apa pun.
+#
+# Ganti angkanya setiap kali Yosua membuat berkas laporan tahun baru.
+tahun_laporan: 2026

@@ -102,6 +102,7 @@ class Pengaturan:
     folder_dokumen_id: str = ""
     sheet_laporan_penjualan_id: str = ""
     sheet_rekap_invoice_id: str = ""
+    tahun_laporan: int = 0
     pakai_kunci_bersama: bool = True
     simpan_laporan_terakhir: int = 30
 
@@ -128,6 +129,7 @@ class Pengaturan:
                 d.get("sheet_laporan_penjualan_id") or "").strip(),
             sheet_rekap_invoice_id=(
                 d.get("sheet_rekap_invoice_id") or "").strip(),
+            tahun_laporan=int(d.get("tahun_laporan") or 0),
             pakai_kunci_bersama=bool(d.get("pakai_kunci_bersama", True)),
             simpan_laporan_terakhir=int(d.get("simpan_laporan_terakhir", 30)),
         )
@@ -237,7 +239,8 @@ def _persen(x) -> str:
 
 def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict,
                      master=None, *, direvisi: bool = False,
-                     penulis_lap=None, penulis_rekap=None) -> str:
+                     penulis_lap=None, penulis_rekap=None,
+                     tahun_laporan: int = 0) -> str:
     """Catat satu invoice ke laporan penjualan.
 
     Angkanya diambil dari `ringkas`, yaitu keluaran pembuat faktur yang
@@ -258,6 +261,16 @@ def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict,
 
     from .. import catatan_penjualan as cat
     from ..berkas_dokumen import buat_berkas
+
+    # Tab LAP/BUKU hanya menyebut BULAN, tidak menyebut tahun: "LAP JAN"
+    # di berkas laporan 2026 adalah Januari 2026. Kalau PO tahun lain ikut
+    # dicatat, invoice Januari 2025 akan disisipkan ke laporan Januari 2026
+    # dan menambah total penjualan setahun - diam-diam, tanpa galat.
+    # Sapuan penuh (sapu-semua-bulan.bat) membaca 22 order sheet termasuk
+    # 2025, jadi pagar ini WAJIB ada sebelum sapuan penuh dijalankan.
+    if tahun_laporan and order.tanggal_po and \
+            order.tanggal_po.year != tahun_laporan:
+        return ""
 
     if not ringkas:
         cust0 = cfg.customer.cari(order.customer_kunci)
@@ -565,7 +578,8 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                                     ringkas_inv, master,
                                     direvisi=bool(alasan_draf),
                                     penulis_lap=penulis_lap,
-                                    penulis_rekap=penulis_rekap)
+                                    penulis_rekap=penulis_rekap,
+                                    tahun_laporan=p.tahun_laporan)
                                 if cat_hasil:
                                     cetak(f"      laporan penjualan: {cat_hasil}")
                             except Exception as e:
