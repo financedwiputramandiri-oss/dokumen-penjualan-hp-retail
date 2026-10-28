@@ -57,6 +57,11 @@ echo ============================================================ >> "%LOG%"
 echo MULAI  %DATE% %TIME% >> "%LOG%"
 echo ============================================================ >> "%LOG%"
 
+REM Tarik kode terbaru dulu. Pengaturan (config\*.yaml, customer.csv,
+REM kredensial, data\) TIDAK PERNAH ditimpa, dan kegagalan memperbarui
+REM tidak pernah menghentikan sapuan - lihat alat\perbarui.py.
+py alat\perbarui.py >> "%LOG%" 2>&1
+
 py jalankan.py sapu --minggu-ini >> "%LOG%" 2>&1
 set KODE=%ERRORLEVEL%
 

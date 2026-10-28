@@ -5312,3 +5312,43 @@ Tes 295 -> 323 (28 tes baru di `test_tulis_laporan.py` dan
 `test_sapu_api.py`, dan `test_sapu_bulan.py` tidak bisa dikumpulkan.
 Sudah dipastikan gagal SAMA PERSIS sebelum dan sesudah perubahan ini —
 bukan akibat kodenya. Di komputer Yosua ketiganya normal.
+
+### Bot memperbarui kodenya SENDIRI — 28 Oktober 2026
+
+> *"BUATKAN SEMUA OTOMATIS SENDIRI SAYA TIDAK MAU MELAKUKAN APAPUN"*
+
+Langkah manual yang paling sering berulang sejak bagian 25 adalah
+**mengunduh ZIP lalu mengekstraknya**. Itu dibutuhkan tiap kali format
+diperbaiki, dan dua kali sudah menimbulkan masalah: ekstraksi tidak
+lengkap (bagian 25) dan `config/bot.yaml` bawaan repo menimpa pengaturan
+Yosua lalu bot kembali ditolak kuota Drive (bagian 27).
+
+`alat/perbarui.py` menghapus langkah itu. Ketiga berkas `.bat` sekarang
+memanggilnya SEBELUM menyapu, jadi kode terbaru terpasang sendiri dua kali
+sehari tanpa siapa pun menyentuh apa pun.
+
+| Aturan | Kenapa |
+|---|---|
+| `config/*.yaml`, `config/customer.csv`, kredensial, dan seluruh `data/` serta `keluaran/` **tidak pernah ditimpa** | persis cacat bagian 27 — memperbarui tidak boleh MEMBATALKAN pengaturan |
+| Gagal memperbarui **selalu kode 0** | sapuan dengan kode kemarin jauh lebih baik daripada tidak menyapu; internet mati bukan alasan berhenti |
+| Diekstrak ke folder sementara dulu | unduhan yang putus tidak pernah meninggalkan setengah versi di folder proyek |
+| Hanya berkas yang ISINYA berbeda yang disalin, jumlahnya dilaporkan | log sapuan jadi memperlihatkan kapan kode benar-benar berubah |
+
+Satu tes membandingkan `CABANG` di modul dengan `.git/HEAD` — kalau
+cabangnya salah ketik, bot akan menarik kode cabang lain diam-diam.
+
+**Tetap ada SATU langkah pertama yang tidak bisa dihindari:** kode ini
+sendiri harus sampai ke komputer Yosua sekali. Sesudah itu, tidak pernah
+lagi.
+
+### Email penagihan belum bisa dikirim dari sesi ini
+
+Konektor Gmail meminta otorisasi ulang (`needs you to sign in again`), dan
+otorisasi itu tidak bisa dimulai dari sesi ini — harus lewat claude.ai
+Settings -> Connectors. Selama itu belum dilakukan, bahkan membuat DRAF pun
+ditolak.
+
+Isinya karena itu disimpan sebagai `keluaran/EMAIL_PENAGIHAN_28_OKTOBER_2026.html`,
+siap disalin-tempel ke Gmail.
+
+Tes 323 -> 346.

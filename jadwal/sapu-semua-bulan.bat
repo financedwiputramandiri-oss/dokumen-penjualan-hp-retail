@@ -70,6 +70,9 @@ echo MULAI (manual, semua bulan) %DATE% %TIME% >> "%LOG%"
 echo ============================================================ >> "%LOG%"
 
 REM Keluarannya ke layar DAN ke log sekaligus.
+REM Tarik kode terbaru dulu - lihat alat\perbarui.py.
+py alat\perbarui.py 2>&1
+
 py jalankan.py sapu 2>&1
 set KODE=%ERRORLEVEL%
 echo SELESAI (manual) %DATE% %TIME% - kode %KODE% >> "%LOG%"
