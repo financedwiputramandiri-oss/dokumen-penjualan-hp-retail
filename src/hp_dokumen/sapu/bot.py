@@ -465,7 +465,16 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                 continue
 
             try:
-                orders = baca_buku(buku, cfg.customer)
+                # TAHUN order sheet ini, bukan tahun berjalan.
+                # `baca_buku` bawaannya 2026, jadi tanpa ini SELURUH order
+                # sheet 2025 tercatat bertanggal 2026 - dan pagar
+                # `tahun_laporan` tidak menangkapnya, sebab tahun yang
+                # dibandingkan sudah terlanjur salah. Terbukti pada sapuan
+                # 28 Oktober 2026: PO Desember 2025 masuk REKAP INVOICE
+                # sebagai 29/12/2026.
+                th_berkas = (tahun_di(berkas.nama) or tahun_di(nama_folder)
+                             or _date.today().year)
+                orders = baca_buku(buku, cfg.customer, th_berkas)
                 master = master_harga_dari_buku(buku)
             except Exception as e:
                 masalah.append(f"'{berkas.nama}' gagal diolah: {e}")

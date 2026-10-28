@@ -4,6 +4,7 @@ Tes di sini mengunci pagar-pagarnya: tidak pernah menghapus, tidak pernah
 membuat tab, menyisipkan di ATAS baris Total, dan melewati invoice yang
 sudah ada alih-alih menggandakannya.
 """
+import pathlib
 from datetime import date
 
 import pytest
@@ -309,3 +310,26 @@ def test_tahun_laporan_bawaannya_TAHUN_BERJALAN_bukan_nol():
     assert "_date.today().year" in potong[1][:200], (
         "bawaan tahun_laporan harus TAHUN BERJALAN, bukan 0"
     )
+
+
+# ---------------------------------------- tahun order sheet, bukan 2026
+def test_bot_memakai_TAHUN_ORDER_SHEET_saat_membaca_buku():
+    """`baca_buku` bawaannya 2026 — order sheet 2025 harus menimpanya.
+
+    Tanpa ini SELURUH PO 2025 bertanggal 2026, dan pagar `tahun_laporan`
+    TIDAK menangkapnya sebab tahun yang dibandingkan sudah terlanjur
+    salah. Terbukti pada sapuan 28 Oktober 2026: `PO 29 Desember - Baby
+    Wise` dari order sheet Desember 2025 masuk REKAP INVOICE sebagai
+    29/12/2026, lalu ikut disisipkan ke LAP DES milik laporan 2026.
+
+    Diperiksa dari SUMBER, bukan dengan menjalankan bot: `sapu/bot.py`
+    tidak bisa diimpor di wadah ini (cryptography rusak).
+    """
+    sumber = (pathlib.Path(__file__).resolve().parent.parent
+              / "src" / "hp_dokumen" / "sapu" / "bot.py").read_text()
+    assert "baca_buku(buku, cfg.customer)" not in sumber, (
+        "baca_buku dipanggil tanpa tahun — order sheet 2025 akan "
+        "bertanggal 2026"
+    )
+    assert "tahun_di(berkas.nama)" in sumber
+    assert "tahun_di(nama_folder)" in sumber

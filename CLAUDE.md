@@ -5564,3 +5564,53 @@ Satu tugas dua pemicu dipilih untuk jalur manual — lebih sedikit kliknya
 daripada dua tugas, dan Task Scheduler memang mengizinkannya. `.bat`-nya
 tetap membuat dua tugas, sebab `schtasks` tidak bisa menambah pemicu kedua
 ke tugas yang sudah ada.
+
+### PO 2025 tercatat bertanggal 2026 — pagar tahun TIDAK menangkapnya — 28 Okt 2026
+
+Ketahuan dari memeriksa hasil sapuan Yosua di Drive, bukan dari log layarnya.
+Tab `REKAP INVOICE` berisi **88 invoice**, dan di antaranya:
+
+| Baris di REKAP INVOICE | Order sheet aslinya |
+|---|---|
+| `29/12/2026` PO 29 Desember - Baby Wise | **Desember 2025** |
+| `27/11/2026` PO 27 November - Baby Wise | **November 2025** |
+| `28/02/2026` PO 28 Feb - Pratama Baby Shop | Februari 2026 (benar) |
+
+Sekitar 30 PO dari order sheet 2025 masuk sebagai 2026, lalu ikut disisipkan
+ke `LAP NOV`/`LAP DES`/`BUKU` milik laporan **2026** — persis yang pagar
+`tahun_laporan` dibuat untuk mencegah.
+
+**Pagarnya tidak salah; yang dibandingkan sudah terlanjur salah.**
+`bot.py` memanggil `baca_buku(buku, cfg.customer)` tanpa argumen ketiga, dan
+bawaan `tahun_bawaan` di `pemindai.py` adalah **2026**. Nama tab PO hanya
+menyebut tanggal dan bulan (`PO 29 Desember`), jadi tahunnya diambil dari
+bawaan itu. Jadi `order.tanggal_po.year` SELALU 2026, dan
+`tanggal_po.year != tahun_laporan` tidak pernah benar.
+
+Sekarang tahunnya diambil dari nama berkas, lalu nama folder
+(`Order Sheet 2025`), baru tahun berjalan:
+
+    th_berkas = tahun_di(berkas.nama) or tahun_di(nama_folder) or hari_ini.year
+    orders = baca_buku(buku, cfg.customer, th_berkas)
+
+Jalur manual tidak kena — `cli.py` sudah memakai `--tahun`, dan bagian 29
+memang menjalankan `buat-semua` per berkas dengan `--tahun` sesuai tahunnya.
+
+**Pelajaran: nilai bawaan sebuah parameter adalah tempat cacat bersembunyi.**
+`tahun_bawaan: int = 2026` terlihat tidak berbahaya dan sudah ada sejak lama;
+yang membuatnya mematikan adalah pemanggil baru yang lupa mengisinya. Pagar
+yang membandingkan nilai turunan tidak bisa melindungi apa pun kalau nilai
+turunannya sendiri berasal dari bawaan yang salah.
+
+Dan: **periksa HASILNYA di Drive, jangan berhenti di "sapuan selesai tanpa
+galat"**. Log sapuan di layar Yosua sama sekali tidak memperlihatkan ini.
+
+Satu tes, dibaca dari SUMBER `bot.py` (modul itu tidak bisa diimpor di wadah
+ini karena `cryptography` rusak): `baca_buku(buku, cfg.customer)` tanpa tahun
+DILARANG, dan `tahun_di(berkas.nama)` serta `tahun_di(nama_folder)` wajib ada.
+Tes 357 -> 358.
+
+**Yang harus dirapikan Yosua di berkas laporan penjualan:** baris yang sudah
+terlanjur masuk. Semua baris `LAP NOV`, `BUKU NOV`, `LAP DES`, `BUKU DES`
+yang berasal dari PO 2025 perlu dihapus tangan — bot TIDAK akan menghapusnya
+sendiri (pagar bagian 54: tidak pernah menghapus atau menimpa isi LAP/BUKU).
