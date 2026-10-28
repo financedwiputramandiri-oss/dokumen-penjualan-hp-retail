@@ -5398,3 +5398,41 @@ apakah itu memang boleh publik; kalau tidak, repo diubah jadi privat dan
 `alat/perbarui.py` perlu token.
 
 Tes 346 -> 349.
+
+### Sheet OTOMATISASI SUDAH TERHAPUS dari Drive — 28 Oktober 2026
+
+`periksa-bot` di komputer Yosua gagal pada satu baris:
+
+    [BELUM] Sheet OTOMATISASI  HttpError 404 ... "Requested entity was not found."
+    1. Sheet OTOMATISASI: Share sheet OTOMATISASI ke penyapu-order-sheet@... sebagai Editor
+
+**Sarannya SALAH.** Diperiksa lewat konektor Drive bertindak sebagai Yosua
+sendiri: `1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw` juga 404, dan
+pencarian `title contains 'SINKRON'` tidak memberi hasil apa pun. Jadi
+berkasnya memang **sudah tidak ada** — bukan masalah izin. Men-Share berkas
+yang sudah terhapus tidak akan pernah menolong.
+
+Yang masih ada di Drive hanya `OTOMATISASI` (`1poWqdvKjJ3gwixtBg2oeZgjhhtUn6ytum2pM297wBUs`),
+versi lama tanpa sambungan — bagian 2 mencatatnya, dan itu BUKAN berkas yang
+dipakai bot.
+
+**Dokumen TIDAK terpengaruh.** Di `bot.py` baik pengambilan `KunciBersama`
+maupun penulisan tab `BOT_` dibungkus `try/except`, jadi sapuan tetap jalan
+penuh dan dokumennya tetap terbit. Yang hilang hanya tab `BOT_REKAP`,
+`BOT_DAFTAR_PO`, `BOT_PERUBAHAN`, `BOT_STATUS`, dan kunci antar-komputer
+`BOT_KUNCI`. Rekap tetap sampai lewat berkas `LAPORAN_SAPUAN_*.xlsx` di
+`folder_draf/_LAPORAN`.
+
+Perlu diputuskan Yosua: berkas SINKRON dibuat ulang (lalu id barunya diisi ke
+`sheet_otomatisasi_id`), atau `sheet_otomatisasi_id` dikosongkan saja karena
+rekapnya sudah ada di berkas laporan dan di sheet REKAP INVOICE.
+
+**Pemeriksa sudah dibetulkan.** `_saran()` sekarang mengenali 404 dan
+menyebut KEDUA kemungkinan, dengan "berkasnya terhapus" DIDAHULUKAN, plus
+tautan ke Sampah Drive. Ini kali ketiga pola yang sama: pemeriksa memberi
+saran yang salah, orang menurutinya, masalahnya tidak selesai, dan
+kepercayaan pada pemeriksa hilang (bagian 14 `SERVICE_DISABLED`, bagian 24
+`folder_dokumen_id` kosong, dan sekarang ini).
+
+Dua tes: 404 wajib menyebut TERHAPUS dan Sampah; 403 izin biasa dilarang
+menuduh berkasnya terhapus. Tes 349 -> 351.

@@ -180,3 +180,44 @@ def test_masalah_izin_tetap_disuruh_share(kunci):
     h = next(x for x in hasil if x.nama == "Folder dokumen")
     assert "EDITOR" in h.perbaikan
     assert "ENABLE" not in h.perbaikan
+
+
+# --------------------------------------------- berkas TIDAK ADA vs izin
+GALAT_404 = (
+    "<HttpError 404 when requesting https://sheets.googleapis.com/v4/"
+    "spreadsheets/1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw?alt=json "
+    "returned \"Requested entity was not found.\". Details: \"Requested "
+    "entity was not found.\">"
+)
+
+
+class SambunganHilang(SambunganPalsu):
+    """Meniru keadaan nyata 28 Oktober 2026: sheet OTOMATISASI terhapus."""
+
+    def nama_tab(self, _id):
+        raise RuntimeError(GALAT_404)
+
+
+def test_berkas_terhapus_tidak_cuma_disuruh_share(kunci):
+    """404 bisa berarti berkasnya TIDAK ADA, bukan cuma belum dibagikan.
+
+    Terjadi sungguhan: sheet OTOMATISASI_HAPPY_PUMPKIN_SINKRON terhapus dari
+    Drive, dan pemeriksa menyuruh men-Share-nya ke akun layanan. Orang akan
+    mencari berkas yang sudah tidak ada, tidak menemukannya, lalu berhenti
+    percaya pada pemeriksa ini. Pola yang sama dengan saran "Share ulang"
+    pada galat SERVICE_DISABLED.
+    """
+    hasil = periksa(_atur(kunci), buat_sambungan=SambunganHilang)
+    h = next(x for x in hasil if x.nama == "Sheet OTOMATISASI")
+    assert not h.lulus
+    assert "TERHAPUS" in h.perbaikan
+    assert "Sampah" in h.perbaikan
+
+
+def test_galat_izin_biasa_tidak_disebut_terhapus(kunci):
+    """Kebalikannya: 403 izin biasa tidak boleh menuduh berkasnya terhapus."""
+    def gagal(b):
+        return SambunganPalsu(b, folder_gagal={"D"})
+    hasil = periksa(_atur(kunci), buat_sambungan=gagal)
+    h = next(x for x in hasil if x.nama == "Folder dokumen")
+    assert "TERHAPUS" not in h.perbaikan

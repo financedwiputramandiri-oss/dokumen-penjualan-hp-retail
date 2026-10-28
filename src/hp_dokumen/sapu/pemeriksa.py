@@ -38,8 +38,33 @@ def _nama_api(galat) -> str:
     return "API Google yang dipakai"
 
 
+# Penanda galat Google "berkasnya memang TIDAK ADA" - terhapus, masuk
+# Sampah, atau id-nya salah ketik. Google memakai 404 untuk ini, dan juga
+# untuk berkas yang ada tapi tidak dibagikan, jadi pesannya harus menyebut
+# KEDUA kemungkinan itu. Yang tidak boleh: menyuruh men-Share berkas yang
+# sudah tidak ada - orang akan membukanya, tidak menemukannya, dan berhenti
+# percaya pada pemeriksa ini. Pola yang sama dengan SERVICE_DISABLED di atas.
+_TIDAK_ADA = ("Requested entity was not found", "notFound", "File not found",
+              "HttpError 404")
+
+
+def _tidak_ada(galat) -> bool:
+    return any(tanda in str(galat) for tanda in _TIDAK_ADA)
+
+
 def _saran(galat, saran_izin: str) -> str:
     """Saran perbaikan yang sesuai sebab aslinya, bukan tebakan seragam."""
+    if _tidak_ada(galat) and not _api_mati(galat):
+        return (
+            "Google menjawab 404 TIDAK DITEMUKAN. Dua kemungkinan, periksa "
+            "yang PERTAMA dulu: (1) berkas/foldernya sudah TERHAPUS atau masuk "
+            "Sampah, atau id-nya salah ketik di config/bot.yaml - buka "
+            "https://drive.google.com/drive/trash dan cari berkasnya; "
+            "(2) berkasnya ada tapi belum dibagikan ke bot. "
+            + saran_izin
+            + " JANGAN men-Share ulang sebelum memastikan berkasnya memang "
+              "masih ada - kalau sudah terhapus, men-Share tidak akan menolong."
+        )
     if _api_mati(galat):
         return (
             f"Langkah 2: {_nama_api(galat)} belum dinyalakan di proyek Google "
