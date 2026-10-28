@@ -5369,9 +5369,19 @@ dan 52): salah yang lolos seluruh pemeriksaan.
 `config/bot.yaml` -> `tahun_laporan: 2026`. PO di luar tahun itu dilewati
 sebelum fakturnya dibangun, jadi tidak ada ongkos yang terbuang.
 
+**Bawaannya TAHUN BERJALAN, bukan 0** — dan itu bukan kerapian, itu
+keharusan. `config/bot.yaml` milik Yosua DILINDUNGI dari pembaruan otomatis,
+jadi kunci baru ini TIDAK akan pernah sampai ke komputernya lewat
+`alat/perbarui.py`. Kalau bawaannya 0, pagarnya mati persis di satu-satunya
+mesin yang menjalankan sapuan penuh. Ada tesnya.
+
 **Ganti angkanya tiap kali Yosua membuat berkas laporan tahun baru.** Ada tes
 yang menolak `sheet_laporan_penjualan_id` terisi sementara `tahun_laporan`
 kosong.
+
+**Pelajaran umum yang baru:** sejak ada pembaruan otomatis, tiap kunci BARU
+di `config/*.yaml` harus punya bawaan yang benar DI KODE — berkas config di
+komputer orang tidak akan pernah ikut diperbarui.
 
 ### Repo ini PUBLIK — perlu diketahui Yosua
 
@@ -5387,4 +5397,4 @@ ID berkas Drive, nama customer, dan angka penjualan. Perlu dipastikan Yosua
 apakah itu memang boleh publik; kalau tidak, repo diubah jadi privat dan
 `alat/perbarui.py` perlu token.
 
-Tes 346 -> 348.
+Tes 346 -> 349.

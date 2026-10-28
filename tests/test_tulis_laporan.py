@@ -290,3 +290,22 @@ def test_bot_yaml_mengisi_tahun_laporan_kalau_sheet_laporan_dipakai():
             "sheet_laporan_penjualan_id terisi tapi tahun_laporan kosong - "
             "sapuan penuh akan mencampur invoice tahun lain"
         )
+
+
+def test_tahun_laporan_bawaannya_TAHUN_BERJALAN_bukan_nol():
+    """bot.yaml milik Yosua dilindungi dari pembaruan otomatis, jadi kunci
+    `tahun_laporan` yang baru TIDAK akan pernah sampai ke komputernya.
+    Kalau bawaannya 0, pagarnya mati persis di tempat yang paling penting.
+
+    Dibaca dari SUMBERNYA, bukan dengan mengimpor `bot.py` - modul itu
+    menarik pustaka Google yang tidak selalu ada di mesin pemeriksa.
+    """
+    import pathlib
+
+    sumber = (pathlib.Path(__file__).resolve().parent.parent
+              / "src/hp_dokumen/sapu/bot.py").read_text()
+    potong = sumber.split("tahun_laporan=int(", 1)
+    assert len(potong) == 2, "pembacaan tahun_laporan hilang"
+    assert "_date.today().year" in potong[1][:200], (
+        "bawaan tahun_laporan harus TAHUN BERJALAN, bukan 0"
+    )

@@ -30,6 +30,8 @@ from .bulan import cocok_bulan, folder_bisa_dilewati, nama_bulan, tahun_di
 from .minggu import (bulan_tersentuh, minggu_sekarang, sebutan as sebutan_minggu,
                       tab_dalam_minggu, tahun_tersentuh)
 from .draf import HasilDraf, buat_draf, perlu_draf
+from datetime import date as _date
+
 from .tulis_catatan import PenulisCatatan
 from .tulis_laporan import PenulisLaporan
 from .tulis_rekap_invoice import PenulisRekapInvoice
@@ -129,7 +131,13 @@ class Pengaturan:
                 d.get("sheet_laporan_penjualan_id") or "").strip(),
             sheet_rekap_invoice_id=(
                 d.get("sheet_rekap_invoice_id") or "").strip(),
-            tahun_laporan=int(d.get("tahun_laporan") or 0),
+            # Bawaannya TAHUN BERJALAN, bukan 0. Berkas bot.yaml milik
+            # Yosua dilindungi dari pembaruan otomatis (alat/perbarui.py),
+            # jadi kunci baru ini TIDAK akan pernah sampai ke komputernya.
+            # Kalau bawaannya 0 pagarnya mati di sana, dan sapuan penuh
+            # akan mencampur invoice 2025 ke laporan 2026 - diam-diam.
+            tahun_laporan=int(d.get("tahun_laporan")
+                              or _date.today().year),
             pakai_kunci_bersama=bool(d.get("pakai_kunci_bersama", True)),
             simpan_laporan_terakhir=int(d.get("simpan_laporan_terakhir", 30)),
         )
