@@ -296,3 +296,32 @@ def test_sesudah_dicatat_kuncinya_langsung_dikenali():
     assert "tercatat" in p.catat(_catatan())
     assert p.sudah_tercatat(_catatan())
     assert "dilewati" in p.catat(_catatan())
+
+
+# ------------------------------------- customer yang BELUM terdaftar
+def test_label_dari_tab_membuang_tanggal_PO():
+    from hp_dokumen.catatan_penjualan import label_dari_tab
+    assert label_dari_tab("PO 06 September - BabyLand (Denpasar)") == \
+        "BabyLand (Denpasar)"
+    assert label_dari_tab("PO 2 Okt - Raja Murah (SGC)") == "Raja Murah (SGC)"
+
+
+def test_label_dari_tab_tanpa_pola_PO_dipakai_apa_adanya():
+    """`Sheet4` memang berisi PO sungguhan (bagian 18) - jangan dikosongkan."""
+    from hp_dokumen.catatan_penjualan import label_dari_tab
+    assert label_dari_tab("Sheet4") == "Sheet4"
+    assert label_dari_tab("Order Jastip Ci Ratna") == "Order Jastip Ci Ratna"
+
+
+def test_customer_belum_terdaftar_tetap_tercatat():
+    """Tanpa ini, belasan PO per sapuan DITOLAK dan hilang dari laporan.
+
+    Sapuan 28 Oktober 2026: BALONKU, Cherry, Liz & Co, BabyLand, Raja Murah
+    dan lainnya semuanya "TIDAK dicatat - Nama customer kosong".
+    """
+    order, baris, hasil, _ = _bahan()
+    order.customer_kunci = ""
+    order.nama_tab = "PO 06 September - BabyLand (Denpasar)"
+    c = susun(order, None, baris, hasil)
+    assert c.customer == "BabyLand (Denpasar)"
+    assert "Nama customer kosong." not in " ".join(periksa(c))

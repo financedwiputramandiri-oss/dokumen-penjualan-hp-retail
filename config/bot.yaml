@@ -54,7 +54,19 @@ nama_folder_laporan: "LAPORAN BOT ORDER SHEET"
 
 # ---- SHEET OTOMATISASI -------------------------------------
 # Sheet tempat draf dokumen ditulis (OTOMATISASI_HAPPY_PUMPKIN_SINKRON).
-sheet_otomatisasi_id: "1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw"
+# DIKOSONGKAN 28 Oktober 2026: berkasnya SUDAH TERHAPUS dari Drive
+# (dipastikan lewat konektor Drive sebagai Yosua sendiri - 404, dan
+# pencarian judul "SINKRON" nol hasil). Aturan bagian 27: berkas config
+# yang dilacak git jangan menyimpan nilai yang sudah diketahui salah.
+#
+# Id lamanya, kalau berkasnya ternyata bisa dipulihkan dari Sampah:
+#   1qkd-_wc3LoGcU7kQ8oJi70bGOMjLpvrPVBXzHeQa4Vw
+#
+# Kosong berarti tab BOT_REKAP/BOT_DAFTAR_PO/BOT_PERUBAHAN/BOT_STATUS
+# dan kunci antar-komputer BOT_KUNCI tidak dipakai. Dokumen dan rekap
+# TIDAK terpengaruh - rekap tetap ada di LAPORAN_SAPUAN_*.xlsx dan di
+# sheet REKAP INVOICE.
+sheet_otomatisasi_id: ""
 
 # ---- APA YANG DIKERJAKAN BOT -------------------------------
 buat_draf_dokumen: true      # buat Invoice/Surat Jalan/Faktur Pajak/Packing List

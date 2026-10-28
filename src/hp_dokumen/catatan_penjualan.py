@@ -41,6 +41,7 @@ Tiga keputusan yang jangan diubah tanpa alasan:
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
@@ -104,6 +105,31 @@ class Catatan:
         return list(self.artikel)
 
 
+# "PO 06 September - BabyLand (Denpasar)" -> "BabyLand (Denpasar)".
+# Tanggalnya dibuang; sisanya dipakai apa adanya.
+_AWALAN_PO = re.compile(r"^PO\s+\d{1,2}\s+\S+\s*-\s*", re.IGNORECASE)
+
+
+def label_dari_tab(nama_tab: str) -> str:
+    """Nama penampung dari nama tab, untuk customer yang BELUM terdaftar.
+
+    Ini LABEL, bukan nama resmi. Aturan bagian 33 dan 45 melarang menebak
+    nama resmi customer — dan ini tidak menebak apa pun: yang dipakai
+    persis tulisan Sales di nama tab, sama dengan yang sudah dipakai di
+    DATA_INVOICE sejak bagian 53.
+
+    Tanpa ini, tiap PO dari customer yang belum ada di `customer.csv`
+    DITOLAK dengan "Nama customer kosong" dan nilainya hilang dari laporan
+    penjualan. Pada sapuan 28 Oktober 2026 itu belasan PO sekaligus —
+    laporan yang kekurangan belasan invoice jauh lebih berbahaya daripada
+    laporan yang memuat nama belum resmi, sebab yang kedua kelihatan dan
+    tinggal dirapikan, yang pertama tidak.
+
+    Nama tab yang tidak berpola PO (`Sheet4`) dipakai apa adanya.
+    """
+    return _AWALAN_PO.sub("", (nama_tab or "").strip()).strip()
+
+
 def susun(order, keputusan, baris_invoice, hasil: dict, *,
           nomor: str = "", nama_customer: str = "",
           tanggal: date | None = None) -> Catatan:
@@ -122,7 +148,8 @@ def susun(order, keputusan, baris_invoice, hasil: dict, *,
         nomor = ""
 
     tgl = tanggal or date.today()
-    cust = (nama_customer or "").strip() or order.customer_kunci
+    cust = ((nama_customer or "").strip() or order.customer_kunci
+            or label_dari_tab(getattr(order, "nama_tab", "")))
     tgl_teks = tgl.strftime(FORMAT_TANGGAL)
 
     artikel = [

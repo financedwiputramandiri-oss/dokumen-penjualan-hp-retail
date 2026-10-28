@@ -5436,3 +5436,64 @@ kepercayaan pada pemeriksa hilang (bagian 14 `SERVICE_DISABLED`, bagian 24
 
 Dua tes: 404 wajib menyebut TERHAPUS dan Sampah; 403 izin biasa dilarang
 menuduh berkasnya terhapus. Tes 349 -> 351.
+
+### Sapuan penuh BERHASIL di komputer Yosua — 28 Oktober 2026
+
+| | |
+|---|---|
+| Order sheet dibaca | **22** |
+| Tab PO | **443** |
+| Tab ditarik | **922** |
+| Dokumen per PO | 5 berkas (6 untuk per-ukuran) |
+| Laporan | `G:\My Drive\DOKUMEN OTOMATIS HAPPY PUMPKIN\_LAPORAN\LAPORAN_SAPUAN_20261028_1432.xlsx` |
+| Perubahan penting pada PO lama | tidak ada |
+
+Jalur Drive for Desktop terbukti lagi, dan **pagar tahun bekerja**: Baby Fame
+(PO 02 September) tercatat sebagai `0110926` di `LAP SEP` dan `BUKU SEP` —
+bulan SEP, bukan bulan lain, dan tidak ada PO 2025 yang ikut masuk.
+
+### Cacat yang langsung terlihat dari log: belasan PO "Nama customer kosong"
+
+    laporan penjualan: TIDAK dicatat - Nama customer kosong.
+
+Kena BALONKU (Nusa Dua), Cherry, Liz & Co (Denpasar), BabyLand (Denpasar),
+Raja Murah (SGC), dan belasan lain — semua customer yang belum ada di
+`config/customer.csv`. Dokumennya tetap terbit; yang hilang hanya barisnya
+di laporan penjualan.
+
+Bagian 53 sudah menyebut masalah ini dan menerangkan penambalnya (nama tab
+dipakai sebagai label), tapi **penambal itu tidak pernah masuk ke kode** —
+waktu itu dikerjakan lewat skrip sekali pakai saat menyusun CSV backfill.
+`susun()` masih `nama_customer or order.customer_kunci`, dan keduanya kosong
+untuk customer yang belum terdaftar.
+
+`catatan_penjualan.label_dari_tab()` sekarang membuang awalan
+`PO <tgl> <Bulan> - ` dan memakai sisanya:
+
+    PO 06 September - BabyLand (Denpasar)  ->  BabyLand (Denpasar)
+    Sheet4                                 ->  Sheet4
+
+**Ini LABEL, bukan nama resmi, dan bukan tebakan** — yang dipakai persis
+tulisan Sales di nama tab. Aturan bagian 33 dan 45 melarang MENEBAK nama
+resmi; di sini tidak ada yang ditebak. Laporan penjualan yang kekurangan
+belasan invoice jauh lebih berbahaya daripada laporan yang memuat nama belum
+resmi: yang kedua kelihatan dan tinggal dirapikan, yang pertama tidak.
+
+**Pelajaran: catatan yang menyebut sebuah penambal belum tentu penambalnya
+ada di kode.** Bagian 53 menulisnya sebagai sesuatu yang sudah dikerjakan,
+padahal hanya dipakai di skrip sementara. Kalau catatan menyebut perbaikan,
+cari tesnya — kalau tidak ada tesnya, perbaikannya mungkin tidak ada.
+
+Tiga tes baru. Tes 351 -> 354.
+
+### `sheet_otomatisasi_id` dikosongkan di repo
+
+Berkasnya sudah terhapus (catatan di atas), jadi membiarkan id itu di
+`config/bot.yaml` yang dilacak git melanggar aturan bagian 27: berkas config
+jangan menyimpan nilai yang sudah diketahui salah. Id lamanya tetap ditulis
+sebagai komentar kalau suatu saat berkasnya dipulihkan dari Sampah.
+
+`config/bot.yaml` milik Yosua DILINDUNGI dari pembaruan otomatis, jadi di
+komputernya baris itu harus dikosongkan sendiri kalau pesan
+"Sheet OTOMATISASI gagal diperbarui" mau hilang. Pesan itu tidak berbahaya —
+sapuan tetap tuntas.
