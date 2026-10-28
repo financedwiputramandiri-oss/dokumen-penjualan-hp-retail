@@ -7,6 +7,14 @@ REM
 REM  Jadwalnya: Senin sampai Sabtu, dua kali sehari - menyapu jam
 REM             09:00 dan 17:00. Minggu libur.
 REM
+REM  DUA JADWAL TERPISAH, bukan satu jadwal berulang.
+REM  Versi lama memakai /RI 480 /ET 17:30 dan DITOLAK Windows dengan
+REM  "The task XML contains a value which is incorrectly formatted or
+REM  out of range. Duration:PT1H0M". Pengulangan /RI punya aturan
+REM  durasi sendiri yang berbeda-beda antar versi Windows, dan tidak
+REM  ada gunanya di sini: dua jadwal biasa memberi hasil yang sama
+REM  persis, tanpa aturan tersembunyi apa pun.
+REM
 REM  Perlu menyapu SEKARANG di luar jadwal? Klik dua kali
 REM  sapu-sekarang.bat - tidak perlu menyentuh jadwal ini.
 REM ============================================================
@@ -19,7 +27,7 @@ echo ============================================================
 echo  MEMASANG JADWAL BOT HAPPY PUMPKIN
 echo ============================================================
 echo.
-echo  Nama jadwal : %NAMA%
+echo  Nama jadwal : %NAMA% - Pagi  dan  %NAMA% - Sore
 echo  Menjalankan : %SKRIP%
 echo  Hari        : Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
 echo  Menyapu jam : 09:00 dan 17:00
@@ -34,25 +42,19 @@ if not exist "%SKRIP%" (
 )
 
 REM /SC WEEKLY /D MON..SAT = hanya hari kerja, Minggu dilewati.
-REM /ST 09:00              = sapuan pertama tiap harinya.
-REM /RI 480                = diulang tiap 8 jam (480 menit), jadi
-REM                          sapuan kedua jatuh jam 17:00.
-REM /ET 17:30 /K           = berhenti mengulang setelah sapuan kedua, dan
-REM                          sapuan yang masih berjalan saat itu dihentikan.
-REM                          Jadi yang benar-benar jalan: 09:00 dan 17:00.
-REM                          /ET sengaja 17:30, bukan 17:00 - kalau sama
-REM                          persis dengan jam sapuan kedua, Windows bisa
-REM                          menutup jendela pengulangannya sebelum sapuan
-REM                          itu sempat mulai.
-REM                          Kalau jam 09:00 Bapak belum login, sapuan itu
-REM                          dilewati - /IT memang begitu, dan itu disengaja:
-REM                          drive G: tidak ada sebelum orangnya login.
+REM /ST                    = jam sapuannya.
 REM /IT = jalan HANYA kalau Bapak sedang login.
 REM      Ini WAJIB. Kalau bot jalan saat belum login, drive G: dari Google
 REM      Drive for Desktop belum ada, dan dokumennya gagal ditulis.
+REM      Akibatnya sapuan 09:00 dilewati kalau Bapak belum login - itu
+REM      memang disengaja.
 REM /F  = timpa jadwal lama kalau sudah pernah dipasang.
-schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 09:00 /RI 480 /ET 17:30 /K /RU "%USERNAME%" /IT /F
+REM
+REM Sapuan yang bertabrakan ditahan kunci di sapu.bat, bukan oleh /K.
+schtasks /Create /TN "%NAMA% - Pagi" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 09:00 /RU "%USERNAME%" /IT /F
+if errorlevel 1 goto :gagal
 
+schtasks /Create /TN "%NAMA% - Sore" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 17:00 /RU "%USERNAME%" /IT /F
 if errorlevel 1 goto :gagal
 
 echo.

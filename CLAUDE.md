@@ -5497,3 +5497,45 @@ sebagai komentar kalau suatu saat berkasnya dipulihkan dari Sampah.
 komputernya baris itu harus dikosongkan sendiri kalau pesan
 "Sheet OTOMATISASI gagal diperbarui" mau hilang. Pesan itu tidak berbahaya —
 sapuan tetap tuntas.
+
+### `pasang-jadwal.bat` DITOLAK Windows — SELESAI 28 Oktober 2026
+
+Yosua menjalankannya sebagai Administrator dan hasilnya:
+
+    ERROR: The task XML contains a value which is incorrectly formatted
+    or out of range. (11,28):Duration:PT1H0M
+
+Pesan itu TIDAK menyebut izin sama sekali, jadi kedua saran yang dicetak
+berkas itu sendiri ("jalankan sebagai Administrator", "Windows meminta
+password") dua-duanya meleset — pola saran keliru yang sama dengan bagian
+14, 24, dan sekarang bagian 54 soal sheet terhapus.
+
+Sebabnya **blok pengulangan `/RI 480 /ET 17:30`**. `Duration` yang dihitung
+sendiri oleh schtasks keluar `PT1H0M` dan ditolak validator XML-nya. Aturan
+durasi pengulangan ini berbeda-beda antar versi Windows dan tidak
+terdokumentasi dengan jelas, jadi menebak-nebak angkanya hanya menunda
+masalah.
+
+**Jadwalnya sekarang DUA tugas terpisah, bukan satu tugas berulang:**
+
+    schtasks /Create /TN "<nama> - Pagi" ... /SC WEEKLY /D MON..SAT /ST 09:00 /RU ... /IT /F
+    schtasks /Create /TN "<nama> - Sore" ... /SC WEEKLY /D MON..SAT /ST 17:00 /RU ... /IT /F
+
+Hasilnya sama persis — 09:00 dan 17:00, Senin-Sabtu — tanpa `/RI`, `/ET`,
+maupun `/K`, jadi tidak ada aturan durasi tersembunyi yang bisa menolaknya.
+Aturan "`/ET` selalu setengah jam sesudah sapuan terakhir" (bagian 30 dan 44)
+karena itu **sudah tidak berlaku**; kalau jamnya diubah, yang diubah `/ST`
+kedua perintah itu.
+
+`/K` hilang tanpa akibat: yang menahan dua sapuan bertabrakan adalah kunci
+handle-9 di `sapu.bat` (bagian 30), bukan `/K`.
+
+`hapus-jadwal.bat` menghapus KEDUANYA, plus jadwal versi lama bernama tunggal
+kalau masih tertinggal (`2>nul` supaya tidak berisik kalau memang tidak ada).
+
+Tiga tes: dua jadwal dengan `/ST` 09:00 dan 17:00, perintah `schtasks`
+DILARANG memuat `/RI` atau `/ET`, dan `hapus-jadwal.bat` wajib menyebut
+Pagi dan Sore. Pemeriksaan jumlah jadwal menghitung **baris perintahnya
+saja** — blok `REM` juga menyebut `/SC WEEKLY` dan sempat membuat tesnya
+gagal karena alasan yang salah (pola yang sama dengan "langsung" vs `SUN`
+di bagian 30). Tes 354 -> 357.

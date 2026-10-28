@@ -58,26 +58,50 @@ def test_pasang_jadwal_memakai_IT():
     assert " /IT " in isi or isi.rstrip().endswith("/IT")
 
 
-def test_pasang_jadwal_hari_kerja_jam_8_dan_17():
-    """Senin-Sabtu, jam 09:00 dan 17:00 (permintaan Yosua 28 Oktober 2026).
+def test_pasang_jadwal_hari_kerja_jam_9_dan_17():
+    """Senin-Sabtu, jam 09:00 dan 17:00, lewat DUA jadwal terpisah.
 
-    /RI 480 (8 jam) dengan /ET 17:30 berarti sapuan jam 09:00 dan 17:00 saja.
-    Kalau `/ET` atau `/K` hilang, bot terus menyapu sepanjang malam; kalau
-    `/D` hilang, ikut jalan hari Minggu.
+    Versi lama memakai satu jadwal berulang (`/RI 480 /ET 17:30`) dan
+    DITOLAK Windows di komputer Yosua:
+
+        The task XML contains a value which is incorrectly formatted
+        or out of range. (11,28):Duration:PT1H0M
+
+    Aturan durasi pengulangan /RI berbeda-beda antar versi Windows, dan
+    tidak ada gunanya di sini. Dua jadwal biasa memberi hasil yang sama
+    persis tanpa aturan tersembunyi apa pun.
+    """
+    # Hanya baris perintahnya; blok REM juga menyebut /SC WEEKLY.
+    perintah = [b for b in PASANG.read_text(encoding="ascii").splitlines()
+                if b.startswith("schtasks")]
+    assert len(perintah) == 2, "harus DUA jadwal, pagi dan sore"
+    for b in perintah:
+        assert "/SC WEEKLY" in b
+        assert "/D MON,TUE,WED,THU,FRI,SAT" in b, "Minggu harus libur"
+        hari = re.search(r"/D\s+(\S+)", b)
+        assert hari and "SUN" not in hari.group(1).upper()
+    assert any("/ST 09:00" in b for b in perintah)
+    assert any("/ST 17:00" in b for b in perintah)
+
+
+def test_pasang_jadwal_TIDAK_memakai_pengulangan_RI():
+    """`/RI` + `/ET` itu yang ditolak Windows - jangan dikembalikan.
+
+    Kalau suatu saat jamnya diubah, ubah `/ST` kedua jadwalnya; jangan
+    kembali ke satu jadwal berulang.
     """
     isi = PASANG.read_text(encoding="ascii")
-    assert "/SC WEEKLY" in isi
-    assert "/D MON,TUE,WED,THU,FRI,SAT" in isi, "Minggu harus libur"
-    assert "/ST 09:00" in isi
-    assert "/RI 480" in isi, "09:00 -> 17:00 = 8 jam = 480 menit"
-    assert "/ET 17:30" in isi, "harus lewat 17:00 supaya sapuan kedua sempat jalan"
-    assert " /K " in isi, "tanpa /K sapuan yang tersangkut tidak dihentikan"
-    # Diperiksa pada argumen /D saja, bukan seluruh berkas: kata biasa
-    # seperti "langsung" mengandung "sun" dan dulu membuat tes ini gagal
-    # karena alasan yang salah.
-    hari = re.search(r"/D\s+(\S+)", isi)
-    assert hari, "argumen /D tidak ketemu"
-    assert "SUN" not in hari.group(1).upper(), "hari Minggu tidak boleh ikut"
+    perintah = [b for b in isi.splitlines() if b.startswith("schtasks")]
+    assert perintah, "tidak ada perintah schtasks"
+    for b in perintah:
+        assert "/RI" not in b, "pengulangan /RI ditolak Windows, lihat tesnya"
+        assert "/ET" not in b
+
+
+def test_hapus_jadwal_menghapus_KEDUA_jadwal():
+    """Kalau cuma satu yang dihapus, yang satunya terus menyapu diam-diam."""
+    isi = HAPUS.read_text(encoding="ascii")
+    assert "- Pagi" in isi and "- Sore" in isi
 
 
 def test_ada_cara_menyapu_di_luar_jadwal():
