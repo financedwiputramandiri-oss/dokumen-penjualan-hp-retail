@@ -2,7 +2,7 @@
 REM ============================================================
 REM  Menjalankan sapuan order sheet Happy Pumpkin.
 REM  Berkas ini yang dipanggil Task Scheduler dua kali sehari,
-REM  jam 08:00 dan 17:00, Senin sampai Sabtu.
+REM  jam 09:00 dan 17:00, Senin sampai Sabtu.
 REM
 REM  Boleh juga diklik dua kali kalau mau menyapu sekarang juga.
 REM ============================================================

@@ -171,3 +171,115 @@ def periksa(catatan: Catatan, toleransi: float = 1.0) -> list[str]:
     if not catatan.customer:
         pesan.append("Nama customer kosong.")
     return pesan
+
+
+# ---------------------------------------------------------------- LAP / BUKU
+#
+# Permintaan Yosua 28 Oktober 2026: invoice yang terbit juga masuk ke tab
+# laporan bulanan LAP <BLN> dan BUKU <BLN>, mengikuti format yang SUDAH ADA
+# di berkasnya. Susunan kolom di bawah dibaca langsung dari `LAP OKT` dan
+# `BUKU OKT` milik Yosua, bukan dirancang sendiri.
+
+BULAN_SINGKAT = {1: "JAN", 2: "FEB", 3: "MAR", 4: "APR", 5: "MEI", 6: "JUN",
+                 7: "JUL", 8: "AGU", 9: "SEP", 10: "OKT", 11: "NOV", 12: "DES"}
+
+# LAP <BLN> — judul 3 baris, judul kolom di baris 5-6, data mulai baris 7,
+# ditutup satu baris "Total Penjualan <Bulan>".
+JUDUL_LAP = ["No", "Tanggal", "Nomor Invoice", "Nomor Faktur Pajak", "NPWP",
+             "Nama Customer", "DPP", "PPN", "Total", "", "Tanggal Bayar",
+             "", "Keterangan"]
+
+# BUKU <BLN> — judul 3 baris, judul kolom di baris 4-5, data mulai baris 6.
+# Satu invoice = baris artikel pertama yang membawa TGL/NO/CUSTOMER dan
+# seluruh angka ringkasannya, lalu baris artikel berikutnya yang hanya
+# mengisi kolom E-I, lalu satu baris "Total <nomor>", lalu satu baris kosong.
+JUDUL_BUKU = ["TGL", "NO", "NO FAKTUR", "CUSTOMER", "NAMA BARANG", "ARTIKEL",
+              "QTY", "HARGA", "JUMLAH", "DPP", "PPN", "JUMLAH", "DISKON",
+              "POTONGAN DISKON", "KETERANGAN"]
+
+
+def tab_lap(tanggal: date) -> str:
+    return f"LAP {BULAN_SINGKAT[tanggal.month]}"
+
+
+def tab_buku(tanggal: date) -> str:
+    return f"BUKU {BULAN_SINGKAT[tanggal.month]}"
+
+
+def nomor_berikut(nomor_terpakai, tanggal: date) -> str:
+    """Nomor invoice berikutnya, MELANJUTKAN yang sudah ada di tab LAP.
+
+    Polanya dibaca dari berkas Yosua sendiri: `0011026` = urut 001, bulan
+    10, tahun 26. Urutannya diulang tiap bulan dan DIPAKAI BERSAMA oleh DPM
+    dan MTN — dua hal yang dulu tercatat belum pasti di CLAUDE.md bagian 26,
+    dan terjawab oleh isi `LAP OKT` (nomor 0201026 milik CV. MTN).
+
+    Nomornya MELANJUTKAN yang terbesar, bukan mengisi lubang di tengah.
+    Lubang biasanya berarti nomor itu memang dipakai di luar sistem ini;
+    mengisinya ulang akan membuat dua dokumen bernomor sama.
+    """
+    ekor = f"{tanggal.month:02d}{tanggal.year % 100:02d}"
+    tertinggi = 0
+    for n in nomor_terpakai:
+        t = str(n or "").strip().lstrip("'")
+        # Buang akhiran huruf seperti ".A" pada faktur Haritsa yang dipecah.
+        pokok = t.split(".")[0]
+        if not pokok.isdigit() or not pokok.endswith(ekor):
+            continue
+        urut = pokok[:-4]
+        if urut.isdigit():
+            tertinggi = max(tertinggi, int(urut))
+    return f"{tertinggi + 1:03d}{ekor}"
+
+
+def baris_lap(catatan: "Catatan", no_urut: int, *, keterangan: str = "") -> list:
+    """Satu baris untuk tab LAP <BLN>.
+
+    Nomor Faktur Pajak dan NPWP DIKOSONGKAN — keduanya tidak ada di order
+    sheet dan tidak boleh ditebak (CLAUDE.md bagian 33 dan 45).
+    """
+    return [
+        no_urut,
+        catatan.tanggal.strftime(FORMAT_TANGGAL),
+        catatan.nomor,
+        "",                      # Nomor Faktur Pajak - diisi manual
+        "",                      # NPWP - diisi manual
+        catatan.customer,
+        round(catatan.dpp, 2),
+        round(catatan.ppn, 2),
+        round(catatan.total, 2),
+        "",
+        "",                      # Tanggal Bayar - diisi saat dibayar
+        "",
+        keterangan,
+    ]
+
+
+def baris_buku(catatan: "Catatan", *, diskon_teks: str = "",
+               potongan: float = 0.0, keterangan: str = "") -> list[list]:
+    """Baris-baris untuk tab BUKU <BLN>, satu kelompok per invoice.
+
+    Kolom HARGA di BUKU berisi harga SETELAH diskon, dan JUMLAH berisi
+    `qty x harga setelah diskon` — dibuktikan dari invoice 0081026 Haritsa
+    di berkas Yosua: 18 x 34.500 = 621.000, dan jumlah seluruh kolom itu
+    sama dengan Total invoice. Karena itu harga satuannya diturunkan dari
+    nilai bersih per baris, BUKAN dari harga retail.
+    """
+    tgl = catatan.tanggal.strftime(FORMAT_TANGGAL)
+    out: list[list] = []
+    for i, a in enumerate(catatan.artikel):
+        kode, nama, qty, _harga, nett = a[3], a[4], a[5], a[6], a[7]
+        satuan = round(nett / qty, 2) if qty else 0.0
+        if i == 0:
+            out.append([tgl, catatan.nomor, catatan.nomor, catatan.customer,
+                        nama, kode, qty, satuan, round(nett, 2),
+                        round(catatan.dpp, 2), round(catatan.ppn, 2),
+                        round(catatan.total, 2), diskon_teks,
+                        round(potongan, 2) if potongan else "", keterangan])
+        else:
+            out.append(["", "", "", "", nama, kode, qty, satuan, round(nett, 2)])
+    qty_total = sum(a[5] for a in catatan.artikel)
+    out.append(["", "", "", "", f"Total {catatan.nomor}".strip(), "",
+                qty_total, "", round(catatan.total, 2)])
+    out.append([])               # satu baris kosong antar invoice
+    return out

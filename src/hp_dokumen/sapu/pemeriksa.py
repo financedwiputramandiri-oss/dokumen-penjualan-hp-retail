@@ -207,11 +207,42 @@ def periksa(pengaturan, buat_sambungan=None) -> list[Hasil]:
                     "sendiri, supaya tab yang hilang selalu ketahuan.",
                 ))
             else:
-                hasil.append(Hasil("Laporan penjualan", LULUS,
-                                   "DATA_INVOICE dan DATA_ARTIKEL terbaca"))
+                bulanan = [t for t in tab
+                           if t.startswith("LAP ") or t.startswith("BUKU ")]
+                hasil.append(Hasil(
+                    "Laporan penjualan", LULUS,
+                    f"DATA_INVOICE, DATA_ARTIKEL, dan {len(bulanan)} tab "
+                    f"LAP/BUKU terbaca"))
 
+    hasil.append(_periksa_rekap_invoice(pengaturan, sambung, email))
     hasil.append(_periksa_banyak_perangkat(pengaturan))
     return hasil
+
+
+def _periksa_rekap_invoice(pengaturan, sambung, email) -> Hasil:
+    """Berkas REKAP INVOICE, satu baris per invoice yang terbit.
+
+    Id yang kosong adalah pilihan pemasangan yang SAH, jadi dilaporkan
+    LULUS - aturan CLAUDE.md bagian 24, 27, dan 32: jangan pernah
+    menandai GAGAL sesuatu yang memang sengaja tidak dipakai.
+    """
+    id_rekap = getattr(pengaturan, "sheet_rekap_invoice_id", "")
+    if not id_rekap:
+        return Hasil(
+            "Rekap invoice", LULUS, "sengaja dikosongkan",
+            "Invoice tidak direkap ke sheet tersendiri. Isi "
+            "sheet_rekap_invoice_id di config/bot.yaml kalau mau dinyalakan.",
+        )
+    try:
+        sambung.nama_tab(id_rekap)
+    except Exception as e:
+        return Hasil(
+            "Rekap invoice", GAGAL, f"tidak bisa dibaca: {e}",
+            _saran(e, f"Share BERKAS rekap invoice ke {email} sebagai Editor."),
+        )
+    # Tab REKAP INVOICE tidak diperiksa: berkas itu milik bot sendiri, dan
+    # tabnya memang dibuat sendiri kalau belum ada.
+    return Hasil("Rekap invoice", LULUS, "berkas terbaca")
 
 
 def _periksa_banyak_perangkat(pengaturan) -> Hasil:

@@ -5168,3 +5168,147 @@ jadi nama dan alamatnya juga kosong di invoice yang dicetak.
 
 Jangan ditebak — tunggu Yosua mengirim nama resmi dan alamatnya
 (aturan bagian 33 dan 45).
+
+## 54. Jadwal 09:00/17:00, invoice masuk LAP & BUKU, email penagihan — 28 Oktober 2026
+
+Tiga permintaan Yosua sekaligus.
+
+### 1. Jadwal jadi 09:00 dan 17:00, lingkup tetap PER MINGGU
+
+    /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 09:00 /RI 480 /ET 17:30 /K
+
+`/RI 480` (8 jam) menggantikan 540. Aturan bagian 30 tetap: `/ET` selalu
+setengah jam SESUDAH sapuan terakhir. Lingkup `--minggu-ini` tidak berubah
+(bagian 44).
+
+Keterangan `REM`/`echo` di keempat berkas `.bat` ikut disisir — pelajaran
+bagian 46: tes hanya memeriksa ARGUMEN perintahnya, jadi keterangan yang
+salah lolos semua tes, padahal justru itu yang dibaca rekan kerja.
+Disunting lewat BYTE dengan pagar ASCII+CRLF (aturan bagian 27).
+
+### 2. Invoice masuk ke LAP <BLN>, BUKU <BLN>, dan sheet REKAP INVOICE
+
+**Format dibaca dari berkas Yosua sendiri, bukan dirancang.** `LAP OKT`
+dan `BUKU OKT` dibongkar sel per sel setelah berkasnya diunduh sebagai
+`.xlsx` lewat konektor Drive.
+
+| Tab | Susunan |
+|---|---|
+| `LAP <BLN>` | judul 3 baris, judul kolom baris 5-6, data mulai baris 7, ditutup baris `Total Penjualan <Bulan>`. Kolom: No, Tanggal, Nomor Invoice, Nomor Faktur Pajak, NPWP, Nama Customer, DPP, PPN, Total, -, Tanggal Bayar, -, Keterangan |
+| `BUKU <BLN>` | judul 3 baris, judul kolom baris 4-5, data mulai baris 6. Kolom: TGL, NO, NO FAKTUR, CUSTOMER, NAMA BARANG, ARTIKEL, QTY, HARGA, JUMLAH, DPP, PPN, JUMLAH, DISKON, POTONGAN DISKON, KETERANGAN |
+
+Satu invoice di BUKU = baris artikel pertama yang membawa TGL/NO/CUSTOMER
+dan seluruh angka ringkasannya, lalu baris artikel berikutnya yang hanya
+mengisi kolom E-I, lalu baris `Total <nomor>`, lalu satu baris kosong.
+
+**Kolom HARGA di BUKU adalah harga SETELAH diskon**, bukan harga retail.
+Dibuktikan dari invoice `0081026` Haritsa: 18 x 34.500 = 621.000, dan
+jumlah seluruh kolom itu sama dengan Total invoice. Karena itu harga
+satuannya diturunkan dari nilai bersih per baris.
+
+### Pertanyaan lama bagian 18 dan 26 akhirnya TERJAWAB oleh isi LAP OKT
+
+| Pertanyaan | Jawaban dari berkas |
+|---|---|
+| Tanggal dokumen = tanggal terbit atau tanggal PO? | **tanggal TERBIT**. `PO 12 Okt - Baby Wise` tercatat 19/10; `PO 05 Okt` tercatat 07/10 |
+| Nomor urut diulang tiap bulan atau berlanjut setahun? | **diulang tiap bulan** — `0011026` = urut 001, bulan 10, tahun 26 |
+| DPM dan MTN satu urutan atau masing-masing? | **SATU urutan bersama** — `0201026` milik CV. MTN (WARLY) |
+| Faktur kedua berakhiran `.A`? | ya, ada `0301026.A` |
+
+`nomor_berikut()` karena itu **MELANJUTKAN nomor tertinggi** di tab LAP
+bulan itu, tidak mengisi lubang di tengah. Lubang biasanya berarti nomor
+itu dipakai di luar sistem ini; mengisinya ulang membuat dua dokumen
+bernomor sama.
+
+### Empat pagar `tulis_laporan.py` yang jangan dilonggarkan
+
+LAP dan BUKU BUKAN tab bot — isinya pekerjaan Yosua berbulan-bulan,
+diketik tangan, tanpa salinan. Pagarnya karena itu lebih ketat daripada
+`tulis_catatan.py`:
+
+1. **Tidak pernah MENGHAPUS atau MENIMPA.** Invoice yang ternyata sudah
+   ada DILEWATI dan dilaporkan, bukan diganti. Berbeda dari DATA_INVOICE
+   yang memang tab bot dan di sana revisi boleh mengganti.
+2. **Tab tidak pernah dibuat sendiri.** `LAP NOV` yang belum ada harus
+   ketahuan, bukan ditambal tab kosong tanpa judul dan tanpa rumus.
+3. **Disisipkan di ATAS baris `Total Penjualan`.** Menambahkan di paling
+   bawah menaruh baris baru DI BAWAH totalnya, jadi tidak pernah ikut
+   terjumlah — dan itu tidak kelihatan sampai ada yang menyadari totalnya
+   kurang.
+4. **BUKU ditulis LEBIH DULU, baru LAP.** Kalau dibalik lalu gagal di
+   tengah, laporan bulanan memuat invoice tanpa rinciannya.
+
+Kuncinya **Customer + Total** (toleransi Rp1), bukan nomor invoice —
+invoice yang baru dibuat bot memang belum punya nomor sampai modul ini
+memberinya.
+
+### Sheet REKAP INVOICE — satu-satunya tempat bot boleh membuat tab
+
+`REKAP INVOICE HAPPY PUMPKIN - DIISI BOT`
+(`1cVp0JiDZGzyMg2zLdzlIm0ZlfATJd3Xn9PsDWZmoxrQ`), sudah di-Share Editor ke
+akun layanan dan sudah terisi `sheet_rekap_invoice_id` di `config/bot.yaml`.
+
+Isinya seluruhnya milik bot, jadi tab `REKAP INVOICE` **dibuat sendiri**
+kalau belum ada, lengkap dengan judul kolomnya. Ini pengecualian yang
+disengaja dan hanya berlaku di berkas ini; di berkas laporan penjualan
+milik Yosua, tab yang hilang TETAP tidak pernah dibuat.
+
+Perlu diingat: berkas yang dibuat lewat konektor Drive dari CSV selalu
+bernama tab `Untitled`, dan konektor tidak bisa mengganti nama tab. Itu
+sebabnya pembuatan tab sendiri diperlukan di sini.
+
+### 3. Email pengingat penagihan
+
+Tab `TAGIHAN` ternyata **sudah lengkap** — 34 invoice Oktober dengan
+jatuh tempo, sisa hari, dan status. Jadi emailnya disusun dari situ, bukan
+dihitung ulang.
+
+**Konektor Gmail sedang perlu diotorisasi ulang**, jadi emailnya tidak
+bisa dikirim maupun dibuat sebagai draf dari sesi ini. Isinya disimpan
+sebagai `keluaran/EMAIL_PENAGIHAN_28_OKTOBER_2026.html`.
+
+Per 28 Oktober 2026: 32 invoice belum dibayar Rp969.717.752, tidak ada
+yang lewat tempo, 12 invoice Rp408.724.170 jatuh tempo dalam 7 hari.
+RIA INDAH MANDIRI sendirian 56% dari seluruh piutang.
+
+### Dua cacat di LAP OKT / TAGIHAN yang ketahuan saat menyusun email
+
+| Hal | Keterangan |
+|---|---|
+| Invoice `0031026` | LAP dan TAGIHAN menulis Total Rp42.840.000, sama persis dengan `0021026` di atasnya. BUKU OKT menulis Rp24.072.000 (708 x Rp34.000), dan DPP Rp21.686.486 + PPN Rp2.385.514 memang berjumlah Rp24.072.000. Jadi barisnya tersalin, dan total piutang kelebihan **Rp18.768.000** |
+| Invoice `0301026.A` | kolom Total masih kosong di LAP maupun TAGIHAN, jadi nilainya tidak ikut terhitung sama sekali |
+
+### Nama resmi customer yang akhirnya ketemu
+
+LAP OKT memuat nama resmi beberapa customer yang di `config/customer.csv`
+masih kosong:
+
+| Nama tab | Nama di LAP OKT |
+|---|---|
+| Baby Wise (Surabaya) | BIJAK WAHANA SUKSES (BABY WISE SURABAYA) |
+| Miniku (Pekanbaru) | PT. BERSAMA MINIKU INDONESIA (PEKANBARU) |
+| Caroline Mom, Baby & Gift Shop | CV. CAVINY MAJU SEJAHTERA |
+| Halo Baby | HALO BABY SHOP |
+
+**Belum dimasukkan ke `config/customer.csv`** — aturan bagian 33 dan 45:
+data customer tidak disimpulkan dari berkas contoh, harus dinyatakan
+Yosua. Kecocokan Caroline -> CV. CAVINY ditemukan lewat nilainya
+(Rp17.478.872, angka diskon tiga tingkat bagian 48), bukan lewat namanya.
+
+### Order sheet dan LAP bisa berbeda — jangan disamakan diam-diam
+
+Invoice `0361026` CV. CAVINY tercatat Rp17.478.872 (diskon `25% + 2% + 2%`),
+sedangkan order sheet hari ini memberi Rp17.835.583,50 (`25% + 2%`).
+Potongan 2% kedua memang belum ada di order sheet — bagian 48 sudah
+mencatatnya. Karena kunci pencocokan Customer + Total, invoice itu
+**tidak** dikenali sebagai sudah ada, jadi bot akan menambah baris kedua.
+Yang benar: Sales menambahkan potongan keduanya di order sheet.
+
+Tes 295 -> 323 (28 tes baru di `test_tulis_laporan.py` dan
+`test_tulis_rekap_invoice.py`).
+
+**Catatan lingkungan:** di wadah sesi ini `cryptography` rusak
+(`No module named '_cffi_backend'`), jadi `tests/test_rekap_sapuan.py`,
+`test_sapu_api.py`, dan `test_sapu_bulan.py` tidak bisa dikumpulkan.
+Sudah dipastikan gagal SAMA PERSIS sebelum dan sesudah perubahan ini —
+bukan akibat kodenya. Di komputer Yosua ketiganya normal.

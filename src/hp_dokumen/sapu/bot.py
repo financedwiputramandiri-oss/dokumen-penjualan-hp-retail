@@ -31,6 +31,8 @@ from .minggu import (bulan_tersentuh, minggu_sekarang, sebutan as sebutan_minggu
                       tab_dalam_minggu, tahun_tersentuh)
 from .draf import HasilDraf, buat_draf, perlu_draf
 from .tulis_catatan import PenulisCatatan
+from .tulis_laporan import PenulisLaporan
+from .tulis_rekap_invoice import PenulisRekapInvoice
 from .unggah import PengunggahDokumen
 from .google import Sambungan
 from .kondisi import (Kondisi, kondisi_dibagi, peringatan_pindah_komputer,
@@ -99,6 +101,7 @@ class Pengaturan:
     draf_pdf: bool = False
     folder_dokumen_id: str = ""
     sheet_laporan_penjualan_id: str = ""
+    sheet_rekap_invoice_id: str = ""
     pakai_kunci_bersama: bool = True
     simpan_laporan_terakhir: int = 30
 
@@ -123,6 +126,8 @@ class Pengaturan:
             folder_dokumen_id=(d.get("folder_dokumen_id") or "").strip(),
             sheet_laporan_penjualan_id=(
                 d.get("sheet_laporan_penjualan_id") or "").strip(),
+            sheet_rekap_invoice_id=(
+                d.get("sheet_rekap_invoice_id") or "").strip(),
             pakai_kunci_bersama=bool(d.get("pakai_kunci_bersama", True)),
             simpan_laporan_terakhir=int(d.get("simpan_laporan_terakhir", 30)),
         )
@@ -219,8 +224,20 @@ def sapu(
                 cetak(f"Kunci sapuan gagal dilepas: {e}")
 
 
+def _persen(x) -> str:
+    """Diskon efektif sebagai tulisan, mis. 27.5%. Pecahan JANGAN
+    dibulatkan - faktur yang menagih 27,5% tapi menulis 28% memberi tahu
+    customer persen yang berbeda dari yang dipakai menghitung."""
+    try:
+        v = float(x) * 100
+    except (TypeError, ValueError):
+        return ""
+    return f"{v:.2f}".rstrip("0").rstrip(".") + "%"
+
+
 def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict,
-                     master=None, *, direvisi: bool = False) -> str:
+                     master=None, *, direvisi: bool = False,
+                     penulis_lap=None, penulis_rekap=None) -> str:
     """Catat satu invoice ke laporan penjualan.
 
     Angkanya diambil dari `ringkas`, yaitu keluaran pembuat faktur yang
@@ -266,8 +283,24 @@ def _catat_penjualan(penulis, cfg, order, keputusan, ringkas: dict,
         # Baris yang angkanya tidak cocok dengan fakturnya sendiri JANGAN
         # dikirim. Laporan penjualan yang salah lebih berbahaya daripada
         # laporan yang kurang satu baris, sebab tidak ada yang menyangka.
-        return "TIDAK dicatat — " + "; ".join(masalah)
-    return penulis.catat(catatan, paksa=direvisi)
+        return "TIDAK dicatat - " + "; ".join(masalah)
+    pesan = penulis.catat(catatan, paksa=direvisi)
+    if penulis_rekap is not None:
+        r = penulis_rekap.catat(
+            catatan, paksa=direvisi, tab_po=order.nama_tab,
+            pt=(ringkas.get("perusahaan_pt").kode
+                if ringkas.get("perusahaan_pt") else ""),
+            subtotal=float(ringkas.get("kotor") or 0.0),
+            persen=_persen(ringkas.get("persen_efektif")),
+            cara_bayar=keputusan.cara_bayar)
+        if r:
+            pesan += " | " + r
+    if penulis_lap is not None:
+        # LAP dan BUKU ditulis SESUDAH DATA_INVOICE. Kalau urutannya
+        # dibalik lalu gagal di tengah, laporan bulanan sudah memuat
+        # invoice yang tabel sumbernya belum mencatatnya.
+        pesan += " | " + penulis_lap.catat(catatan)
+    return pesan
 
 
 def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
@@ -281,6 +314,10 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
     # dengan folder_dokumen_id, CLAUDE.md bagian 24.
     penulis_catatan = (PenulisCatatan(sambung, p.sheet_laporan_penjualan_id)
                        if p.sheet_laporan_penjualan_id else None)
+    penulis_lap = (PenulisLaporan(sambung, p.sheet_laporan_penjualan_id)
+                   if p.sheet_laporan_penjualan_id else None)
+    penulis_rekap = (PenulisRekapInvoice(sambung, p.sheet_rekap_invoice_id)
+                     if p.sheet_rekap_invoice_id else None)
 
     kondisi = Kondisi.muat(p.berkas_kondisi)
     perubahan: list[Perubahan] = []
@@ -526,7 +563,9 @@ def _sapu(p, cfg, sambung, cetak, saring_bulan, paksa,
                                 cat_hasil = _catat_penjualan(
                                     penulis_catatan, cfg, order, keputusan,
                                     ringkas_inv, master,
-                                    direvisi=bool(alasan_draf))
+                                    direvisi=bool(alasan_draf),
+                                    penulis_lap=penulis_lap,
+                                    penulis_rekap=penulis_rekap)
                                 if cat_hasil:
                                     cetak(f"      laporan penjualan: {cat_hasil}")
                             except Exception as e:

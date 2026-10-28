@@ -5,7 +5,7 @@ REM
 REM  CARA PAKAI: klik KANAN berkas ini, pilih "Run as administrator".
 REM
 REM  Jadwalnya: Senin sampai Sabtu, dua kali sehari - menyapu jam
-REM             08:00 dan 17:00. Minggu libur.
+REM             09:00 dan 17:00. Minggu libur.
 REM
 REM  Perlu menyapu SEKARANG di luar jadwal? Klik dua kali
 REM  sapu-sekarang.bat - tidak perlu menyentuh jadwal ini.
@@ -22,7 +22,7 @@ echo.
 echo  Nama jadwal : %NAMA%
 echo  Menjalankan : %SKRIP%
 echo  Hari        : Senin, Selasa, Rabu, Kamis, Jumat, Sabtu
-echo  Menyapu jam : 08:00 dan 17:00
+echo  Menyapu jam : 09:00 dan 17:00
 echo.
 
 if not exist "%SKRIP%" (
@@ -34,24 +34,24 @@ if not exist "%SKRIP%" (
 )
 
 REM /SC WEEKLY /D MON..SAT = hanya hari kerja, Minggu dilewati.
-REM /ST 08:00              = sapuan pertama tiap harinya.
-REM /RI 540                = diulang tiap 9 jam (540 menit), jadi
+REM /ST 09:00              = sapuan pertama tiap harinya.
+REM /RI 480                = diulang tiap 8 jam (480 menit), jadi
 REM                          sapuan kedua jatuh jam 17:00.
 REM /ET 17:30 /K           = berhenti mengulang setelah sapuan kedua, dan
 REM                          sapuan yang masih berjalan saat itu dihentikan.
-REM                          Jadi yang benar-benar jalan: 08:00 dan 17:00.
+REM                          Jadi yang benar-benar jalan: 09:00 dan 17:00.
 REM                          /ET sengaja 17:30, bukan 17:00 - kalau sama
 REM                          persis dengan jam sapuan kedua, Windows bisa
 REM                          menutup jendela pengulangannya sebelum sapuan
 REM                          itu sempat mulai.
-REM                          Kalau jam 08:00 Bapak belum login, sapuan itu
+REM                          Kalau jam 09:00 Bapak belum login, sapuan itu
 REM                          dilewati - /IT memang begitu, dan itu disengaja:
 REM                          drive G: tidak ada sebelum orangnya login.
 REM /IT = jalan HANYA kalau Bapak sedang login.
 REM      Ini WAJIB. Kalau bot jalan saat belum login, drive G: dari Google
 REM      Drive for Desktop belum ada, dan dokumennya gagal ditulis.
 REM /F  = timpa jadwal lama kalau sudah pernah dipasang.
-schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 08:00 /RI 540 /ET 17:30 /K /RU "%USERNAME%" /IT /F
+schtasks /Create /TN "%NAMA%" /TR "\"%SKRIP%\"" /SC WEEKLY /D MON,TUE,WED,THU,FRI,SAT /ST 09:00 /RI 480 /ET 17:30 /K /RU "%USERNAME%" /IT /F
 
 if errorlevel 1 goto :gagal
 
@@ -60,7 +60,7 @@ echo ============================================================
 echo  JADWAL BERHASIL DIPASANG
 echo ============================================================
 echo.
-echo  Bot menyapu jam 08:00 dan 17:00, Senin sampai Sabtu, selama
+echo  Bot menyapu jam 09:00 dan 17:00, Senin sampai Sabtu, selama
 echo  komputer menyala dan Bapak sedang login.
 echo.
 echo  BUTUH CEPAT DI LUAR JADWAL?

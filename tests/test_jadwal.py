@@ -59,17 +59,17 @@ def test_pasang_jadwal_memakai_IT():
 
 
 def test_pasang_jadwal_hari_kerja_jam_8_dan_17():
-    """Senin-Sabtu, jam 08:00 dan 17:00 (permintaan Yosua 6 Oktober 2026).
+    """Senin-Sabtu, jam 09:00 dan 17:00 (permintaan Yosua 28 Oktober 2026).
 
-    /RI 540 (9 jam) dengan /ET 17:30 berarti sapuan jam 08:00 dan 17:00 saja.
+    /RI 480 (8 jam) dengan /ET 17:30 berarti sapuan jam 09:00 dan 17:00 saja.
     Kalau `/ET` atau `/K` hilang, bot terus menyapu sepanjang malam; kalau
     `/D` hilang, ikut jalan hari Minggu.
     """
     isi = PASANG.read_text(encoding="ascii")
     assert "/SC WEEKLY" in isi
     assert "/D MON,TUE,WED,THU,FRI,SAT" in isi, "Minggu harus libur"
-    assert "/ST 08:00" in isi
-    assert "/RI 540" in isi, "08:00 -> 17:00 = 9 jam = 540 menit"
+    assert "/ST 09:00" in isi
+    assert "/RI 480" in isi, "09:00 -> 17:00 = 8 jam = 480 menit"
     assert "/ET 17:30" in isi, "harus lewat 17:00 supaya sapuan kedua sempat jalan"
     assert " /K " in isi, "tanpa /K sapuan yang tersangkut tidak dihentikan"
     # Diperiksa pada argumen /D saja, bukan seluruh berkas: kata biasa

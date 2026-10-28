@@ -4,7 +4,7 @@ REM  MENYAPU ORDER SHEET SEKARANG JUGA.
 REM
 REM  Klik dua kali berkas ini kapan pun order sheet baru direvisi
 REM  dan dokumennya dibutuhkan cepat - tidak perlu menunggu jadwal
-REM  jam 08:00 atau 17:00, dan tidak perlu menyentuh Task Scheduler.
+REM  jam 09:00 atau 17:00, dan tidak perlu menyentuh Task Scheduler.
 REM
 REM  MENYAPU SELURUH BULAN. Perlu dipakai kalau order sheet bulan
 REM  LAMA baru saja diperbaiki - misalnya rumus baris TOTAL yang

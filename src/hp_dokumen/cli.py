@@ -300,12 +300,14 @@ def perintah_catat(args) -> int:
 
     from .sapu.google import Sambungan
     from .sapu.tulis_catatan import PenulisCatatan
+    from .sapu.tulis_laporan import PenulisLaporan
     id_sheet = (cfg.bot.get("sheet_laporan_penjualan_id") or "").strip()
     if not id_sheet:
         print("\nBERHENTI. Isi dulu sheet_laporan_penjualan_id di config/bot.yaml.")
         return 2
-    p = PenulisCatatan(Sambungan(AKAR / cfg.bot["berkas_kredensial"]), id_sheet)
-    print("\n" + p.catat(catatan))
+    sambung = Sambungan(AKAR / cfg.bot["berkas_kredensial"])
+    print("\n" + PenulisCatatan(sambung, id_sheet).catat(catatan))
+    print(PenulisLaporan(sambung, id_sheet).catat(catatan))
     return 0
 
 

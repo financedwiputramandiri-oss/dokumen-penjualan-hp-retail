@@ -190,3 +190,8 @@ berkas_kondisi: "data/kondisi_sapu.json"
 # Menulis ke berkas yang SUDAH ADA tidak memakan jatah penyimpanan, jadi
 # batasan storageQuotaExceeded tidak pernah kena di sini.
 sheet_laporan_penjualan_id: "1wPH-CAKkS63vp29V4kLAxPrLvYDWaGdgGaPik2NT1k0"
+
+# Berkas REKAP INVOICE HAPPY PUMPKIN - DIISI BOT. Satu baris per invoice
+# yang terbit. Isinya seluruhnya milik bot, jadi tab REKAP INVOICE di
+# dalamnya dibuat sendiri kalau belum ada. Kosongkan kalau tidak dipakai.
+sheet_rekap_invoice_id: "1cVp0JiDZGzyMg2zLdzlIm0ZlfATJd3Xn9PsDWZmoxrQ"
